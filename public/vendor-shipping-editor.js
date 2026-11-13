@@ -1,6 +1,8 @@
 (function (global) {
     'use strict';
     const {escapeHtml:esc,money} = global.CreoCheckoutClient;
+    const CHO=['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+    const chosung=v=>{let out='';for(const ch of String(v||'')){const n=ch.charCodeAt(0);out+=n>=0xAC00&&n<=0xD7A3?CHO[Math.floor((n-0xAC00)/588)]:ch;}return out;};
     function carrierLabel(destination) {
         if (!destination) return '';
         return ({pickup:'직수령',parge:'파르게',dodosi:'도도시'})[destination.destinationType || destination.destinationId]
@@ -22,15 +24,15 @@
     function open(editor, onSave) {
         return new Promise(resolve=>{
             const opener=document.activeElement, dialog=document.createElement('dialog');
-            let saving=false, completed=false;
+            let saving=false, completed=false, pressedOutside=false;
             dialog.className='vendor-shipping-dialog';dialog.setAttribute('aria-labelledby','vendor-shipping-title');
-            dialog.innerHTML='<form><h2 id="vendor-shipping-title">수령 정보 수정</h2><p class="shipping-editor-name"></p>'
-                +'<p class="shipping-editor-lock" hidden></p><label>수령 방식<select name="destinationId"></select></label>'
-                +'<div class="shipping-editor-carrier"><label>지역<select name="pargeRegion"></select></label><label>수령 지점<select name="pargeShop"></select></label></div>'
+            dialog.innerHTML='<form><header><h2 id="vendor-shipping-title">수령 정보 수정</h2><p class="shipping-editor-name"></p></header>'
+                +'<div class="shipping-editor-body"><p class="shipping-editor-lock" hidden></p><label>수령 방식<select name="destinationId"></select></label>'
+                +'<div class="shipping-editor-carrier"><label class="shipping-editor-search-label">빠른 지점 검색<input type="search" class="shipping-editor-search" placeholder="지역·거점명 입력 (예: 강남, 수원)" autocomplete="off"></label><div class="shipping-editor-hits" hidden></div><div class="shipping-editor-selects"><label>지역<select name="pargeRegion"></select></label><label>수령 지점<select name="pargeShop"></select></label></div></div>'
                 +'<label>메모 <span class="shipping-editor-optional">선택 · 구매자·주관사에게도 표시</span><textarea name="note" maxlength="500" rows="3" placeholder="예: 구매자 섭외 배송업체가 수령 · 배송비 별도 부담"></textarea></label>'
                 +'<div class="shipping-editor-quote" aria-live="polite"></div><p class="shipping-editor-card" hidden>기존 카드 안내는 취소 확인 후 다시 등록해 주세요.</p>'
-                +'<p class="shipping-editor-error" role="alert" tabindex="-1"></p><div class="shipping-editor-actions"><button type="button" class="shipping-editor-close">닫기</button><button type="submit" class="shipping-editor-save">저장</button></div></form>';
-            const form=dialog.querySelector('form'),field=name=>form.elements.namedItem(name),error=dialog.querySelector('.shipping-editor-error');
+                +'<p class="shipping-editor-error" role="alert" tabindex="-1"></p></div><div class="shipping-editor-actions"><button type="button" class="shipping-editor-close">닫기</button><button type="submit" class="shipping-editor-save">저장</button></div></form>';
+            const form=dialog.querySelector('form'),field=name=>form.elements.namedItem(name),error=dialog.querySelector('.shipping-editor-error'),searchInput=dialog.querySelector('.shipping-editor-search'),hitsBox=dialog.querySelector('.shipping-editor-hits');
             dialog.querySelector('.shipping-editor-name').textContent=editor.name;
             function options(select,rows,value,placeholder) {
                 select.replaceChildren(new Option(placeholder,''),...rows.map(row=>new Option(row.label,row.value)));
@@ -46,6 +48,15 @@
                 dialog.querySelector('.shipping-editor-quote').innerHTML=fee===null?'<span>수령 지점을 선택해 주세요</span>':`<div><span>배송비</span><b>${changed?money(editor.shippingAmount)+' → ':''}${money(fee)}</b></div><div><span>결제금액</span><strong>${money(editor.auctionAmount+fee)}</strong></div>`;
                 dialog.querySelector('.shipping-editor-card').hidden=!(changed && editor.hasCardGuide);
             }
+            function renderHits() {
+                const carrier=editor.carriers[field('destinationId').value],q=String(searchInput.value||'').trim().toLowerCase();
+                if(!carrier||!q){hitsBox.hidden=true;hitsBox.replaceChildren();return;}
+                const words=q.split(/\s+/).filter(Boolean);
+                const matches=(carrier.regions||[]).flatMap(r=>(r.shops||[]).map(s=>({region:r.region,name:s.name,baseCost:s.baseCost}))).filter(row=>{const target=`${row.region} ${row.name}`.toLowerCase(),initial=chosung(target);return words.every(w=>target.includes(w)||initial.includes(w));}).slice(0,8);
+                hitsBox.hidden=false;
+                hitsBox.innerHTML=matches.length?matches.map(m=>`<button type="button" class="shipping-editor-hit" data-hit-region="${esc(m.region)}" data-hit-shop="${esc(m.name)}"><span><b>${esc(m.name)}</b><small>${esc(m.region)}</small></span><strong>${money(m.baseCost)}</strong></button>`).join(''):'<p class="shipping-editor-empty">일치하는 지점이 없어요</p>';
+                hitsBox.querySelectorAll('[data-hit-shop]').forEach(btn=>{btn.onclick=()=>{regions(btn.dataset.hitRegion,btn.dataset.hitShop);searchInput.value='';hitsBox.hidden=true;hitsBox.replaceChildren();};});
+            }
             function shops(value='') {
                 const rows=editor.carriers[field('destinationId').value]?.regions.find(row=>row.region===field('pargeRegion').value)?.shops || [];
                 options(field('pargeShop'),rows.map(row=>({value:row.name,label:row.name})),value,'수령 지점 선택');updateQuote();
@@ -53,18 +64,23 @@
             function regions(region='',shop='') {
                 const carrier=editor.carriers[field('destinationId').value];
                 dialog.querySelector('.shipping-editor-carrier').hidden=!carrier;
+                if(!carrier){searchInput.value='';hitsBox.hidden=true;hitsBox.replaceChildren();}
                 options(field('pargeRegion'),(carrier?.regions || []).map(row=>({value:row.region,label:row.region})),region,'지역 선택');shops(shop);
             }
             regions(editor.selection?.pargeRegion,editor.selection?.pargeShop);
-            field('destinationId').onchange=()=>regions();field('pargeRegion').onchange=()=>shops();field('pargeShop').onchange=updateQuote;
+            field('destinationId').onchange=()=>{searchInput.value='';hitsBox.hidden=true;regions();};field('pargeRegion').onchange=()=>shops();field('pargeShop').onchange=updateQuote;
+            searchInput.oninput=renderHits;
             if(!editor.canEditDestination) {
                 ['destinationId','pargeRegion','pargeShop'].forEach(name=>field(name).disabled=true);
+                searchInput.disabled=true;dialog.querySelector('.shipping-editor-search-label').hidden=true;
                 const hint=dialog.querySelector('.shipping-editor-lock');hint.textContent=editor.lockedReason;hint.hidden=false;
             }
             const close=()=>{if(!saving)dialog.close()};
             dialog.querySelector('.shipping-editor-close').onclick=close;
             dialog.addEventListener('cancel',event=>{if(saving)event.preventDefault()});
-            dialog.addEventListener('click',event=>{const r=dialog.getBoundingClientRect();if(event.target===dialog&&(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom))close()});
+            const isOutside=event=>{const r=dialog.getBoundingClientRect();return event.target===dialog&&(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom);};
+            dialog.addEventListener('pointerdown',event=>{pressedOutside=isOutside(event);});
+            dialog.addEventListener('click',event=>{if(pressedOutside&&isOutside(event))close();pressedOutside=false;});
             form.onsubmit=async event=>{
                 event.preventDefault();if(saving)return;
                 const selected=editor.canEditDestination?selection():{destinationId:editor.selection?.destinationId||'',pargeRegion:editor.selection?.pargeRegion||'',pargeShop:editor.selection?.pargeShop||''};
@@ -73,7 +89,7 @@
                 const controls=[...form.elements];saving=true;controls.forEach(node=>node.disabled=true);error.textContent='';dialog.querySelector('.shipping-editor-save').textContent='저장 중…';
                 try {await onSave({...selected,note:field('note').value,expectedVersion:editor.expectedVersion,expectedAmount:editor.auctionAmount+fee});completed=true;dialog.close();}
                 catch(e){error.textContent=e.message || '저장하지 못했어요. 연결을 확인하고 다시 저장해 주세요.';error.focus();}
-                finally{saving=false;controls.forEach(node=>node.disabled=false);if(!editor.canEditDestination)['destinationId','pargeRegion','pargeShop'].forEach(name=>field(name).disabled=true);dialog.querySelector('.shipping-editor-save').textContent='저장';}
+                finally{saving=false;controls.forEach(node=>node.disabled=false);if(!editor.canEditDestination){['destinationId','pargeRegion','pargeShop'].forEach(name=>field(name).disabled=true);searchInput.disabled=true;}dialog.querySelector('.shipping-editor-save').textContent='저장';}
             };
             dialog.addEventListener('close',()=>{dialog.remove();if(opener?.isConnected)opener.focus();resolve(completed)},{once:true});
             document.body.append(dialog);dialog.showModal();(editor.canEditDestination?field('destinationId'):field('note')).focus();

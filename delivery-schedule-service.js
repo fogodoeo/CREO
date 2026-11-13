@@ -56,11 +56,11 @@ function createDeliveryScheduleService({ repository, notificationService = null,
             await load();
             if (!settings.enabled && !forceCarrier) return;
             const catalog = await repository.getCatalog();
-            const channels = catalog.channels.filter(c => c.status === 'active' && c.dataAdapter === 'platform' && c.shippingDefaults?.deliverySchedule?.enabled);
+            const channels = catalog.channels.filter(c => c.status === 'active' && c.dataAdapter === 'platform' && Core.channelConfig(c)?.enabled);
             let attempted = false;
             for (const carrier of carriers) {
                 if (stopped) break;
-                const origins = carrier === 'dodosi' ? [...new Set(['크레용(대구)', ...channels.filter(c => c.shippingDefaults.enabledCarriers?.includes(carrier)).map(c => c.shippingDefaults.deliverySchedule.dodosiOrigin)])] : [];
+                const origins = carrier === 'dodosi' ? [...new Set(['크레용(대구)', ...channels.filter(c => c.shippingDefaults?.enabledCarriers?.includes(carrier)).map(c => Core.channelConfig(c).dodosiOrigin)])] : [];
                 const prior = snapshot[carrier], status = health.providers[carrier] || {};
                 const covered = carrier === 'parge' || origins.every(name => prior?.origins?.some(o => Core.compact(o.name) === Core.compact(name)));
                 const age = now() - Date.parse(prior?.checkedAt);
@@ -101,8 +101,8 @@ function createDeliveryScheduleService({ repository, notificationService = null,
         if (stopped || timer || running || now() < nextAttempt) return;
         timer = setTimeout(() => { timer = null; void refresh(); }, 50); timer.unref?.();
     }
-    function checkConfiguration(channel, carrier) {
-        const config = channel.shippingDefaults.deliverySchedule;
+    function checkConfiguration(channel, carrier, config = Core.channelConfig(channel)) {
+        if (!config) return;
         const key = `${channel.id || hash(config)}:${carrier}`, fingerprint = hash(config);
         if (configurations.get(key) === fingerprint) return;
         configurations.set(key, fingerprint);
@@ -111,23 +111,26 @@ function createDeliveryScheduleService({ repository, notificationService = null,
             : snapshot.dodosi?.origins?.some(p => Core.compact(p.name) === Core.compact(config.dodosiOrigin));
         if (!covered) { nextAttempt = 0; refreshSoon(); }
     }
+    function isEnabled(channel) { return Boolean(Core.channelConfig(channel)?.enabled); }
     async function estimate(channel, selection, submittedAt = '') {
-        if (!channel?.shippingDefaults?.deliverySchedule?.enabled || !selection) return null;
+        const config = Core.channelConfig(channel);
+        if (!config?.enabled || !selection) return null;
         const carrier = selection.destinationType;
         if (!carriers.includes(carrier)) return null;
-        try { await load(); } catch { return Core.estimate({ config: channel.shippingDefaults.deliverySchedule, carrier, destination: { shop: selection.pargeShop }, now: now() }); }
-        checkConfiguration(channel, carrier);
+        try { await load(); } catch { return Core.estimate({ config, carrier, destination: { shop: selection.pargeShop }, now: now() }); }
+        checkConfiguration(channel, carrier, config);
         if (!snapshot[carrier]) refreshSoon();
-        return Core.estimate({ config: channel.shippingDefaults.deliverySchedule, carrier, nationalMondaySpecial: /^national-cre(?:-\d{8})?$/.test(channel.id || ''),
+        return Core.estimate({ config, carrier, nationalMondaySpecial: /^national-cre(?:-\d{8})?$/.test(channel.id || ''),
             destination: { region: selection.pargeRegion, shop: selection.pargeShop }, source: snapshot[carrier], submittedAt, now: now() });
     }
     async function enrichRates(channel, carrier, regions, submittedAt = '', selection = null) {
-        if (!channel.shippingDefaults?.deliverySchedule?.enabled) return regions;
+        const config = Core.channelConfig(channel);
+        if (!config?.enabled) return regions;
         try { await load(); } catch { /* Missing data produces a pending estimate, never blocks checkout. */ }
-        checkConfiguration(channel, carrier);
+        checkConfiguration(channel, carrier, config);
         if (!snapshot[carrier]) refreshSoon();
         return regions.map(group => ({ ...group, shops: group.shops.map(shop => ({ ...shop, deliverySchedule: Core.estimate({
-            config: channel.shippingDefaults.deliverySchedule, carrier, nationalMondaySpecial: /^national-cre(?:-\d{8})?$/.test(channel.id || ''), destination: { region: group.region, shop: shop.name },
+            config, carrier, nationalMondaySpecial: /^national-cre(?:-\d{8})?$/.test(channel.id || ''), destination: { region: group.region, shop: shop.name },
             source: snapshot[carrier], submittedAt: selection?.destinationType === carrier && selection.pargeRegion === group.region && selection.pargeShop === shop.name
                 ? submittedAt || new Date(now()).toISOString() : new Date(now()).toISOString(), now: now()
         }) })) }));
@@ -160,6 +163,6 @@ function createDeliveryScheduleService({ repository, notificationService = null,
         refreshSoon(); interval = setInterval(() => void refresh(), 60000); interval.unref?.();
     }
     async function stop() { stopped = true; clearInterval(interval); clearTimeout(timer); controller.abort(); if (running) await running; }
-    return { load, refresh, refreshSoon, refreshCarrier, configure, status, assertAlertCurrent, estimate, enrichRates, revision, start, stop };
+    return { load, refresh, refreshSoon, refreshCarrier, configure, status, assertAlertCurrent, isEnabled, estimate, enrichRates, revision, start, stop };
 }
 module.exports = { KEY, SETTINGS_KEY, STATUS_KEY, SYSTEM_CHANNEL, createDeliveryScheduleService };

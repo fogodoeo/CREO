@@ -17,7 +17,7 @@ function captureRecord(context,item,identity,stamp){
   // and arbitrary attributes must never enter the personal item archive.
   item:{...checkoutItem(item),vendorName:cleanText(vendor?.name||item.vendorName||'업체',100)},
   ...(vendor?.directoryId?{vendorSource:{directoryId:vendor.directoryId}}:{}),
-  parentSource:{ownerId:cleanText(item.attributes?.vendor_entry?.ownerId,80),refs:(Array.isArray(parents)?parents:[]).filter(p=>p&&['sire','dam','부','모'].includes(p.role)&&p.id).slice(0,2).map(p=>({id:cleanText(p.id,80),role:({부:'sire',모:'dam'})[p.role]||p.role}))}};
+  parentSource:{ownerId:cleanText(item.attributes?.vendor_entry?.ownerId,80),refs:(Array.isArray(parents)?parents:[]).filter(p=>p&&['sire','dam','sibling','hatchling','부','모','동배','해츨링'].includes(p.role)&&p.id).slice(0,4).map(p=>({id:cleanText(p.id,80),role:({부:'sire',모:'dam',동배:'sibling',해츨링:'hatchling'})[p.role]||p.role}))}};
 }
 function createBuyerCollection({repository,auth,linkAccess,resolveProof,resolveRecords,hydrateRecords,now=Date.now}){
  const key=accountId=>ROOT+'account::'+accountId;

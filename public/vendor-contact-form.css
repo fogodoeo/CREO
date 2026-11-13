@@ -2,8 +2,11 @@
 .vendor-contact-settings .field{display:block;margin-bottom:16px}.vendor-contact-settings .field>span{display:block;margin-bottom:8px;font-size:14px;font-weight:600}
 .vendor-contact-settings .field input{display:block;width:100%;min-width:0;min-height:52px;padding:13px 14px;border:1px solid var(--checkout-control-border,#ccd2da);border-radius:12px;background:#fff;color:var(--ink,#202632);font:inherit;font-size:16px;box-sizing:border-box}
 .vendor-contact-settings .field small{display:block;margin-top:8px;color:var(--muted,#647084);font-size:13px;line-height:1.5}
-.vendor-contact-settings .contact-separate{display:flex;align-items:center;gap:10px;min-height:44px;margin:0;cursor:pointer;font-size:14px;font-weight:500}
-.vendor-contact-settings .contact-separate input{flex:0 0 20px;width:20px;height:20px;min-height:0;margin:0;accent-color:var(--blue,#3182f6)}
+.vendor-contact-settings .contact-separate{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:52px;padding:8px 14px;margin:0;border-radius:12px;background:var(--soft,#f5f7fa);cursor:pointer;font-size:15px;font-weight:600}
+.vendor-contact-settings .contact-separate input{appearance:none;-webkit-appearance:none;flex:0 0 44px;width:44px;height:26px;min-height:26px;min-width:44px;margin:0;border:0;border-radius:999px;background:#cbd5e1;position:relative;cursor:pointer;transition:background-color .18s ease}
+.vendor-contact-settings .contact-separate input::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.24);transition:transform .18s ease}
+.vendor-contact-settings .contact-separate input:checked{background:var(--blue,#3182f6)}
+.vendor-contact-settings .contact-separate input:checked::after{transform:translateX(18px)}
 .vendor-contact-settings .contact-inquiry-panel{padding:12px 0 0}.vendor-contact-settings .contact-kakao{margin-top:12px;border-top:1px solid var(--line,#e8ebef);border-bottom:1px solid var(--line,#e8ebef)}
 .vendor-contact-settings .contact-kakao summary{display:flex;align-items:center;gap:8px;min-height:52px;cursor:pointer;font-size:14px;font-weight:600;list-style:none}.vendor-contact-settings .contact-kakao summary::-webkit-details-marker{display:none}
 .vendor-contact-settings .contact-kakao summary small{color:var(--muted,#647084);font-size:12px;font-weight:400}.vendor-contact-settings .contact-kakao summary:after{content:'＋';margin-left:auto;font-size:18px;font-weight:400}.vendor-contact-settings .contact-kakao[open] summary:after{content:'−'}

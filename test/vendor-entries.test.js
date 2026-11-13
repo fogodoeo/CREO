@@ -345,3 +345,20 @@ test('approval inherits the vendor team and keeps an explicit team selection acr
     await service.command(context,approval,{operator:true});item=(await repository.listRecords('alpha','item'))[0];assert.equal(item.groupId,'b');assert.equal(item.teamName,'디어렙팀');
     await assert.rejects(service.command(context,{...approval,groupId:'a'},{operator:true}),/같은 요청/);
 });
+
+
+test('optional sibling and hatchling lineage slots support unknown sex and hydrate alongside sire and dam',async()=>{
+    const {repository,context,service}=fixture();
+    const sireId=randomUUID(),damId=randomUUID(),siblingId=randomUUID(),hatchlingId=randomUUID();
+    await service.command(context,command('parent',{parent:{id:sireId,name:'부 개체',morph:'화이트월',sex:'male'}}));
+    await service.command(context,command('parent',{parent:{id:damId,name:'모 개체',morph:'릴리화이트',sex:'female'}}));
+    await service.command(context,command('parent',{parent:{id:siblingId,name:'동배 개체',morph:'트라이컬러',sex:'unknown'}}));
+    await service.command(context,command('parent',{parent:{id:hatchlingId,name:'해츨링 개체',morph:'세이블',sex:'unknown'}}));
+    await assert.rejects(service.command(context,command('submit',{entry:{...draft(),sireId:damId}})),/부·모 정보를 다시 선택해 주세요/);
+    await assert.rejects(service.command(context,command('submit',{entry:{...draft(),damId:sireId}})),/부·모 정보를 다시 선택해 주세요/);
+    const entry={...draft(),sireId,damId,siblingId,hatchlingId};
+    await service.command(context,command('submit',{entry}));
+    await service.command(context,command('approve',{id:entry.id,expectedVersion:1,lot:'A01',order:1}),{operator:true});
+    const hydrated=(await service.hydrateItems('alpha',await repository.listRecords('alpha','item')))[0];
+    assert.deepEqual(hydrated.attributes.parents.map(p=>[p.role,p.name]),[['sire','부 개체'],['dam','모 개체'],['sibling','동배 개체'],['hatchling','해츨링 개체']]);
+});

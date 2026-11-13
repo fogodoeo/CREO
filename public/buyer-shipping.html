@@ -5,24 +5,19 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <meta name="referrer" content="no-referrer">
     <title>옹동2 · 배송·결제</title>
-    <link rel="stylesheet" href="/delivery-schedule.css?v=20260918-1"><script src="/delivery-schedule-view.js?v=20260918-1"></script>
+    <link rel="stylesheet" href="/delivery-schedule.css?v=20261113-care">
     <link rel="stylesheet" href="/checkout-ui.css?v=20260902-checkout-shell-v1">
-    <script src="/checkout-rules.js?v=20261014-support-20260912-checkout-outbox"></script>
-    <script src="/checkout-client.js?v=20261020-round"></script>
-    <link rel="stylesheet" href="/checkout-navigation.css?v=20261029-photo-layout">
-    <script src="/checkout-item-view.js?v=20261029-photo-layout"></script>
-    <link rel="stylesheet" href="/checkout-inquiry.css?v=20261101-inquiry-sms">
-    <script src="/checkout-inquiry.js?v=20261101-inquiry-sms"></script>
-    <script src="/buyer-navigation.js?v=20261101-inquiry-sms"></script>
-    <script src="/buyer-library-link.js" defer></script>
-    <link rel="stylesheet" href="/buyer-destination.css?v=20261023-recovery">
-    <link rel="stylesheet" href="/buyer-payment-report.css?v=20261023-report">
-    <script src="/buyer-payment-report.js?v=20261023-report"></script>
-    <script src="/carrier-search.js"></script><script src="/buyer-carrier-access.js"></script>
-
-<script src="/checkout-actions.js?v=20260912-checkout-outbox"></script><link rel="stylesheet" href="/checkout-layout.css?v=20260908-mobile-focus"><link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo"><script src="/ongdong-brand.js?v=20260908-logo"></script><link rel="stylesheet" href="/checkout-pages.css?v=20261108-focus"><script src="/checkout-round-picker.js?v=20261020-recovery"></script><link rel="stylesheet" href="/checkout-round-picker.css?v=20261020-recovery"></head>
+    <link rel="stylesheet" href="/checkout-navigation.css?v=20261113-craft">
+    <link rel="stylesheet" href="/checkout-inquiry.css?v=20261113-craft">
+    <link rel="stylesheet" href="/buyer-destination.css?v=20261113-craft">
+    <link rel="stylesheet" href="/buyer-payment-report.css?v=20261113-craft">
+    <link rel="stylesheet" href="/checkout-layout.css?v=20260908-mobile-focus">
+    <link rel="stylesheet" href="/ongdong-brand.css?v=20260908-logo">
+    <link rel="stylesheet" href="/checkout-pages.css?v=20261113-craft">
+    <link rel="stylesheet" href="/checkout-round-picker.css?v=20261113-craft">
+</head>
 <body class="buyer-page"><div class="shell">
-    <div class="loading" id="loading"><b>불러오는 중…</b></div>
+    <div class="loading checkout-skeleton" id="loading" role="status" aria-live="polite"><b class="sr-only">불러오는 중…</b><div class="skeleton-top" aria-hidden="true"><div class="skeleton-brand"><span class="skeleton-mark"></span><span class="skeleton-word"></span></div><span class="skeleton-line skeleton-kicker"></span><span class="skeleton-line skeleton-title"></span></div><div class="skeleton-body" aria-hidden="true"><div class="skeleton-card"><span class="skeleton-thumb"></span><div class="skeleton-meta"><span class="skeleton-line"></span><span class="skeleton-line short"></span><span class="skeleton-line price"></span></div></div><div class="skeleton-card"><span class="skeleton-thumb"></span><div class="skeleton-meta"><span class="skeleton-line"></span><span class="skeleton-line short"></span><span class="skeleton-line price"></span></div></div></div></div>
     <div class="error" id="error" hidden><b data-ongdong-brand>옹동2</b><h1>페이지를 열 수 없어요</h1><span id="error-message" role="alert"></span><p id="error-link-help" hidden>링크 재발급은 운영자에게 요청해 주세요.</p><div class="error-actions"><a id="error-round-recovery" class="btn checkout-round-recovery" hidden>낙찰 내역 다시 열기</a><button id="retry" type="button">다시 시도</button><a id="error-library" href="/buyer-library.html" hidden>내 보관함</a></div></div>
     <div id="app" hidden>
         <header class="top"><div class="brand"><b data-ongdong-brand>옹동2</b><span class="page-context">배송·결제</span><div class="brand-right" hidden><span id="channel-name"></span><i class="sync" id="sync" role="status">실시간</i></div></div><p class="buyer-event-label" id="buyer-event-label"></p><div class="buyer-greeting"><span id="buyer-name"></span>님</div><div class="flow-steps" aria-label="진행 단계"><span id="step-shipping">1 수령지</span><span aria-hidden="true">›</span><span id="step-payment">2 결제</span></div><div id="flow-symbol" class="flow-symbol" aria-hidden="true" hidden></div><h1 id="flow-title" tabindex="-1">어디서 받으시나요?</h1><div class="status" id="status" hidden><span id="status-label"></span><small id="status-detail"></small></div><div class="saved" id="saved" role="status" aria-live="polite" hidden><b>저장 완료</b></div></header>
@@ -43,7 +38,21 @@
           <a href="#checkout" data-buyer-section="checkout" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/></svg><span>배송·결제</span></a>
         </nav>
     </div>
-</div><script>
+</div>
+<script src="/delivery-schedule-view.js?v=20261113-care"></script>
+<script src="/checkout-rules.js?v=20261014-support-20260912-checkout-outbox"></script>
+<script src="/checkout-client.js?v=20261020-round"></script>
+<script src="/checkout-item-view.js?v=20261113-craft"></script>
+<script src="/checkout-inquiry.js?v=20261101-inquiry-sms"></script>
+<script src="/buyer-navigation.js?v=20261113-care"></script>
+<script src="/buyer-library-link.js" defer></script>
+<script src="/buyer-payment-report.js?v=20261023-report"></script>
+<script src="/carrier-search.js"></script>
+<script src="/buyer-carrier-access.js"></script>
+<script src="/checkout-actions.js?v=20260912-checkout-outbox"></script>
+<script src="/ongdong-brand.js?v=20260908-logo"></script>
+<script src="/checkout-round-picker.js?v=20261020-recovery"></script>
+<script>
 (()=>{'use strict';
  const Checkout=window.CreoCheckoutClient,Rules=window.CreoCheckoutRules,params=new URLSearchParams(location.search),client=Checkout.createClient({location,endpoint:'/api/platform/buyer-shipping',shortPrefix:'s',apiOrigin:params.get('apiOrigin')||''});
  const $=Checkout.byId,esc=Checkout.escapeHtml,money=Checkout.money,uuid=Checkout.requestId,phone=Checkout.formatPhone;
@@ -196,7 +205,8 @@ function renderVendors(){
   const locked=paid||pendingConfirmation(v)||changePending()||v.payment.canChangeMethod===false;
   const selector=paid?'':saved&&locked?`<div class="method-readonly"><span>결제 방법</span><b>${method==='card'?'카드결제':'계좌이체'}</b></div>`:saved?`<details class="method-details"><summary><span>결제 방법</span><b>${method==='card'?'카드결제':'계좌이체'}</b><span class="edit-label">변경</span></summary>${choices}</details>`:choices;
   const call=CreoCheckoutActions.phoneHref(v.contact?.phone);
-  return `<article class="vendor"><div class="vendor-head"><div class="vendor-title"><b>${esc(v.name)}</b></div>${call?`<a class="vendor-contact" href="${esc(call)}" aria-label="${esc(v.name)}에 전화 문의"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3l-5-2-2 2a15 15 0 0 1-7-7l2-2-2-5Z"/></svg>전화 문의</a>`:''}</div><div class="vendor-body"><div class="amount-focus"><div class="amount-caption"><small>${paid?'결제한 금액':pendingConfirmation(v)?'확인 중인 금액':due.confirmed?'추가 결제금액':'결제할 금액'}</small>${saved&&!paid&&v.payment.status!=='card_link_pending'?`<span class="badge ${tone}">${label}</span>`:''}</div><strong>${money(paid?v.payment.confirmedAmount:due.due)}</strong></div>${saved?vendorAction(v,due)+selector:selector+vendorAction(v,due)}${v.shippingNote?`<p class="waiting-note"><b>수령 메모</b><br>${esc(v.shippingNote)}</p>`:''}<details class="receipt-details"><summary>낙찰금·배송비</summary><div class="cost-breakdown"><span>낙찰금 <b>${money(v.totals.auctionAmount)}</b></span><span>배송비 <b>${money(due.shippingAmount+due.shippingSupportAmount)}</b></span>${due.shippingSupportAmount?`<span>전크자 배송비 지원 <b>−${money(due.shippingSupportAmount)}</b></span><span>배송비 부담 <b>${money(due.shippingAmount)}</b></span>`:''}${v.totals.discountAmount?`<span>할인 <b>−${money(v.totals.discountAmount)}</b></span>`:''}${due.confirmed&&!paid?`<span>결제한 금액 <b>${money(due.confirmed)}</b></span>`:''}</div></details></div></article>`;
+  const sb=v.shippingBreakdown,shipTag=sb?.additionalOnly?' · 타업체 합배송':sb?.multiVendor?' · 합배송 기본포함':'',shipFormula=sb&&sb.destinationType&&sb.destinationType!=='pickup'?(sb.additionalOnly?`타업체 합배송 · 추가배송 ${sb.additionalItemCount}마리`:sb.multiVendor?`합배송 기본 1마리${sb.additionalItemCount?` + 추가 ${sb.additionalItemCount}마리`:''}`:`단독 기본 1마리${sb.additionalItemCount?` + 추가 ${sb.additionalItemCount}마리`:''}`):'';
+  return `<article class="vendor"><div class="vendor-head"><div class="vendor-title"><b>${esc(v.name)}</b></div>${call?`<a class="vendor-contact" href="${esc(call)}" aria-label="${esc(v.name)}에 전화 문의"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="M7 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3l-5-2-2 2a15 15 0 0 1-7-7l2-2-2-5Z"/></svg></a>`:''}</div><div class="vendor-body"><div class="amount-focus"><div class="amount-caption"><small>${paid?'결제한 금액':pendingConfirmation(v)?'확인 중인 금액':due.confirmed?'추가 결제금액':'결제할 금액'}</small>${saved&&!paid&&v.payment.status!=='card_link_pending'?`<span class="badge ${tone}">${label}</span>`:''}</div><strong>${money(paid?v.payment.confirmedAmount:due.due)}</strong><small class="buyer-total-formula">개체 ${v.items.length}마리 · 낙찰금 ${money(v.totals.payableAuctionAmount??v.totals.auctionAmount)} + 배송비 ${money(due.shippingAmount)}${shipTag}</small></div>${saved?vendorAction(v,due)+selector:selector+vendorAction(v,due)}${v.shippingNote?`<p class="waiting-note"><b>수령 메모</b><br>${esc(v.shippingNote)}</p>`:''}<details class="receipt-details"><summary>낙찰금·배송비</summary><div class="cost-breakdown"><span>낙찰금 <b>${money(v.totals.auctionAmount)}</b></span><span>배송비 <b>${money(due.shippingAmount+due.shippingSupportAmount)}</b></span>${shipFormula?`<span>배송 산식 <b>${esc(shipFormula)}</b></span>`:''}${due.shippingSupportAmount?`<span>전크자 배송비 지원 <b>−${money(due.shippingSupportAmount)}</b></span><span>배송비 부담 <b>${money(due.shippingAmount)}</b></span>`:''}${v.totals.discountAmount?`<span>할인 <b>−${money(v.totals.discountAmount)}</b></span>`:''}${due.confirmed&&!paid?`<span>결제한 금액 <b>${money(due.confirmed)}</b></span>`:''}</div></details></div></article>`;
  }).join('');
  if(state.reportNotice&&state.reportNotice.version===state.data.editVersion&&state.reportNotice.channelId===state.data.channel.id&&state.reportNotice.roundKey===(state.data.round?.key||'')){const v=state.data.vendors.find(v=>v.key===state.reportNotice.vendorKey),index=state.data.vendors.slice().sort((a,b)=>buyerPaymentPriority(a)-buyerPaymentPriority(b)).indexOf(v),article=$('vendors').children[index];if(article){const note=document.createElement('p');note.className='report-feedback'+(state.reportNotice.warning?' warning':'');note.id='payment-report-feedback';note.setAttribute('role','status');note.setAttribute('tabindex','-1');note.textContent=state.reportNotice.text;article.append(note);}}
  document.querySelectorAll('[data-payment-vendor]').forEach(b=>b.onclick=()=>{state.payments[b.dataset.paymentVendor]=b.dataset.method;state.saved=false;state.dirty=true;render()});
@@ -222,9 +232,10 @@ function render(){
  const [label,tone]=paymentStatus(data.payment.status);
  $('status-label').textContent=label;$('status-detail').textContent='';$('status').dataset.tone=tone;$('saved').hidden=!state.saved;
  renderSavedDestination();renderDestinations();renderParge();renderVendors();
- let scheduleBox=$('delivery-schedule');if(!scheduleBox){scheduleBox=document.createElement('div');scheduleBox.id='delivery-schedule';scheduleBox.setAttribute('aria-live','polite');$('shipping-section').appendChild(scheduleBox)}
- const schedule=['parge','dodosi'].includes(state.destinationId)&&state.pargeShop?(selectedRate()?.deliverySchedule||null):null;
- scheduleBox.innerHTML=CreoDeliverySchedule.html(schedule);scheduleBox.hidden=!schedule;
+ let scheduleBox=$('delivery-schedule');if(!scheduleBox){scheduleBox=document.createElement('div');scheduleBox.id='delivery-schedule';scheduleBox.setAttribute('aria-live','polite');$('destination-lock').before(scheduleBox)}
+ const sameSelection=Boolean(data.selection&&state.destinationId===data.selection.destinationId&&state.pargeRegion===(data.selection.pargeRegion||'')&&state.pargeShop===(data.selection.pargeShop||''));
+ const schedule=['parge','dodosi'].includes(destination()?.type||state.destinationId)&&state.pargeShop?(selectedRate()?.deliverySchedule||(sameSelection?data.deliverySchedule:null)||null):null;
+ scheduleBox.innerHTML=CreoDeliverySchedule.html(schedule,{careNote:true});scheduleBox.hidden=!schedule;
  renderPaymentSummary();
  const valid=destination()&&(!['parge','dodosi'].includes(destination().type)||selectedRate())&&data.vendors.every(v=>v.payment.status==='paid'||state.payments[v.key]);
  $('submit').disabled=state.saving||!valid;

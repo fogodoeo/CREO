@@ -22,6 +22,7 @@
     params.set('section', target); return '/entry-preview/?' + params;
   }
   const sexName = { male: '수컷', female: '암컷', unknown: '미구분' };
+  const slotLabel = { sire: '부', dam: '모', sibling: '동배', hatchling: '해츨링' };
   const statusName = { draft: '작성 중', submitted: '검토 중', changes_requested: '수정 요청', approved: '편성 완료' };
   const urls = new Map();
   let state, draft = null, dirty = false, busy = false, uploading = false, parentRole, parentDraft, parentDirty = false, parentManage = false, parentListWasEmpty = false, selectedDetail, photoSet = [], photoIndex = 0, leaveAction, noticeTimer;
@@ -55,7 +56,7 @@
       button.onclick = () => openPhotos(JSON.parse(button.dataset.photo), button.dataset.photoTitle || '개체 사진');
     });
   }
-  function blankEntry() { return { id: uuid(), name: '', code: '', morph: '', sex: 'unknown', weight: '', size: '', hatchDate: '', note: '', sireId: '', damId: '', photoIds: [], version: 0, status: 'draft' }; }
+  function blankEntry() { return { id: uuid(), name: '', code: '', morph: '', sex: 'unknown', weight: '', size: '', hatchDate: '', note: '', sireId: '', damId: '', siblingId: '', hatchlingId: '', photoIds: [], version: 0, status: 'draft' }; }
   async function send(command) {
     const result = await Store.send({ channelId: eventId, ...command, requestId: command.requestId || uuid() });
     state = result.state; updates?.postMessage({ version: state.version }); return result.result;
@@ -72,7 +73,7 @@
     Store.recovery.save({ entry: draft ? structuredClone(readDraft()) : null, parent, parentRole, parentManage, updatedAt: Date.now() })
       .catch(error => errorAt($('parent-dialog').open ? 'parent-error' : 'entry-error', error.message));
   }
-  function ownParents(slot = parentRole) { return parentManage ? parents() : parents().filter(p => p.sex === (slot === 'sire' ? 'male' : 'female')); }
+  function ownParents(slot = parentRole) { return parentManage || slot === 'sibling' || slot === 'hatchling' ? parents() : parents().filter(p => p.sex === (slot === 'sire' ? 'male' : 'female')); }
   function setContext() {
     $('context').textContent = Store.live ? state?.vendor?.name || '업체' : role === 'review' ? '운영자 미리보기' : role === 'buyer' ? '구매자 미리보기' : '미리보기 업체';
     if (role !== 'vendor') $('navigation').hidden = true;
@@ -111,7 +112,7 @@
     if (role === 'buyer') list = list.filter(e => e.status === 'approved');
     list.sort((a, b) => ({ changes_requested: 0, draft: 1, submitted: 2, approved: 3 })[a.status] - ({ changes_requested: 0, draft: 1, submitted: 2, approved: 3 })[b.status]);
     const title = role === 'review' ? '출품 검토' : role === 'buyer' ? '개체 확인' : '출품 개체';
-    $('content').innerHTML = `<div class="entry-title"><div class="title-row"><h1>${title}</h1>${role === 'vendor' && !['archived','paused'].includes(currentEvent()?.status) ? '<button type="button" class="secondary" id="manage-parents">부모 관리</button>' : ''}</div>${!currentEvent()?.entriesOpen && role === 'vendor' ? '<p class="muted">출품 마감 · 낙찰·정산 내역은 계속 확인할 수 있어요</p>' : ''}</div>
+    $('content').innerHTML = `<div class="entry-title"><div class="title-row"><h1>${title}</h1>${role === 'vendor' && !['archived','paused'].includes(currentEvent()?.status) ? '<button type="button" class="secondary" id="manage-parents">부모·혈통 관리</button>' : ''}</div>${!currentEvent()?.entriesOpen && role === 'vendor' ? '<p class="muted">출품 마감 · 낙찰·정산 내역은 계속 확인할 수 있어요</p>' : ''}</div>
       ${role === 'vendor' && currentEvent()?.entriesOpen ? `<a class="vendor-info-summary" id="vendor-info-summary" href="${pageUrl('profile')}" ${profileEventId === eventId && profile && !profileReady(profile) ? '' : 'hidden'}><span><b>업체 정보 등록</b><small>연락처·결제 설정</small></span><span class="summary-action">등록하기 <span aria-hidden="true">›</span></span></a><div class="entry-create-actions"><button class="secondary" type="button" id="open-import">피들 링크로 가져오기</button><button class="primary" type="button" id="add-entry">＋ 직접 추가</button></div>` : ''}
       ${list.length ? `<p class="entry-count">${list.length}개체</p><div class="entry-list">${list.map(e => {
         const shown = displaySource(e);
@@ -119,7 +120,7 @@
       }).join('')}</div>` : `<div class="empty-state"><p>${role === 'review' ? '검토할 개체가 없어요' : role === 'buyer' ? '편성 완료한 개체가 여기에 표시돼요' : currentEvent()?.entriesOpen ? '첫 개체를 등록해 보세요' : '등록된 출품 개체가 없어요'}</p></div>`}
       `;
     if ($('add-entry')) {
-      $('content').querySelector('.entry-create-actions').insertAdjacentHTML('afterend','<section class="entry-section"><h2>패널개체</h2><p class="muted">낙찰 수수료와 개체등록비 1만 원 면제</p><button class="secondary" type="button" id="add-panel-entry">패널개체 등록</button></section>');
+      $('content').querySelector('.entry-create-actions').insertAdjacentHTML('afterend','<section class="entry-section panel-entry-bar"><div><h2>패널개체</h2><p class="muted">낙찰 수수료·개체등록비 1만 원 면제</p></div><button class="secondary" type="button" id="add-panel-entry">패널개체 등록</button></section>');
       $('add-panel-entry').onclick = () => editEntry({...blankEntry(), auctionKind:'event'});
     }
     document.querySelectorAll('[data-entry]').forEach(button => {
@@ -182,7 +183,7 @@
         <label class="field" for="profile-account"><span>계좌번호</span><input id="profile-account" inputmode="numeric" maxlength="40" value="${esc(p.bankAccount)}" placeholder="숫자만 입력" ${p.bankRegistered ? 'readonly' : ''} aria-describedby="profile-account-error"><span class="field-error" id="profile-account-error" hidden></span></label>
         <label class="field" for="profile-holder"><span>예금주</span><input id="profile-holder" maxlength="40" value="${esc(p.bankHolder)}" placeholder="예금주명" ${p.bankRegistered ? 'readonly' : ''} aria-describedby="profile-holder-error"><span class="field-error" id="profile-holder-error" hidden></span></label>
         ${p.bankRegistered ? '<p class="profile-account-note muted">계좌 변경은 운영자에게 요청해 주세요.</p>' : ''}
-        ${popup ? '' : `<label class="profile-card-choice"><span><b>카드결제</b><small>카드결제도 받을 수 있어요</small></span><input id="profile-card" type="checkbox" ${profileCardEnabled(p) ? 'checked' : ''}></label>`}</section>
+        ${popup ? '' : `<label class="profile-card-choice"><span><b>카드결제</b><small>카드결제도 받을 수 있어요</small></span><input id="profile-card" type="checkbox" switch ${profileCardEnabled(p) ? 'checked' : ''}></label>`}</section>
         <p id="profile-error" class="inline-error" role="alert" hidden></p>${popup ? '' : '<div class="form-actions"><button class="primary" type="submit" id="profile-save">저장</button></div>'}</form>`;
   }
   function bindProfileForm(popup = false) {
@@ -302,9 +303,9 @@
         <section class="entry-section"><div class="section-head"><h2>개체 사진 <span class="optional">선택</span></h2><small id="photo-count"></small></div><div id="entry-photos" class="photo-strip"></div><input id="entry-photo-input" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden><div id="photo-error" class="inline-error" role="alert" hidden></div></section>
         <label class="field" for="entry-morph"><span>모프 <span class="optional">선택</span></span><input id="entry-morph" name="morph" maxlength="60" autocomplete="off" placeholder="예: 릴리화이트" value="${esc(entry.morph)}"></label>
         ${radioGroup('sex', '성별', [['unknown', '미구분'], ['male', '수컷'], ['female', '암컷']], entry.sex)}
-        <label class="field" for="entry-weight"><span>체중 <span class="optional">g · 선택</span></span><input id="entry-weight" name="weight" inputmode="decimal" maxlength="6" placeholder="예: 28" value="${esc(entry.weight)}"></label>
-        <section class="entry-section"><div class="section-head"><h2>부모 정보 <span class="optional">선택</span></h2></div><div id="entry-parents" class="parents"></div></section>
-        <label class="field" for="entry-hatch"><span>해칭일 <span class="optional">선택</span></span><input id="entry-hatch" name="hatchDate" type="date" value="${esc(entry.hatchDate)}" max="${new Date().toLocaleDateString('en-CA')}"></label>
+        <div class="two-fields"><label class="field" for="entry-weight"><span>체중 <span class="optional">g · 선택</span></span><input id="entry-weight" name="weight" inputmode="decimal" maxlength="6" placeholder="예: 28" value="${esc(entry.weight)}"></label><label class="field" for="entry-hatch"><span>해칭일 <span class="optional">선택</span></span><input id="entry-hatch" name="hatchDate" type="date" value="${esc(entry.hatchDate)}" max="${new Date().toLocaleDateString('en-CA')}"></label></div>
+        <section class="entry-section"><div class="section-head"><h2>개체 혈통·참고 정보 <span class="optional">선택</span></h2></div><div id="entry-parents" class="parents"></div></section>
+
         <label class="field" for="entry-note"><span>비고 <span class="optional">선택</span></span><textarea id="entry-note" name="note" maxlength="600" placeholder="개체 특징 등 추가로 알릴 내용">${esc(entry.note)}</textarea></label>
         <p id="entry-error" class="inline-error" role="alert" tabindex="-1" hidden></p>
         <div class="form-actions"><button class="secondary" type="button" id="save-draft">${draft.reviewEdit?'수정 취소':'임시 저장'}</button><button class="primary" type="submit" id="submit-entry">${draft.reviewEdit?(entry.approved?'변경안 보내기':'수정 저장'):'검토 요청'}</button></div>
@@ -463,10 +464,14 @@
   }
   function renderParents() {
     keepDraft();
-    $('entry-parents').innerHTML = ['sire', 'dam'].map(slot => {
-      const p = parents().find(p => p.id === draft[slot + 'Id']), label = slot === 'sire' ? '부' : '모';
-      return p ? `<div class="parent-selected"><button type="button" class="parent-choice" data-pick-parent="${slot}" aria-label="${label} ${esc(p.name || p.code)} 변경">${avatar(p.photoId, label)}<span><b><span class="parent-label">${label}</span>${esc(p.name || p.code)}</b><small>${[p.code, p.morph].filter(Boolean).map(esc).join(' · ')}</small></span></button><div class="parent-tools"><button class="text-button" type="button" data-edit-parent="${slot}">수정</button><button class="icon-button" type="button" data-unlink-parent="${slot}" aria-label="${label} 연결 해제">×</button></div></div>` : `<button type="button" class="parent-add" data-pick-parent="${slot}">＋ ${label} 선택</button>`;
-    }).join('');
+    const slots = ['sire', 'dam', 'sibling', 'hatchling'];
+    const unselected = slots.filter(slot => !parents().some(p => p.id === draft[slot + 'Id']));
+    const selectedRows = slots.map(slot => { const p = parents().find(p => p.id === draft[slot + 'Id']), label = slotLabel[slot]; return p ? `<div class="parent-selected"><button type="button" class="parent-choice" data-pick-parent="${slot}" aria-label="${label} ${esc(p.name || p.code)} 변경">${avatar(p.photoId, label)}<span><b><span class="parent-label">${label}</span>${esc(p.name || p.code)}</b><small>${[p.code, p.morph].filter(Boolean).map(esc).join(' · ')}</small></span></button><div class="parent-tools"><button class="text-button" type="button" data-edit-parent="${slot}">수정</button><button class="icon-button" type="button" data-unlink-parent="${slot}" aria-label="${label} 연결 해제">×</button></div></div>` : ''; }).filter(Boolean).join('');
+    $('entry-parents').innerHTML = `${unselected.length ? `<div class="parent-chip-row">${unselected.map(slot => `<button type="button" class="parent-chip" data-pick-parent="${slot}">＋ ${slotLabel[slot]}</button>`).join('')}</div>` : ''}${selectedRows}`;
+
+
+
+
     document.querySelectorAll('[data-pick-parent]').forEach(button => button.onclick = () => openParent(button.dataset.pickParent));
     document.querySelectorAll('[data-edit-parent]').forEach(button => button.onclick = () => openParent(button.dataset.editParent, true));
     document.querySelectorAll('[data-unlink-parent]').forEach(button => button.onclick = () => { draft[button.dataset.unlinkParent + 'Id'] = ''; dirty = true; renderParents(); });
@@ -483,33 +488,34 @@
   }
   function parentList() {
     parentDraft = null; parentDirty = false;
-    $('parent-title').textContent = parentManage ? '부모 관리' : `${parentRole === 'sire' ? '부' : '모'} 선택`;
+    $('parent-title').textContent = parentManage ? '부모·혈통 관리' : `${slotLabel[parentRole] || '부모'} 선택`;
     $('parent-back').hidden = true; errorAt('parent-error', '');
-    $('parent-content').innerHTML = '<label class="field" for="parent-search"><span class="muted">등록한 부모</span><input class="search-input" id="parent-search" type="search" placeholder="이름·관리번호·모프 검색" autocomplete="off"></label><div id="parent-results" class="parent-results"></div>';
-    $('parent-actions').innerHTML = '<button type="button" class="secondary full" id="new-parent">＋ 새 부모 등록</button>';
+    $('parent-content').innerHTML = '<label class="field" for="parent-search"><span class="muted">등록한 개체·혈통</span><input class="search-input" id="parent-search" type="search" placeholder="이름·관리번호·모프 검색" autocomplete="off"></label><div id="parent-results" class="parent-results"></div>';
+    $('parent-actions').innerHTML = `<button type="button" class="secondary full" id="new-parent">＋ 새 ${parentManage ? '혈통 개체' : (slotLabel[parentRole] || '부모')} 등록</button>`;
     $('new-parent').onclick = () => parentForm();
     $('parent-search').oninput = filterParents; filterParents();
   }
   function filterParents() {
     const query = $('parent-search').value.trim().toLowerCase();
     const list = ownParents().filter(p => `${p.name} ${p.code} ${p.morph}`.toLowerCase().includes(query));
-    $('parent-results').innerHTML = list.map(p => `<button type="button" class="parent-result" data-select-parent="${esc(p.id)}" ${parentManage ? '' : `aria-pressed="${draft[parentRole + 'Id'] === p.id}"`}>${avatar(p.photoId, p.sex === 'male' ? '부' : '모')}<span class="row-info"><strong>${esc(p.name || p.code)}</strong><small>${[parentManage ? sexName[p.sex] : '', p.code, p.morph].filter(Boolean).map(esc).join(' · ')}</small></span><span class="chevron" aria-hidden="true">${!parentManage && draft[parentRole + 'Id'] === p.id ? '✓' : '›'}</span></button>`).join('') || `<p class="empty-search">${query ? '검색한 부모가 없어요' : '등록한 부모가 없어요'}</p>`;
+    $('parent-results').innerHTML = list.map(p => `<button type="button" class="parent-result" data-select-parent="${esc(p.id)}" ${parentManage ? '' : `aria-pressed="${draft[parentRole + 'Id'] === p.id}"`}>${avatar(p.photoId, p.sex === 'male' ? '부' : p.sex === 'female' ? '모' : '개')}<span class="row-info"><strong>${esc(p.name || p.code)}</strong><small>${[(parentManage || parentRole === 'sibling' || parentRole === 'hatchling') ? sexName[p.sex] : '', p.code, p.morph].filter(Boolean).map(esc).join(' · ')}</small></span><span class="chevron" aria-hidden="true">${!parentManage && draft[parentRole + 'Id'] === p.id ? '✓' : '›'}</span></button>`).join('') || `<p class="empty-search">${query ? '검색한 개체가 없어요' : '등록한 개체가 없어요'}</p>`;
     $('parent-results').querySelectorAll('[data-select-parent]').forEach(button => button.onclick = () => {
-      if (parentManage) { const p = parents().find(p => p.id === button.dataset.selectParent); parentRole = p.sex === 'male' ? 'sire' : 'dam'; parentForm(p); }
+      if (parentManage) { const p = parents().find(p => p.id === button.dataset.selectParent); parentRole = p.sex === 'male' ? 'sire' : p.sex === 'female' ? 'dam' : 'hatchling'; parentForm(p); }
       else { draft[parentRole + 'Id'] = button.dataset.selectParent; dirty = true; renderParents(); $('parent-dialog').close(); }
     });
     images($('parent-results'));
   }
   function parentForm(existing) {
-    const selectedSex = parentRole === 'sire' ? 'male' : 'female';
+    const flexibleSex = parentManage || parentRole === 'sibling' || parentRole === 'hatchling';
+    const selectedSex = existing ? existing.sex : parentRole === 'sire' ? 'male' : parentRole === 'dam' ? 'female' : 'unknown';
     parentDraft = existing ? structuredClone(existing) : { id: uuid(), name: '', code: '', morph: '', photoId: '', sex: selectedSex, version: 0 };
     parentDirty = false; errorAt('parent-error', '');
-    $('parent-title').textContent = `${existing ? '부모 정보 수정' : '새 부모 등록'}${parentManage && !existing ? '' : ' · ' + sexName[selectedSex]}`;
+    $('parent-title').textContent = `${existing ? `${slotLabel[parentRole] || '부모'} 정보 수정` : `새 ${parentManage ? '혈통 개체' : (slotLabel[parentRole] || '부모')} 등록`}${flexibleSex && !existing ? '' : ' · ' + sexName[selectedSex]}`;
     $('parent-back').hidden = parentListWasEmpty;
     $('parent-content').innerHTML = `<form id="parent-form" novalidate>
       <div id="parent-photo-editor" class="parent-photo-editor"></div><input id="parent-photo-input" type="file" accept="image/jpeg,image/png,image/webp" hidden>
-      ${parentManage && !existing ? radioGroup('parentSex', '성별', [['male', '수컷'], ['female', '암컷']], selectedSex) : ''}
-      <label class="field" for="parent-name"><span>부모 이름</span><input id="parent-name" maxlength="40" placeholder="예: 코튼" value="${esc(parentDraft.name)}" autocomplete="off" aria-describedby="parent-identity-error"></label>
+      ${flexibleSex && !existing ? radioGroup('parentSex', '성별', [['unknown', '미구분'], ['male', '수컷'], ['female', '암컷']], selectedSex) : ''}
+      <label class="field" for="parent-name"><span>이름</span><input id="parent-name" maxlength="40" placeholder="예: 코튼 / 25년 해츨링" value="${esc(parentDraft.name)}" autocomplete="off" aria-describedby="parent-identity-error"></label>
       <label class="field" for="parent-code"><span>관리번호 <span class="optional">선택</span></span><input id="parent-code" maxlength="30" placeholder="예: M-01" value="${esc(parentDraft.code)}" autocomplete="off" aria-describedby="parent-identity-error"><span class="field-error" id="parent-identity-error" hidden></span></label>
       <label class="field" for="parent-morph"><span>모프 <span class="optional">선택</span></span><input id="parent-morph" maxlength="60" placeholder="예: 화이트월" value="${esc(parentDraft.morph)}" autocomplete="off"></label>
       ${existing ? '<p class="muted">연결된 모든 개체에 함께 반영돼요.</p>' : ''}</form>`;
@@ -572,7 +578,7 @@
     return `${pics.length ? `<div class="gallery">${pics.map((id, index) => `<button type="button" data-photo='${esc(JSON.stringify(pics))}' data-start="${index}" aria-label="개체 사진 ${index + 1} 크게 보기"><img data-media-id="${esc(id)}" alt="개체 사진 ${index + 1}" loading="lazy"></button>`).join('')}</div>` : ''}
       <div class="read-details">${[['모프', source.morph], ['성별', sexName[source.sex]], ['체중', source.weight ? `${source.weight}g` : ''], ['크기', source.size], ['해칭일', source.hatchDate]].filter(([, v]) => v).map(([key, value]) => `<div class="detail-pair"><span>${key}</span><b>${esc(value)}</b></div>`).join('')}</div>
       ${source.note ? `<p class="detail-note">${esc(source.note)}</p>` : ''}
-      ${source.sire || source.dam ? `<section class="detail-parents"><h3>부모 정보</h3>${[['부', source.sire], ['모', source.dam]].filter(([, p]) => p).map(([label, p]) => {
+      ${source.sire || source.dam || source.sibling || source.hatchling ? `<section class="detail-parents"><h3>혈통·참고 정보</h3>${[['부', source.sire], ['모', source.dam], ['동배', source.sibling], ['해츨링', source.hatchling]].filter(([, p]) => p).map(([label, p]) => {
         const content = `${p.photoId ? avatar(p.photoId) : ''}<span><b><span class="parent-label">${label}</span>${esc(p.name || p.code)}</b><small>${[p.code, p.morph].filter(Boolean).map(esc).join(' · ')}</small></span>${p.photoId ? '<span class="chevron" aria-hidden="true">›</span>' : ''}`;
         return p.photoId ? `<button type="button" class="detail-parent" data-photo='${esc(JSON.stringify([p.photoId]))}' data-photo-title="${label} · ${esc(p.name || p.code)}" aria-label="${label} ${esc(p.name || p.code)} 사진 크게 보기">${content}</button>` : `<div class="detail-parent">${content}</div>`;
       }).join('')}</section>` : ''}`;

@@ -11,8 +11,8 @@
         list.innerHTML=buyer.items.map(item=>{
           const photos=CreoCheckoutItemView.pictures(item,location.origin);
           const thumb=photos.find(photo=>photo.group==='개체'&&photo.thumbnailUrl);
-          const traits=CreoCheckoutItemView.traitSummary(item),hasParents=CreoCheckoutItemView.parentDetails(item).length>0;
-          const label=photos.length?'개체'+(photos.some(photo=>photo.group!=='개체')?'·부모':'')+' 사진 보기':'부모 정보 보기';
+          const traits=CreoCheckoutItemView.traitSummary(item),refs=CreoCheckoutItemView.parentDetails(item),hasParents=refs.length>0,hasExtra=photos.some(p=>['동배','해츨링'].includes(p.group))||refs.some(p=>['sibling','hatchling','동배','해츨링'].includes(p.role));
+          const label=photos.length?'개체'+(photos.some(photo=>photo.group!=='개체')?(hasExtra?'·혈통':'·부모'):'')+' 사진 보기':(hasExtra?'혈통 정보 보기':'부모 정보 보기');
           return `<div class="checkout-vendor-item">${thumb?`<button class="collection-thumb" type="button" data-item-photo="${esc(item.id)}" aria-label="${esc(item.name)} 사진 보기"><img src="${esc(thumb.thumbnailUrl)}" alt="" loading="lazy" width="60" height="60"></button>`:''}<div class="checkout-vendor-item-info"><b>${esc(CreoCheckoutItemView.itemTitle(item))}</b>${traits?`<p class="item-traits">${esc(traits)}</p>`:''}<strong>${money(item.soldAmount)}</strong>${photos.length||hasParents?`<button class="collection-photo-link" type="button" data-item-photo="${esc(item.id)}">${label}</button>`:''}</div></div>`;
         }).join('');
         list.querySelectorAll('[data-item-photo]').forEach(button=>button.onclick=()=>{

@@ -6,7 +6,10 @@ function readDeliverySchedule() {
         pargeDispatchDate: field('parge-dispatch').value, dodosiDispatchDate: field('dodosi-dispatch').value };
 }
 function fillDeliverySchedule(channel) {
-    const config = channel.shippingDefaults?.deliverySchedule || {};
+    const fallback = channel.nationalRound?.parentId === 'national-cre' && channel.nationalRound?.date
+        ? { enabled: true, auctionDate: channel.nationalRound.date }
+        : {};
+    const config = channel.shippingDefaults?.deliverySchedule || fallback;
     const field = id => document.getElementById('schedule-' + id);
     field('enabled').checked = config.enabled === true;
     field('date').value = config.auctionDate || '';

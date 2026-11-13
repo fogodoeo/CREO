@@ -1586,7 +1586,8 @@ function createPlatformApi({
             if (shipping.allocations.has(row.itemId) && row.buyerSubmittedAt) shipping.allocations.set(row.itemId, Math.max(0, Number(row.cost) || 0));
         }
         shipping.total = [...shipping.allocations.values()].reduce((sum, cost) => sum + cost, 0);
-        const groups = Checkout.groupItemsByVendor(context.bundleItems, context.vendors).map((group) => {
+        const orderedBundle = context.bundleItems.slice().sort(Checkout.itemOrder), rawGroups = Checkout.groupItemsByVendor(context.bundleItems, context.vendors);
+        const groups = rawGroups.map((group) => {
             const itemIds = new Set(group.items.map((item) => item.id));
             const shipments = context.shipments.filter((shipment) => itemIds.has(shipment.itemId));
             const settlement = groupSettlement(context, group);
@@ -1594,7 +1595,9 @@ function createPlatformApi({
             const totalAmount = settlement.payableAuctionAmount + shippingAmount;
             const payment = Checkout.derivePaymentState({ shipments, itemCount: group.items.length, totalAmount });
             const shippingSupportAmount=group.items.reduce((sum,item)=>sum+(shipping.supportAllocations?.get(item.id)||0),0);
-            return { ...group, shipments, settlement, shippingAmount, shippingSupportAmount, totalAmount, payment };
+            const hasBaseItem = Boolean(orderedBundle[0] && group.items.some((item) => item.id === orderedBundle[0].id));
+            const shippingBreakdown = selection ? { multiVendor: rawGroups.length > 1, hasBaseItem, additionalOnly: rawGroups.length > 1 && !hasBaseItem && ['parge', 'dodosi'].includes(selection.destinationType), ownItemCount: group.items.length, additionalItemCount: hasBaseItem ? Math.max(0, group.items.length - 1) : group.items.length, destinationType: selection.destinationType || '' } : null;
+            return { ...group, shipments, settlement, shippingAmount, shippingSupportAmount, totalAmount, payment, shippingBreakdown };
         });
         const deliverySchedule = deliverySchedules ? await deliverySchedules.estimate(context.channel, selection, latest?.destinationRegisteredAt || latest?.buyerSubmittedAt) : null;
         return { rates, latest, selection, shipping, groups, deliverySchedule };
@@ -1612,6 +1615,7 @@ function createPlatformApi({
                 phone: Inquiry.vendorContact(group.vendor)?.phone || ''
             },
             paymentMethods: methods,
+            shippingBreakdown: group.shippingBreakdown || null,
             shippingNote: shipmentNotes(group.shipments),
             items: group.items.map((item) => ({
                 ...checkoutItem(item),
@@ -1771,6 +1775,7 @@ function createPlatformApi({
                 pargeRegion: payload.selection.pargeRegion,
                 pargeShop: payload.selection.pargeShop
             } : null,
+            deliverySchedule: payload.deliverySchedule,
             submittedAt: payload.submittedAt,
             updatedAt: payload.updatedAt
         };
@@ -2508,6 +2513,7 @@ function createPlatformApi({
             shippingNote: shipmentNotes(group.shipments),
             deliverySchedule: snapshot.deliverySchedule,
             canEditShippingNote: group.shipments.length > 0,
+            shippingBreakdown: group.shippingBreakdown || null,
             destination: snapshot.selection ? {
                 ...snapshot.selection,
                 carrier: latest?.carrier || '',
@@ -2564,12 +2570,13 @@ function createPlatformApi({
         const archives=await repository.listRecords(channelId,'archive'),hasHistory=archives.some(a=>a.closedAt),itemIds=new Set(items.map(i=>i.id));
         const ledger=allLedger.filter(r=>r.itemIds?.length?r.itemIds.every(id=>itemIds.has(id)):!hasHistory);
         const unassignedReceiptCount=hasHistory?allLedger.filter(r=>vendors.some(v=>v.id===r.vendorId)&&!r.itemIds?.length&&['confirmed','pending'].includes(r.status)).length:0;
+        const shippingFeeByVendor = new Map(require('./shipping-settlement').shippingFeeDetails(items, shipments, vendors).map(row => [row.vendorId, row.shippingFeeItems]));
         const summaries = require('./shipping-settlement').summarizeShipping(items, shipments, vendors).map(v => {
             const history = ledger.filter(r => r.vendorId === v.vendorId);
             const receivedAmount = history.filter(r => r.status === 'confirmed').reduce((n,r) => n + r.amount, 0);
             const fee=fees.find(row=>row.vendorId===v.vendorId),totalAmount=v.totalAmount+(fee?.feeAmount||0);
             const unassignedReceiptCount=hasHistory?allLedger.filter(r=>r.vendorId===v.vendorId&&require('./organizer-receipt-scope').unresolved(r)).length:0;
-            return {...v,...(fee?{...fee,shippingAmount:v.totalAmount}:{}),totalAmount, receivedAmount, remainingAmount:Math.max(0,totalAmount-receivedAmount), overpaidAmount:Math.max(0,receivedAmount-totalAmount), pendingReport:history.find(r => r.status === 'pending') || null, history,unassignedReceiptCount};
+            return {...v,shippingFeeItems:shippingFeeByVendor.get(v.vendorId)||[],...(fee?{...fee,shippingAmount:v.totalAmount}:{}),totalAmount, receivedAmount, remainingAmount:Math.max(0,totalAmount-receivedAmount), overpaidAmount:Math.max(0,receivedAmount-totalAmount), pendingReport:history.find(r => r.status === 'pending') || null, history,unassignedReceiptCount};
         });
         await Promise.all(summaries.map(async v => {
             if(v.pendingReport?.notificationId){
@@ -4571,7 +4578,7 @@ function createPlatformApi({
                     }
                     current.carriers = require('./shipping-settlement').summarizeCarriers(data.items,data.shipments,data.vendors);
                     current.auctionItems = require('./shipping-settlement').organizerAuctionItems(data.items.map(item=>({...item,winnerPhone:storedWinnerPhone(item)})),data.shipments,data.vendors,buyerDisplayName);
-                    if (deliverySchedules && channel.shippingDefaults?.deliverySchedule?.enabled) {
+                    if (deliverySchedules && (deliverySchedules.isEnabled ? deliverySchedules.isEnabled(channel) : channel.shippingDefaults?.deliverySchedule?.enabled)) {
                         const rateMap = Object.fromEntries(await Promise.all(['parge', 'dodosi'].map(async id => [id, await pargeRates(id,channel)])));
                         current.auctionItems = await Promise.all(current.auctionItems.map(async row => {
                             if (row.method !== 'delivery' || ['cancelled', 'refunded'].includes(row.paymentStatus)) return row;

@@ -61,7 +61,7 @@
   if(host.dataset.company===company&&host.dataset.name===name)return;
   host.dataset.company=company;host.dataset.name=name;host.replaceChildren();
    for(const [label,href,cls,aria]of [['옹동2','/vendor-access.html','vendor-home','업체 홈'],['전국크레자랑','/vendor-access.html?company='+encodeURIComponent(company),'vendor-channel','전국크레자랑 출품 관리']]){const a=document.createElement('a');a.textContent=label;a.href=href;a.className=cls;a.setAttribute('aria-label',aria);host.append(a);}
-  const button=document.createElement('button');button.type='button';button.id='vendor-company-switch';button.className='vendor-company';button.setAttribute('aria-label',name+' · 업체 선택');button.setAttribute('aria-haspopup','dialog');button.innerHTML='<span>'+esc(name)+'</span><span aria-hidden="true">⌄</span>';button.onclick=()=>switchCompany(button,company);host.append(button);
+  const button=document.createElement('button');button.type='button';button.id='vendor-company-switch';button.className='vendor-company';button.setAttribute('aria-label',name+' · 업체 선택');button.setAttribute('aria-haspopup','dialog');button.innerHTML='<span>'+esc(name)+'</span><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>';button.onclick=()=>switchCompany(button,company);host.append(button);
   document.body.classList.add('has-vendor-header');
  }
  function mount(nav,{active,companyName}={}){

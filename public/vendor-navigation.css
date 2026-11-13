@@ -16,6 +16,7 @@
 .vendor-bottom-nav .registration-required::after{content:'';position:absolute;top:6px;left:calc(50% + 12px);width:7px;height:7px;border-radius:50%;background:var(--vendor-nav-attention);pointer-events:none}
 .vendor-page:not(.entry-page):has(.vendor-bottom-nav){padding-bottom:calc(var(--vendor-nav-height) + env(safe-area-inset-bottom))}
 .entry-page:has(.vendor-bottom-nav:not([hidden])) .entry-shell{padding-bottom:calc(var(--vendor-nav-height) + env(safe-area-inset-bottom))}
+.entry-page:has(.vendor-bottom-nav:not([hidden])):has(#profile-form .form-actions) .entry-shell{padding-bottom:calc(var(--vendor-nav-height) + 88px + env(safe-area-inset-bottom))}
 .entry-page:has(.vendor-bottom-nav:not([hidden])) #content>.form-actions,.entry-page:has(.vendor-bottom-nav:not([hidden])) #profile-form>.form-actions{bottom:calc(var(--vendor-nav-height) + env(safe-area-inset-bottom))}
 .entry-page:has(.vendor-bottom-nav:not([hidden])) .notice{bottom:calc(var(--vendor-nav-height) + 16px + env(safe-area-inset-bottom))}
 .vendor-bottom-nav :focus-visible{outline:3px solid var(--checkout-focus,#1d4ed8);outline-offset:-3px}

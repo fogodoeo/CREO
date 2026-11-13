@@ -22,8 +22,8 @@ function checkoutItem(item = {}) {
         label: cleanText(photo.label, 100)
     }));
     const child = media('개체');
-    const parents = ['sire', 'dam'].map((role, index) => {
-        const group = index === 0 ? '부' : '모';
+    const parents = ['sire', 'dam', 'sibling', 'hatchling'].map((role, index) => {
+        const group = (['부', '모', '동배', '해츨링'])[index];
         const parent = (Array.isArray(source.parents) ? source.parents : []).find(row => row && (row.role === role || row.role === group)) || source[role] || {};
         const photos = media(group);
         const name=cleanText(parent.name,80),morph=cleanText(parent.morph,100);

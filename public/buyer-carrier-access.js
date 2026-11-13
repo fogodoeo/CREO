@@ -22,7 +22,7 @@
     note.textContent=access.reason||'운영자가 이용 신청을 거절했어요.';box.append(note);
    }else if(access.canRequest&&emptySearch){
     button(busy?'신청 중…':'우리 지역에 파르게 거점이 없어요',submit);
-    note.textContent='누르면 운영자에게 이용 신청을 보냅니다.';box.append(note);
+    note.textContent='검색한 지역에 파르게 거점이 없나요? 누르면 운영자에게 도도시 이용 신청을 보냅니다.';box.append(note);
    }else{box.hidden=true;return;}
    if(error){const message=document.createElement('p');message.className='carrier-access-error';message.setAttribute('role','alert');message.textContent=error;box.append(message);}
    if(hadFocus){const target=box.querySelector('button')||note;if(target===note)note.tabIndex=-1;target.focus();}

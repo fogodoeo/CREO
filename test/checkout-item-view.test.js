@@ -59,3 +59,36 @@ test('clearing viewer removes the original photo URL and rejects unsafe image li
  assert.equal($('.checkout-photo-meta').hidden,true);
  assert.equal($('[data-photo-original]').hasAttribute('href'),false);
 });
+test('viewer supports horizontal swipe between photos and downward header drag to close',()=>{
+ const {viewer,dialog,$}=viewerFixture(),fire=(node,type,props)=>{const e=new dialog.ownerDocument.defaultView.Event(type);Object.assign(e,props);node.dispatchEvent(e)};
+ viewer.open({name:'개체',media:['/one.webp','/two.webp'],parents:[{role:'sire',name:'부모',media:['/three.webp']}]});
+ fire($('.checkout-photo-stage'),'pointerdown',{pointerId:1,clientX:240,clientY:200});
+ fire($('.checkout-photo-stage'),'pointerup',{pointerId:1,clientX:120,clientY:205});
+ assert.equal($('[data-photo-original]').getAttribute('href'),origin+'/two.webp');
+ fire($('.checkout-photo-stage'),'pointerdown',{pointerId:2,clientX:120,clientY:200});
+ fire($('.checkout-photo-stage'),'pointerup',{pointerId:2,clientX:220,clientY:202});
+ assert.equal($('[data-photo-original]').getAttribute('href'),origin+'/one.webp');
+ fire($('header'),'pointerdown',{pointerId:3,clientY:80,target:$('h2')});
+ fire($('header'),'pointermove',{pointerId:3,clientY:190});
+ fire($('header'),'pointerup',{pointerId:3,clientY:190});
+ assert.equal(dialog.open,false);
+});
+
+test('photo viewer groups and parent details render sire, dam, sibling and hatchling roles in order',()=>{
+ const {viewer,$}=viewerFixture();
+ const item={
+  name:'A07 · 릴리',media:['/item.webp'],
+  parents:[
+   {role:'sire',name:'부 이름',morph:'화이트월',media:['/sire.webp']},
+   {role:'dam',name:'모 이름',morph:'릴리',media:['/dam.webp']},
+   {role:'sibling',name:'동배 이름',morph:'트라이',media:['/sib.webp']},
+   {role:'hatchling',name:'해츨링 이름',morph:'세이블',media:['/hat.webp']}
+  ]
+ };
+ assert.deepEqual(pictures(item,origin).map(p=>p.group),['개체','부','모','동배','해츨링']);
+ assert.equal(parentDetails(item).length,4);
+ viewer.open(item);
+ assert.deepEqual([...dialogButtons($)].map(b=>b.textContent),['개체','부','모','동배','해츨링']);
+ assert.deepEqual([...$('.checkout-parent-info').querySelectorAll('small')].map(n=>n.textContent),['부','모','동배','해츨링']);
+ function dialogButtons(q){return q('.checkout-photo-groups').querySelectorAll('button');}
+});

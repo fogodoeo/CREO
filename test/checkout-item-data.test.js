@@ -37,3 +37,21 @@ test('stored media and current parent snapshots keep display codes and small thu
     assert.equal(item.parents[0].name,'모 이름');assert.equal(item.parents[0].phone,undefined);
     assert.equal(checkoutItem({lotNumber:'B15'}).displayNumber,'B15');
 });
+
+
+test('checkout item projection preserves up to four lineage roles including sibling and hatchling', () => {
+    const item = checkoutItem({
+        id:'four',lotNumber:7,attributes:{
+            displayNumber:'A07',
+            parents:[
+                {role:'sire',name:'부',morph:'화이트월',media:[{url:'/assets/sire.webp'}]},
+                {role:'dam',name:'모',morph:'릴리',media:[{url:'/assets/dam.webp'}]},
+                {role:'sibling',name:'동배',morph:'트라이',media:[{url:'/assets/sib.webp'}]},
+                {role:'hatchling',name:'해츨링',morph:'세이블',media:[{url:'/assets/hat.webp'}]}
+            ]
+        }
+    });
+    assert.deepEqual(item.parents.map(p=>p.role),['sire','dam','sibling','hatchling']);
+    assert.equal(item.parents[2].media[0].url,'/assets/sib.webp');
+    assert.equal(item.parents[3].media[0].url,'/assets/hat.webp');
+});

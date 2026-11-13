@@ -44,7 +44,7 @@
   function itemView(row){
     const s=source(row.entry), group=row.group;
     const photos=ids=>(ids||[]).map(id=>group.media.find(m=>m.id===id)).filter(Boolean);
-    const parents=['sire','dam'].map(role=>{
+    const parents=['sire','dam','sibling','hatchling'].map(role=>{
       const parent=group.parents.find(p=>p.id===s[role+'Id']);
       if(parent)return {role,name:parent.name||parent.code,morph:parent.morph,media:photos([parent.photoId])};
       return s.parents?.find(p=>p.role===role)||null;
@@ -132,7 +132,7 @@
     $('entry-information').innerHTML=(children.length?`<div class="entry-photos">${children.map(p=>photo(p,'개체')).join('')}</div>`:'')+`<dl class="facts">${pairs.filter(([,v])=>v).map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl><section class="parent-information"><h3>부모 정보</h3>${['sire','dam'].map(role=>{
       const parent=item.parents.find(p=>p.role===role),label=role==='sire'?'부':'모',picture=pictures.find(p=>p.group===label);
       return `<div>${picture?photo(picture,label+'개체 '+(parent?.name||'')):''}<p><span class="parent-role">${label}개체</span><strong>${esc(parent?.name||'이름 미등록')}</strong><small>${picture?'사진 등록됨':'사진 미등록'}${parent?.morph?' · '+esc(parent.morph):''}</small></p></div>`;
-    }).join('')}</section>${s.note?`<details class="entry-note-details"><summary>비고</summary><p class="entry-note">${esc(s.note)}</p></details>`:''}`;
+    }).join('')}${['sibling','hatchling'].map(role=>{const parent=item.parents.find(p=>p.role===role),label=role==='sibling'?'동배':'해츨링',picture=pictures.find(p=>p.group===label);return parent||picture?`<div>${picture?photo(picture,label+' '+(parent?.name||'')):''}<p><span class="parent-role">${label}</span><strong>${esc(parent?.name||'이름 미등록')}</strong><small>${picture?'사진 등록됨':'사진 미등록'}${parent?.morph?' · '+esc(parent.morph):''}</small></p></div>`:'';}).join('')}</section>${s.note?`<details class="entry-note-details"><summary>비고</summary><p class="entry-note">${esc(s.note)}</p></details>`:''}`;
     $('entry-information').querySelectorAll('[data-photo]').forEach(button=>button.onclick=()=>viewer.open(item,button,pictures[Number(button.dataset.photo)]));
   }
   function showMode(mode){

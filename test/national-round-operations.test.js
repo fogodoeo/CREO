@@ -91,8 +91,14 @@ test('new round inherits complete presentation and pricing without replaying the
  await f.repository.upsertRecord(TARGET,'broadcast',{...b,page2ItemFontSize:31});assert.equal((await f.command()).json().duplicate,true);assert.equal((await f.repository.getRecord(TARGET,'broadcast','state')).page2ItemFontSize,31);
 });
 test('new round delivery calendar uses its own auction date without inheriting old dispatch overrides',async t=>{
- const f=await setup(t),catalog=await f.repository.getCatalog();await f.repository.saveCatalog(catalog.channels.map(c=>c.id===ROOT?{...c,shippingDefaults:{...c.shippingDefaults,deliverySchedule:{enabled:true,auctionDate:'2026-10-19',pargeDispatchDate:'2026-10-19',dodosiDispatchDate:'2026-10-20',pargeOrigin:'가상 출발지'}}}:c));
- assert.equal((await f.command()).status,200);const c=(await f.repository.getCatalog()).channels.find(c=>c.id===TARGET);
+ const f=await setup(t);
+ assert.equal((await f.command()).status,200);
+ const defaultRound=(await f.repository.getCatalog()).channels.find(c=>c.id===TARGET);
+ assert.equal(defaultRound.shippingDefaults.deliverySchedule.enabled,true);
+ assert.equal(defaultRound.shippingDefaults.deliverySchedule.auctionDate,DATE);
+ assert.equal(defaultRound.shippingDefaults.deliverySchedule.pargeOrigin,'크레오 대구본점');
+ const f2=await setup(t),catalog=await f2.repository.getCatalog();await f2.repository.saveCatalog(catalog.channels.map(c=>c.id===ROOT?{...c,shippingDefaults:{...c.shippingDefaults,deliverySchedule:{enabled:true,auctionDate:'2026-10-19',pargeDispatchDate:'2026-10-19',dodosiDispatchDate:'2026-10-20',pargeOrigin:'가상 출발지'}}}:c));
+ assert.equal((await f2.command()).status,200);const c=(await f2.repository.getCatalog()).channels.find(c=>c.id===TARGET);
  assert.equal(c.shippingDefaults.deliverySchedule.auctionDate,DATE);assert.equal(c.shippingDefaults.deliverySchedule.pargeDispatchDate,'');assert.equal(c.shippingDefaults.deliverySchedule.dodosiDispatchDate,'');assert.equal(c.shippingDefaults.deliverySchedule.pargeOrigin,'가상 출발지');
 });
 test('atomic storage failure leaves source, target, membership and catalog unchanged; retry succeeds',async t=>{

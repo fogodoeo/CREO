@@ -73,3 +73,32 @@ test('updated shared rates do not reprice already registered buyer or vendor cha
  const buyer=(await f.call('GET','buyer-shipping?code='+f.code)).json(),vendor=(await f.call('GET','vendor-checkout?code='+f.vendor)).json();
  assert.equal(buyer.totals.shippingAmount,47000);assert.equal(vendor.buyers[0].totals.shippingAmount,47000);assert.deepEqual(await f.repo.listRecords('alpha','shipment'),before);
 });
+test('national round channels without explicit schedule config infer round date and respect explicit disable',async t=>{
+ const f=await fixture(t),roundId='national-cre-20260917';
+ const catalog=await f.repo.getCatalog();
+ await f.repo.saveCatalog([...catalog.channels,normalizeChannel({id:roundId,name:'전국크레자랑 · 9/17 경기',status:'active',nationalRound:{parentId:'national-cre',date:'2026-09-17'},shippingDefaults:{enabledCarriers:['parge'],pickupLocations:['대구 크레오']}})]);
+ const saved=JSON.parse((await f.repo.getRowsByKeys([KEY]))[0].value);
+ saved.sources.parge.partners.push({name:'크레오 대구본점',region:'경상권'});
+ saved.sources.parge.schedules.push({partnerName:'크레오 대구본점',collectDayLabel:'월요일'});
+ await f.repo.upsertRows([{key:KEY,value:JSON.stringify(saved)}]);
+ await f.restart();
+ await f.repo.upsertRecord(roundId,'vendor',{id:'v1',name:'크레퐁',phone:'01000000001',bankName:'가상은행',bankAccount:'000',bankHolder:'가상',paymentMethods:['bank_transfer']});
+ await f.repo.upsertRecord(roundId,'item',{id:'b13',vendorId:'v1',name:'B13',status:'sold',soldPrice:3000000,winnerName:'김가상',winnerPhone:'01000000002',attributes:{broadcastDate:'2026-09-17'}});
+ await f.repo.upsertRecord(roundId,'shipment',{id:'shipment-b13',itemId:'b13',vendorId:'v1',recipientPhone:'01000000002',recipientName:'김가상',method:'delivery',carrier:'파르게',destinationType:'parge',destinationId:'parge',pargeRegion:'강원도',pargeShop:'수령점',address:'강원도 수령점',cost:19000,paymentMethod:'bank_transfer',paymentStatus:'paid',buyerSubmittedAt:'2026-09-17T14:52:39.961Z'});
+ const buyerCode=(await f.call('POST',`channels/${roundId}/buyer-shipping-link`,{itemId:'b13'},true)).json().code;
+ const vendorCode=(await f.call('POST',`channels/${roundId}/vendor-checkout-link`,{vendorId:'v1'},true)).json().code;
+ const [buyer,delivery,vendor,organizer]=(await Promise.all([
+  f.call('GET','buyer-shipping?code='+buyerCode),
+  f.call('GET','buyer-delivery?code='+buyerCode),
+  f.call('GET','vendor-checkout?code='+vendorCode),
+  f.call('GET',`channels/${roundId}/organizer-shipping`,null,true)
+ ])).map(r=>r.json());
+ assert.equal(buyer.deliverySchedule.dispatchDate,'2026-09-21');assert.equal(buyer.deliverySchedule.arrivalDate,'2026-09-25');
+ assert.deepEqual(delivery.deliverySchedule,buyer.deliverySchedule);
+ assert.deepEqual(vendor.buyers[0].deliverySchedule,buyer.deliverySchedule);
+ assert.deepEqual(organizer.auctionItems[0].deliverySchedule,buyer.deliverySchedule);
+ const updated=await f.repo.getCatalog();
+ updated.channels.find(c=>c.id===roundId).shippingDefaults.deliverySchedule={enabled:false,auctionDate:'2026-09-17',pargeOrigin:'크레오 대구본점',dodosiOrigin:'크레용(대구)',pargeDispatchDate:'',dodosiDispatchDate:''};
+ await f.repo.saveCatalog(updated.channels);await f.restart();
+ assert.equal((await f.call('GET','buyer-shipping?code='+buyerCode)).json().deliverySchedule,null);
+});

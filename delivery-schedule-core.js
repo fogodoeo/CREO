@@ -38,6 +38,17 @@ function normalizeConfig(input) {
         dodosiDispatchDate: date(input.dodosiDispatchDate)
     };
 }
+function channelConfig(channel) {
+    const explicit = channel?.shippingDefaults?.deliverySchedule;
+    if (explicit && typeof explicit === 'object') {
+        const fallbackDate = channel?.nationalRound?.parentId === 'national-cre' ? channel.nationalRound.date : '';
+        return normalizeConfig({ ...explicit, auctionDate: explicit.auctionDate || fallbackDate });
+    }
+    if (channel?.nationalRound?.parentId === 'national-cre' && date(channel.nationalRound.date)) {
+        return normalizeConfig({ enabled: true, auctionDate: channel.nationalRound.date });
+    }
+    return null;
+}
 function inVacation(value, shop) {
     return shop?.vacationStart && shop?.vacationEnd && value >= shop.vacationStart && value <= shop.vacationEnd;
 }
@@ -109,4 +120,4 @@ function estimate({ config: rawConfig, carrier, destination, source, submittedAt
     return { status: 'estimated', dispatchDate, arrivalDate, checkedAt: source.checkedAt };
 }
 
-module.exports = { DAY, compact, date, add, weekday, weekdays, region, normalizeConfig, nextDay, estimate };
+module.exports = { DAY, compact, date, add, weekday, weekdays, region, normalizeConfig, channelConfig, nextDay, estimate };

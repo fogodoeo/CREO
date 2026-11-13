@@ -25,7 +25,7 @@ function normalizeEntry(input = {}) {
         morph:cleanText(input.morph,60), sex:['male','female','unknown'].includes(input.sex)?input.sex:'unknown',
         weight, hatchDate, size:['베이비','아성체','준성체','성체'].includes(input.size)?input.size:'', note:cleanText(input.note,600),
         photoIds:[...new Set(Array.isArray(input.photoIds)?input.photoIds:[])].slice(0,3).map(id=>cleanText(id,80)),
-        sireId:cleanText(input.sireId,80), damId:cleanText(input.damId,80),
+        sireId:cleanText(input.sireId,80), damId:cleanText(input.damId,80), siblingId:cleanText(input.siblingId,80), hatchlingId:cleanText(input.hatchlingId,80),
         sourceId, sourceUrl:sourceId?`https://www.feedle.me/pet/${sourceId}`:''
     };
 }
@@ -78,11 +78,11 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
     function parent(state, id, role) {
         if(!id)return null;
         const value=state.parents.find(parent=>parent.id===id);
-        if(!value||value.sex!==(role==='sire'?'male':'female'))throw fail('부·모 정보를 다시 선택해 주세요.',422);
+        if(!value||!(role==='sire'?value.sex==='male':role==='dam'?value.sex==='female':['sibling','hatchling'].includes(role)&&['male','female','unknown'].includes(value.sex)))throw fail('부·모 정보를 다시 선택해 주세요.',422);
         return value;
     }
     function parentPhotos(state, source) {
-        return ['sire','dam'].map(role=>{
+        return ['sire','dam','sibling','hatchling'].map(role=>{
             const value=parent(state,source[role+'Id'],role);
             return value?{role,id:value.id,name:value.name,morph:value.morph,version:value.version,media:photos(state,[value.photoId])}:null;
         }).filter(Boolean);
@@ -193,7 +193,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                 if(!uuid(id))throw fail('부모 정보를 다시 열어 주세요.',422);
                 if(current&&current.version!==input.expectedVersion)throw fail('다른 화면에서 부모 정보가 변경됐어요. 다시 확인해 주세요.');
                 const value={id,vendorId:ownerId,name:cleanText(raw.name,40),code:cleanText(raw.code,30),morph:cleanText(raw.morph,60),sex:raw.sex,photoId:cleanText(raw.photoId,80),sourceId:current?.sourceId||(uuid(raw.sourceId)?raw.sourceId.toLowerCase():''),version:(current?.version||0)+1,updatedAt:now};
-                if((!value.name&&!value.code)||!['male','female'].includes(value.sex))throw fail('부모 이름 또는 관리번호와 성별을 입력해 주세요.',422);
+                if((!value.name&&!value.code)||!['male','female','unknown'].includes(value.sex))throw fail('부모 이름 또는 관리번호와 성별을 입력해 주세요.',422);
                 if(current&&current.sex!==value.sex)throw fail('연결된 개체를 위해 부모의 성별은 변경할 수 없습니다.');
                 if(state.parents.some(parent=>parent.id!==id&&((value.code&&parent.code.toLowerCase()===value.code.toLowerCase())||(value.sourceId&&parent.sourceId===value.sourceId))))throw fail('같은 부모가 이미 등록돼 있어요. 목록에서 선택해 주세요.');
                 photos(state,[value.photoId]);
@@ -427,7 +427,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
     }
     function mergedParents(item, libraryParents = item.attributes?.parents || []) {
         const overrides = new Set(Array.isArray(item.attributes?.parentPhotoOverrides) ? item.attributes.parentPhotoOverrides : []);
-        return ['sire','dam'].map(role => (overrides.has(role) ? item.attributes?.parents : libraryParents)?.find(p => p.role === role)).filter(Boolean);
+        return ['sire','dam','sibling','hatchling'].map(role => (overrides.has(role) ? item.attributes?.parents : libraryParents)?.find(p => p.role === role)).filter(Boolean);
     }
     async function auctionPhotos(context) {
         const state = await readOwner(owner(context));

@@ -129,7 +129,7 @@
   function information(state, entry) {
     const source = entry.submission || entry.approved || entry;
     const parent = slot => state.parents.find(p => p.id === source[slot + 'Id'] && p.vendorId === entry.vendorId) || null;
-    return { ...copy(source), sire: copy(parent('sire')), dam: copy(parent('dam')) };
+    return { ...copy(source), sire: copy(parent('sire')), dam: copy(parent('dam')), sibling: copy(parent('sibling')), hatchling: copy(parent('hatchling')) };
   }
   window.EntryPreviewStore = {
     live: true, code, token, get CHANNEL() { return selected; }, get VENDOR() { return current?.ownerId || ''; },

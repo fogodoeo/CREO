@@ -10,4 +10,6 @@ test('opening and saving schedule settings preserves explicitly blank origins',(
  vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../public/delivery-schedule-settings.js'),'utf8'),ctx);
  vm.runInContext('fillDeliverySchedule({shippingDefaults:{deliverySchedule:{enabled:false,pargeOrigin:"",dodosiOrigin:""}}});result=readDeliverySchedule();',ctx);
  assert.equal(ctx.result.pargeOrigin,'');assert.equal(ctx.result.dodosiOrigin,'');assert.equal(ctx.result.enabled,false);
+ vm.runInContext('fillDeliverySchedule({nationalRound:{parentId:"national-cre",date:"2026-11-11"},shippingDefaults:{}});roundResult=readDeliverySchedule();',ctx);
+ assert.equal(ctx.roundResult.enabled,true);assert.equal(ctx.roundResult.auctionDate,'2026-11-11');assert.equal(ctx.roundResult.pargeOrigin,'크레오 대구본점');
 });
