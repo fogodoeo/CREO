@@ -32,7 +32,7 @@ test('shipping charges are never part of declared sale price',()=>{const w=fixtu
 test('export contains fixed sender, memo, count and sum',()=>{const p=plan();assert.equal(p.senderPhone,'01050029163');assert.equal(p.groups[0].memo,'전크자');assert.equal(p.groups[0].price,350000);assert.equal(p.groups[0].quantity,2);});
 for(const [name,change]of Object.entries({
  'past date':p=>p.date='2000-01-01','invalid date':p=>p.date='2099-02-30',
- 'wrong sender':p=>p.senderPhone='01099998888','wrong origin':p=>p.origin='다른 매장',
+ 'invalid sender phone':p=>p.senderPhone='123','wrong origin':p=>p.origin='다른 매장',
  'tampered sum':p=>p.groups[0].price=100000,'wrong count':p=>p.groups[0].quantity=1,
  'wrong memo':p=>p.groups[0].memo='A01','duplicate ID':p=>p.groups[0].items[1].id='a',
  'negative price':p=>p.groups[0].items[0].price=-1,'blank phone':p=>p.groups[0].phone='',

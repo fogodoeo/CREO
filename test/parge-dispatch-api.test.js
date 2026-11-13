@@ -32,7 +32,7 @@ test('sender is admin-only, persists across restart and stays isolated from othe
  const f=await setup(t),body={action:'save-sender',name:'크레용 대구본점',expectedRevision:0};
  assert.equal((await f.request('POST',route,body,false)).status,401);
  assert.equal((await f.request('POST',route,body)).json().record.name,body.name);
- f.restart();assert.deepEqual((await f.request('GET',route)).json().sender,{name:body.name,revision:1});
+ f.restart();assert.deepEqual((await f.request('GET',route)).json().sender,{name:body.name,phone:'01050029163',revision:1});
  assert.equal((await f.request('GET','/channels/creyon/parge-dispatch')).json().sender.name,'크레오 대구본점');
 });
 test('sender saves are idempotent and concurrent stale changes cannot overwrite the winner',async t=>{
@@ -59,5 +59,21 @@ test('invalid sender and failed persistence never replace saved sender',async t=
  for(const name of ['', '   ', 'x'.repeat(81), '이름\n다른 줄', '<script>'])assert.equal((await f.request('POST',route,{action:'save-sender',name,expectedRevision:0})).status,409);
  const write=f.repository.upsertRecord.bind(f.repository);f.repository.upsertRecord=async(id,type,record)=>{if(record.id==='parge-sender')throw Error('isolated failure');return write(id,type,record);};
  assert.equal((await f.request('POST',route,{action:'save-sender',name:'크레용 대구본점',expectedRevision:0})).status,500);
+ assert.equal((await f.request('GET',route)).json().sender.revision,0);
+});
+test('custom sender phone persists, is normalized and reaches the plan; old clients retain it',async t=>{
+ const f=await setup(t),body=await f.prepare();
+ const saved=await f.request('POST',route,{action:'save-sender',name:'크레용 대구본점',phone:'010-1234-5678',expectedRevision:0});
+ assert.equal(saved.status,200,saved.body);assert.equal(saved.json().record.phone,'01012345678');
+ f.restart();assert.equal((await f.request('GET',route)).json().sender.phone,'01012345678');
+ assert.equal((await f.request('GET','/channels/creyon/parge-dispatch')).json().sender.phone,'01050029163');
+ body.plan.senderName='크레용 대구본점';assert.equal((await f.request('POST',route,body)).status,409);
+ body.plan.senderPhone='01012345678';const prepared=await f.request('POST',route,body);assert.equal(prepared.status,200,prepared.body);assert.equal(prepared.json().record.plan.senderPhone,'01012345678');
+ const legacy=await f.request('POST',route,{action:'save-sender',name:'다른 이름',expectedRevision:1});assert.equal(legacy.json().record.phone,'01012345678');
+ assert.equal((await f.request('GET',route)).json().records[0].plan.senderPhone,'01012345678');
+ assert.equal((await f.request('POST',route,{action:'save-sender',name:'다른 이름',phone:'01099998888',expectedRevision:1})).status,409);
+});
+test('invalid sender phones fail without replacing saved data',async t=>{
+ const f=await setup(t);for(const phone of ['',null,'123','010-abc-5678','01012345678901234'])assert.equal((await f.request('POST',route,{action:'save-sender',name:'크레용 대구본점',phone,expectedRevision:0})).status,409);
  assert.equal((await f.request('GET',route)).json().sender.revision,0);
 });

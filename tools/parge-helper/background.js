@@ -17,7 +17,7 @@ let dispatching=false;
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{
  if(message?.type!=='creo-parge-web')return;
  try{const url=new URL(sender.tab?.url||'');if(url.origin!=='https://creok.onrender.com'||url.pathname!=='/parge-dispatch.html')return;}catch{return;}
- if(message.action==='ping'){reply({ready:true,automaticDate:true,readOrders:true,customSender:true});return;}
+ if(message.action==='ping'){reply({ready:true,automaticDate:true,readOrders:true,customSender:true,customSenderPhone:true});return;}
  if(message.action==='release'){
   if(dispatching){reply({error:'입력 중에는 기록을 해제할 수 없어요.'});return;}
   (async()=>{const p=message.plan;if(!p?.channelId||!Array.isArray(p.groups))throw Error('기록을 확인할 수 없어요.');

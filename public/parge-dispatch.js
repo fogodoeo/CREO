@@ -13,9 +13,11 @@
   window.addEventListener('message',receive);window.postMessage({type:'creo-parge-command',requestId,action,plan},location.origin);
  });}
  const post=body=>CreoPlatform.api(route,{method:'POST',body:JSON.stringify(body.action==='confirm-reservation'?{...body,expectedUpdatedAt:records.find(r=>r.id===body.id)?.updatedAt}:body)});
- function showSender(next){sender=next||{name:'크레오 대구본점',revision:0};if(!senderDirty)$('sender-name').value=sender.name;$('sender-name').disabled=false;$('sender-save').disabled=false;$('sender-status').textContent=senderDirty?'변경한 이름을 저장해 주세요.':`이 회차 보내는 분 · ${sender.name}`;}
- $('sender-name').oninput=()=>{senderDirty=$('sender-name').value.trim()!==sender?.name;$('sender-name').removeAttribute('aria-invalid');$('sender-error').textContent='';$('sender-status').textContent=senderDirty?'변경한 이름을 저장해 주세요.':`이 회차 보내는 분 · ${sender.name}`;};
- $('sender-form').onsubmit=async event=>{event.preventDefault();if(senderSaving||!sender)return;senderSaving=true;$('sender-save').disabled=true;$('sender-name').disabled=true;$('sender-error').textContent='';try{const name=Core.senderName($('sender-name').value);const result=await post({action:'save-sender',name,expectedRevision:sender.revision});senderDirty=false;showSender(result.record);$('sender-status').textContent=`저장됨 · ${sender.name}`;}catch(error){$('sender-error').textContent=error.message;$('sender-name').setAttribute('aria-invalid','true');}finally{senderSaving=false;$('sender-save').disabled=false;$('sender-name').disabled=false;if($('sender-error').textContent)$('sender-name').focus();}};
+ const senderFields=['sender-name','sender-phone'];
+ function senderSummary(){return `${sender.name} · ${sender.phone}`;}
+ function showSender(next){sender={phone:'01050029163',...(next||{name:'크레오 대구본점',revision:0})};if(!senderDirty){$('sender-name').value=sender.name;$('sender-phone').value=sender.phone;}senderFields.forEach(id=>$(id).disabled=false);$('sender-save').disabled=false;$('sender-status').textContent=senderDirty?'변경한 정보를 저장해 주세요.':`이 회차 보내는 분 · ${senderSummary()}`;}
+ senderFields.forEach(id=>$(id).oninput=()=>{senderDirty=$('sender-name').value.trim()!==sender?.name||$('sender-phone').value!==sender?.phone;senderFields.forEach(key=>$(key).removeAttribute('aria-invalid'));$('sender-error').textContent='';$('sender-status').textContent=senderDirty?'변경한 정보를 저장해 주세요.':`이 회차 보내는 분 · ${senderSummary()}`;});
+ $('sender-form').onsubmit=async event=>{event.preventDefault();if(senderSaving||!sender)return;senderSaving=true;$('sender-save').disabled=true;senderFields.forEach(id=>$(id).disabled=true);$('sender-error').textContent='';let invalid='sender-name';try{const name=Core.senderName($('sender-name').value);invalid='sender-phone';const phone=Core.senderPhone($('sender-phone').value);invalid=null;const result=await post({action:'save-sender',name,phone,expectedRevision:sender.revision});senderDirty=false;showSender(result.record);$('sender-status').textContent=`저장됨 · ${senderSummary()}`;}catch(error){$('sender-error').textContent=error.message;if(invalid)$(invalid).setAttribute('aria-invalid','true');}finally{senderSaving=false;$('sender-save').disabled=false;senderFields.forEach(id=>$(id).disabled=false);if($('sender-error').textContent)$(invalid||'sender-name').focus();}};
  function render(){
   $('broadcast-date').closest('label').hidden=$('broadcast-date').querySelectorAll('option').length<=2;
   const active=records.filter(r=>r.status!=='released'),done=new Set(active.flatMap(r=>r.plan.groups.flatMap(g=>g.items.map(i=>i.id))));
@@ -61,16 +63,16 @@
  }
  $('all').onchange=()=>{document.querySelectorAll('[data-select]').forEach(el=>{if(el.disabled)return;el.checked=$('all').checked;const g=groups[+el.dataset.select];el.checked?selected.add(g.key):selected.delete(g.key)});count()};$('broadcast-date').onchange=render;$('refresh').onclick=load;
  $('export').onclick=async()=>{if($('export').disabled)return;$('export').disabled=true;try{
-  if(!sender||senderSaving||senderDirty)throw Error('보내는 분 이름을 먼저 저장해 주세요.');
-  const dispatchSender=sender.name;
+  if(!sender||senderSaving||senderDirty)throw Error('보내는 분 이름·연락처를 먼저 저장해 주세요.');
+  const dispatchSender={...sender};
   $('error').textContent='';const chosen=groups.filter(g=>selected.has(g.key));
   if(!chosen.length)throw Error('접수할 배송 건을 선택해 주세요.');
   if(chosen.some(g=>!g.paid)&&!confirm('결제 미확인 건이 포함돼 있어요. 계속할까요?'))return;
   const ready=await helper('ping');if(!ready.automaticDate)throw Error('가까운 맡김일 자동 선택을 위해 입력 도구를 최신 버전으로 교체해 주세요.');
-  if(dispatchSender!=='크레오 대구본점'&&!ready.customSender)throw Error('보내는 분 변경을 지원하는 입력 도구가 필요해요. 아래에서 최신 도구를 내려받아 교체하고 확장 프로그램을 새로고침해 주세요.');
+  if((dispatchSender.name!=='크레오 대구본점'&&!ready.customSender)||(dispatchSender.phone!=='01050029163'&&!ready.customSenderPhone))throw Error('보내는 분 변경을 지원하는 입력 도구가 필요해요. 아래에서 최신 도구를 내려받아 교체하고 확장 프로그램을 새로고침해 주세요.');
   $('handover-date').textContent='파르게에서 가능한 날짜 확인 중…';
   const resolved=await helper('resolve-date');
-  const plan=Core.manifest(chosen,{channelId,date:resolved.date,senderName:dispatchSender});
+  const plan=Core.manifest(chosen,{channelId,date:resolved.date,senderName:dispatchSender.name,senderPhone:dispatchSender.phone});
   $('handover-date').textContent=resolved.date+' · 가장 가까운 가능일';
   const {record}=await post({action:'prepare',requestId:crypto.randomUUID(),plan});await load();
   const result=await helper('dispatch',record.plan);
