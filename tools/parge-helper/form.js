@@ -1,4 +1,4 @@
-(function(root){'use strict';if(root.CreoPargeForm?.version==='1.1.0')return;
+(function(root){'use strict';if(root.CreoPargeForm?.version==='1.3.0')return;
  const clean=v=>String(v||'').replace(/\s+/g,' ').trim();let running=false;
  const all=(scope,selector)=>[...scope.querySelectorAll(selector)],buttons=scope=>all(scope,'button');
  function button(scope,label){const rows=buttons(scope).filter(b=>clean(b.textContent)===label||b.getAttribute('aria-label')===label);if(rows.length!==1)throw Error('파르게 화면이 달라졌어요: '+label);return rows[0];}
@@ -76,6 +76,7 @@
    await fill(field(card,'예: 150000'),g.price);await fill(field(card,'요청사항 (선택)'),g.memo);
   }
   for(const [i,g]of plan.groups.entries()){const c=cards()[i];if(field(c,'이름').value!==g.name||field(c,'연락처').value!==g.phone||Number(field(c,'예: 150000').value)!==g.price||field(c,'요청사항 (선택)').value!=='전크자'||quantity(c)!==g.quantity||!c.textContent.includes(g.shop)||!selectedDate(c,plan.date))throw Error('입력 검증이 맞지 않아 장바구니 담기를 멈췄어요.');}
+  if(field(document,'이름 (또는 샵명)').value!==plan.senderName||field(field(document,'이름 (또는 샵명)').parentElement,'연락처').value!==plan.senderPhone)throw Error('보내는 분 정보가 달라 장바구니 담기를 멈췄어요.');
   const cart=buttons(document).find(b=>clean(b.textContent).startsWith('장바구니 담고 결제하기'));if(!cart||cart.disabled||!cart.textContent.includes(`(${plan.groups.length}곳)`))throw Error('장바구니에 담을 건수가 맞지 않아요. 화면을 확인해 주세요.');
   const reservation=await chrome.runtime.sendMessage({type:'creo-parge-reserve',keys});if(!reservation?.reserved)throw Error(reservation?.error||'중복 접수 여부를 확인하지 못했어요.');attempted=true;
   report('입력 완료 · 장바구니를 확인합니다.');click(cart);
@@ -83,8 +84,8 @@
   await until(()=>document.querySelector('aside'));const after=cartRows();
   if(after.length!==existing.length+plan.groups.length||existing.some(row=>!after.includes(row)))throw Error('기존 장바구니와 새 입력 내역을 대조해 주세요.');
   const added=after.slice();for(const row of existing)added.splice(added.indexOf(row),1);
-  for(const g of plan.groups){const matches=added.filter(row=>row.includes('크레오 대구본점')&&row.includes(g.shop)&&row.includes('받는분: '+g.name)&&row.includes(`크레스티드게코 ${String(g.quantity).padStart(2,'0')}마리`)&&row.includes(`분양 ${g.price}원`));if(matches.length!==1)throw Error('장바구니 마릿수·분양가가 맞지 않아요. 직접 확인해 주세요.');}
+  for(const g of plan.groups){const matches=added.filter(row=>row.includes('크레오 대구본점')&&row.includes('보내는분: '+plan.senderName+' |')&&row.includes(g.shop)&&row.includes('받는분: '+g.name)&&row.includes(`크레스티드게코 ${String(g.quantity).padStart(2,'0')}마리`)&&row.includes(`분양 ${g.price}원`));if(matches.length!==1)throw Error('장바구니 보내는 분·마릿수·분양가가 맞지 않아요. 직접 확인해 주세요.');}
   report('장바구니 내역 확인 완료 · 새로고침하면 사라질 수 있어요. 최종 확인 후 결제해 주세요.');return {attempted:true,cartVerified:true,count:plan.groups.length};
  }catch(e){const message=e.message+(attempted?' 장바구니 반영 여부를 먼저 확인해 주세요.':'');report(message,true);return {error:message};}finally{running=false;}}
- root.CreoPargeForm={version:'1.1.0',run,resolveDate};
+ root.CreoPargeForm={version:'1.3.0',run,resolveDate};
 })(window);

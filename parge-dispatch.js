@@ -2,22 +2,33 @@
 const crypto=require('node:crypto'),Core=require('./public/parge-dispatch-core');
 const Booking=require('./parge-booking');
 const fail=message=>{const e=new Error(message);e.status=409;throw e;};
-function createPargeDispatch({read,write,workspace,shops,lock,notifications,estimate,notificationRows=async()=>[],now=()=>new Date().toISOString()}){
- const fingerprint=p=>JSON.stringify({date:p.date,groups:p.groups.map(g=>({name:g.name,phone:g.phone,shop:g.shop,quantity:g.quantity,price:g.price,items:g.items.map(i=>({id:i.id,shipmentId:i.shipmentId,price:i.price,buyerSaleId:i.buyerSaleId||''}))}))});
+function createPargeDispatch({read,write,readSender=async()=>null,writeSender,workspace,shops,lock,notifications,estimate,notificationRows=async()=>[],now=()=>new Date().toISOString()}){
+ const fingerprint=p=>JSON.stringify({date:p.date,origin:p.origin,senderName:p.senderName,senderPhone:p.senderPhone,groups:p.groups.map(g=>({name:g.name,phone:g.phone,shop:g.shop,quantity:g.quantity,price:g.price,items:g.items.map(i=>({id:i.id,shipmentId:i.shipmentId,price:i.price,buyerSaleId:i.buyerSaleId||''}))}))});
+ async function sender(channel){const saved=await readSender(channel);return {name:saved?.name??'크레오 대구본점',revision:saved?.revision??0};}
  const belongs=(record,ids)=>record.plan.groups.every(g=>g.items.every(i=>ids.has(i.id)));
  async function list(channel){const w=await workspace(channel),ids=new Set(w.items.map(i=>i.id)),notices=await notificationRows(channel);return ((await read(channel))||[]).filter(r=>belongs(r,ids)).map(r=>({...r,notices:notices.filter(n=>n.templateKey===Booking.TEMPLATE&&n.eventKey.startsWith('parge-booking:'+r.id+':')).map(n=>({id:n.id,status:n.status,buyerName:n.variables?.['#{낙찰자명}'],shop:n.variables?.['#{거점명}'],lastError:n.lastError}))}));}
  async function command(channel,body){return lock(channel,async()=>{
+  if(body.action==='save-sender'){
+   let name;try{name=Core.senderName(body.name);}catch(e){fail(e.message);}
+   const current=await sender(channel);
+   if(body.expectedRevision!==current.revision){if(name===current.name)return current;fail('다른 창에서 보내는 분이 변경됐어요. 새로고침 후 확인해 주세요.');}
+   if(name===current.name)return current;
+   if(!writeSender)fail('보내는 분 저장 기능을 사용할 수 없어요.');
+   const next={name,revision:current.revision+1,updatedAt:now()};await writeSender(channel,next);return next;
+  }
   const records=(await read(channel))||[],w=await workspace(channel),scopeIds=new Set(w.items.map(i=>i.id)),scopedRecords=records.filter(r=>belongs(r,scopeIds));
   if(body.action==='prepare'){
    if(!/^[a-zA-Z0-9-]{16,80}$/.test(body.requestId||''))fail('요청 식별자가 없어요. 새로고침해 주세요.');
    try{Core.validate(body.plan);}catch(e){fail(e.message);}if(body.plan.channelId!==channel)fail('채널이 맞지 않아요.');
    const prior=records.find(r=>r.requestId===body.requestId);
-   if(prior){if(!belongs(prior,scopeIds)||prior.fingerprint!==fingerprint(body.plan))fail('기존 접수 요청과 회차 또는 내용이 달라요.');return prior;}
+   if(prior){if(!belongs(prior,scopeIds)||fingerprint(prior.plan)!==fingerprint(body.plan))fail('기존 접수 요청과 회차 또는 내용이 달라요.');return prior;}
    const blocked=new Set(records.filter(r=>r.status!=='released').flatMap(r=>r.plan.groups.flatMap(g=>g.items.map(i=>i.id))));
    const ids=body.plan.groups.flatMap(g=>g.items.map(i=>i.id));if(ids.some(id=>blocked.has(id)))fail('이미 담았거나 확인 중인 개체가 포함돼 있어요.');
    const catalog=await shops();
    const fresh=Core.build({...w,items:w.items.filter(i=>ids.includes(i.id))},{channelId:channel,shops:catalog}).groups;
-   const expected=Core.manifest(fresh,{channelId:channel,date:body.plan.date});
+   const currentSender=await sender(channel);
+   if(body.plan.senderName!==currentSender.name)fail('보내는 분이 변경됐어요. 저장된 이름을 확인한 뒤 다시 담아 주세요.');
+   const expected=Core.manifest(fresh,{channelId:channel,date:body.plan.date,senderName:currentSender.name});
    const canonical=p=>fingerprint({...p,groups:p.groups.slice().sort((a,b)=>a.items[0].id.localeCompare(b.items[0].id))});
    if(canonical(expected)!==canonical(body.plan))fail('낙찰·배송 정보가 변경됐어요. 목록을 새로고침해 주세요.');
    const previous=scopedRecords.filter(r=>r.status!=='released').flatMap(r=>r.plan.groups);
@@ -73,6 +84,6 @@ function createPargeDispatch({read,write,workspace,shops,lock,notifications,esti
   const safe=require('./checkout-notifications').safeVariables;
   if(!event||event.recipientPhone!==notification.recipientPhone||JSON.stringify(safe(event.variables))!==JSON.stringify(notification.variables))fail('예약 안내 정보가 변경됐어요. 다시 확인해 주세요.');
  }catch(error){throw Object.assign(error,{code:'BUYER_LINK_INACTIVE'});}}
- return {list,command,assertNotification};
+ return {list,command,assertNotification,sender};
 }
 module.exports={createPargeDispatch};

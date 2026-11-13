@@ -1120,6 +1120,8 @@ function createPlatformApi({
     const numberLabelPlans = require('./number-label-plans').create({repository,lock:withMutationLock});
     const nationalRounds = NationalRounds.createNationalRoundOperations({repository,directory:vendorDirectory,lock:withMutationLock,touch:touchChannel});
     const pargeDispatch = require('./parge-dispatch').createPargeDispatch({
+        readSender: id => repository.getRecord(id,'setting','parge-sender'),
+        writeSender: (id,sender) => repository.upsertRecord(id,'setting',{id:'parge-sender',channelId:id,...sender}),
         read: async id => (await repository.getRecord(id,'setting','parge-dispatch'))?.records || [],
         write: (id,records,notices=[]) => repository.upsertRows([{key:channelKey(id,'setting','parge-dispatch'),value:JSON.stringify({id:'parge-dispatch',channelId:id,records})},...notices.map(n=>({key:channelKey(id,'notification',n.id),value:JSON.stringify(n)}))]),
         notifications:notificationService,
@@ -6239,7 +6241,7 @@ function createPlatformApi({
 
             if (segments.length === 3 && segments[2] === 'parge-dispatch') {
                 if (!await requireAdmin(req,res)) return true;
-                if (method === 'GET') replyJson(res,200,{records:await pargeDispatch.list(channelId)});
+                if (method === 'GET') replyJson(res,200,{records:await pargeDispatch.list(channelId),sender:await pargeDispatch.sender(channelId)});
                 else if (method === 'POST') replyJson(res,200,{record:await pargeDispatch.command(channelId,await readJson(req))});
                 else replyJson(res,405,{error:'Method not allowed'});
                 return true;

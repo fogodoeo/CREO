@@ -27,3 +27,37 @@ test('late submission by another buyer is new; extra animal for existing buyer n
  for(const [id,phone,name]of [['late','01000000002','추가 수령인'],['extra','01000000001','격리수령인']]){await f.repository.upsertRecord('national-cre','item',{id,name:id,status:'sold',soldPrice:200000,winnerName:name,winnerPhone:phone});await f.repository.upsertRecord('national-cre','shipment',{id:'s-'+id,itemId:id,method:'delivery',destinationType:'parge',pargeShop:'격리 매장',recipientName:name,recipientPhone:phone,paymentStatus:'paid'});const w={items:[await f.repository.getRecord('national-cre','item',id)],shipments:await f.repository.listRecords('national-cre','shipment')};const plan=Core.manifest(Core.build(w,{channelId:'national-cre'}).groups,{channelId:'national-cre',date:'2099-10-24'});const r=await f.request('POST',route,{action:'prepare',requestId:'parge-request-'+id+'-00001',plan});assert.equal(r.status,id==='late'?200:409,r.body);}
 });
 test('confirmed empty cart allows rebuilding without deleting audit history',async t=>{const f=await setup(t),body=await f.prepare();const id=(await f.request('POST',route,body)).json().record.id;assert.equal((await f.request('POST',route,{action:'release',id})).status,409);assert.equal((await f.request('POST',route,{action:'release',id,confirmedAbsent:true})).status,200);assert.equal((await f.request('POST',route,{...body,requestId:'parge-request-00002'})).status,200);assert.equal((await f.request('GET',route)).json().records.length,2);});
+
+test('sender is admin-only, persists across restart and stays isolated from other auctions',async t=>{
+ const f=await setup(t),body={action:'save-sender',name:'크레용 대구본점',expectedRevision:0};
+ assert.equal((await f.request('POST',route,body,false)).status,401);
+ assert.equal((await f.request('POST',route,body)).json().record.name,body.name);
+ f.restart();assert.deepEqual((await f.request('GET',route)).json().sender,{name:body.name,revision:1});
+ assert.equal((await f.request('GET','/channels/creyon/parge-dispatch')).json().sender.name,'크레오 대구본점');
+});
+test('sender saves are idempotent and concurrent stale changes cannot overwrite the winner',async t=>{
+ const f=await setup(t),body={action:'save-sender',name:'크레용 대구본점',expectedRevision:0};
+ const results=await Promise.all([f.request('POST',route,body),f.request('POST',route,{...body,name:'다른 업체'})]);
+ assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);
+ const saved=(await f.request('GET',route)).json().sender;
+ assert.equal((await f.request('POST',route,{...body,name:saved.name})).status,200);
+ assert.equal((await f.request('GET',route)).json().sender.revision,1);
+});
+test('saved sender reaches canonical dispatch, stale names fail and existing plans keep their sender',async t=>{
+ const f=await setup(t),body=await f.prepare();
+ await f.request('POST',route,{action:'save-sender',name:'크레용 대구본점',expectedRevision:0});
+ assert.equal((await f.request('POST',route,body)).status,409);
+ body.plan.senderName='크레용 대구본점';const prepared=await f.request('POST',route,body);assert.equal(prepared.status,200,prepared.body);
+ assert.equal(prepared.json().record.plan.senderName,'크레용 대구본점');
+ await f.request('POST',route,{action:'save-sender',name:'크레오 대구본점',expectedRevision:1});
+ assert.equal((await f.request('POST',route,body)).json().record.id,prepared.json().record.id);
+ assert.equal((await f.request('POST',route,{...body,plan:{...body.plan,senderName:'크레오 대구본점'}})).status,409);
+ assert.equal((await f.request('GET',route)).json().records[0].plan.senderName,'크레용 대구본점');
+});
+test('invalid sender and failed persistence never replace saved sender',async t=>{
+ const f=await setup(t);
+ for(const name of ['', '   ', 'x'.repeat(81), '이름\n다른 줄', '<script>'])assert.equal((await f.request('POST',route,{action:'save-sender',name,expectedRevision:0})).status,409);
+ const write=f.repository.upsertRecord.bind(f.repository);f.repository.upsertRecord=async(id,type,record)=>{if(record.id==='parge-sender')throw Error('isolated failure');return write(id,type,record);};
+ assert.equal((await f.request('POST',route,{action:'save-sender',name:'크레용 대구본점',expectedRevision:0})).status,500);
+ assert.equal((await f.request('GET',route)).json().sender.revision,0);
+});

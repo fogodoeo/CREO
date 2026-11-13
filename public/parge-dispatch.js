@@ -1,6 +1,6 @@
 (()=>{'use strict';
  const $=id=>document.getElementById(id),Core=CreoPargeDispatch,channelId=new URLSearchParams(location.search).get('channel')||'national-cre';
- let workspace,shops=[],ratesPayload={},groups=[],records=[];const selected=new Set();
+ let workspace,shops=[],ratesPayload={},groups=[],records=[],sender=null,senderDirty=false,senderSaving=false;const selected=new Set();
  const route=`channels/${encodeURIComponent(channelId)}/parge-dispatch`,esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const fail=e=>{$('error').textContent=e.message||String(e);};
  const money=n=>Number(n).toLocaleString('ko-KR')+'원';
@@ -13,6 +13,9 @@
   window.addEventListener('message',receive);window.postMessage({type:'creo-parge-command',requestId,action,plan},location.origin);
  });}
  const post=body=>CreoPlatform.api(route,{method:'POST',body:JSON.stringify(body.action==='confirm-reservation'?{...body,expectedUpdatedAt:records.find(r=>r.id===body.id)?.updatedAt}:body)});
+ function showSender(next){sender=next||{name:'크레오 대구본점',revision:0};if(!senderDirty)$('sender-name').value=sender.name;$('sender-name').disabled=false;$('sender-save').disabled=false;$('sender-status').textContent=senderDirty?'변경한 이름을 저장해 주세요.':`이 회차 보내는 분 · ${sender.name}`;}
+ $('sender-name').oninput=()=>{senderDirty=$('sender-name').value.trim()!==sender?.name;$('sender-name').removeAttribute('aria-invalid');$('sender-error').textContent='';$('sender-status').textContent=senderDirty?'변경한 이름을 저장해 주세요.':`이 회차 보내는 분 · ${sender.name}`;};
+ $('sender-form').onsubmit=async event=>{event.preventDefault();if(senderSaving||!sender)return;senderSaving=true;$('sender-save').disabled=true;$('sender-name').disabled=true;$('sender-error').textContent='';try{const name=Core.senderName($('sender-name').value);const result=await post({action:'save-sender',name,expectedRevision:sender.revision});senderDirty=false;showSender(result.record);$('sender-status').textContent=`저장됨 · ${sender.name}`;}catch(error){$('sender-error').textContent=error.message;$('sender-name').setAttribute('aria-invalid','true');}finally{senderSaving=false;$('sender-save').disabled=false;$('sender-name').disabled=false;if($('sender-error').textContent)$('sender-name').focus();}};
  function render(){
   $('broadcast-date').closest('label').hidden=$('broadcast-date').querySelectorAll('option').length<=2;
   const active=records.filter(r=>r.status!=='released'),done=new Set(active.flatMap(r=>r.plan.groups.flatMap(g=>g.items.map(i=>i.id))));
@@ -37,7 +40,7 @@
   const cart=records.filter(r=>['checking','cart'].includes(r.status)).flatMap(r=>r.plan.groups),chosen=Core.partnerQuote(rows,ratesPayload),pending=Core.partnerQuote(cart,ratesPayload),total=Core.partnerQuote([...rows,...cart],ratesPayload);
   $('partner-totals').innerHTML=[['새로 선택한 건',chosen],['확인 중·장바구니',pending],['합계 예상',total]].map(([label,q])=>`<div><span>${label}</span><strong>${esc(quoteLabel(q))}</strong></div>`).join('');
  }
- async function load(){const previous=$('broadcast-date').value;$('refresh').disabled=true;$('error').textContent='';try{[workspace,{records}]=await Promise.all([CreoPlatform.api(`channels/${encodeURIComponent(channelId)}/workspace?scope=round`),CreoPlatform.api(route)]);const dates=[...new Set(workspace.items.map(i=>i.attributes?.broadcastDate||i.broadcastDate).filter(Boolean))].sort().reverse();$('broadcast-date').innerHTML='<option value="">선택 회차 전체</option>'+dates.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');$('broadcast-date').value=dates.includes(previous)?previous:'';render();}catch(e){groups=[];records=[];selected.clear();$('rows').replaceChildren();$('history').replaceChildren();count();$('partner-totals').textContent='배송 자료를 다시 불러온 뒤 예상금액을 확인해 주세요.';fail(e)}finally{$('refresh').disabled=false;}}
+ async function load(){const previous=$('broadcast-date').value;$('refresh').disabled=true;$('error').textContent='';try{let dispatch;[workspace,dispatch]=await Promise.all([CreoPlatform.api(`channels/${encodeURIComponent(channelId)}/workspace?scope=round`),CreoPlatform.api(route)]);records=dispatch.records;showSender(dispatch.sender);const dates=[...new Set(workspace.items.map(i=>i.attributes?.broadcastDate||i.broadcastDate).filter(Boolean))].sort().reverse();$('broadcast-date').innerHTML='<option value="">선택 회차 전체</option>'+dates.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join('');$('broadcast-date').value=dates.includes(previous)?previous:'';render();}catch(e){groups=[];records=[];selected.clear();$('rows').replaceChildren();$('history').replaceChildren();count();$('partner-totals').textContent='배송 자료를 다시 불러온 뒤 예상금액을 확인해 주세요.';fail(e)}finally{$('refresh').disabled=false;}}
  async function update(action,id){try{const record=records.find(r=>r.id===id);if(!record)return;let body={action,id};
   if(action==='confirm-reservation')return editBooking(record);
   if(action==='preview-notices')return await previewNotices(record);
@@ -58,13 +61,16 @@
  }
  $('all').onchange=()=>{document.querySelectorAll('[data-select]').forEach(el=>{if(el.disabled)return;el.checked=$('all').checked;const g=groups[+el.dataset.select];el.checked?selected.add(g.key):selected.delete(g.key)});count()};$('broadcast-date').onchange=render;$('refresh').onclick=load;
  $('export').onclick=async()=>{if($('export').disabled)return;$('export').disabled=true;try{
+  if(!sender||senderSaving||senderDirty)throw Error('보내는 분 이름을 먼저 저장해 주세요.');
+  const dispatchSender=sender.name;
   $('error').textContent='';const chosen=groups.filter(g=>selected.has(g.key));
   if(!chosen.length)throw Error('접수할 배송 건을 선택해 주세요.');
   if(chosen.some(g=>!g.paid)&&!confirm('결제 미확인 건이 포함돼 있어요. 계속할까요?'))return;
   const ready=await helper('ping');if(!ready.automaticDate)throw Error('가까운 맡김일 자동 선택을 위해 입력 도구를 최신 버전으로 교체해 주세요.');
+  if(dispatchSender!=='크레오 대구본점'&&!ready.customSender)throw Error('보내는 분 변경을 지원하는 입력 도구가 필요해요. 아래에서 최신 도구를 내려받아 교체하고 확장 프로그램을 새로고침해 주세요.');
   $('handover-date').textContent='파르게에서 가능한 날짜 확인 중…';
   const resolved=await helper('resolve-date');
-  const plan=Core.manifest(chosen,{channelId,date:resolved.date});
+  const plan=Core.manifest(chosen,{channelId,date:resolved.date,senderName:dispatchSender});
   $('handover-date').textContent=resolved.date+' · 가장 가까운 가능일';
   const {record}=await post({action:'prepare',requestId:crypto.randomUUID(),plan});await load();
   const result=await helper('dispatch',record.plan);

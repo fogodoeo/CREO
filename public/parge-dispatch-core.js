@@ -49,8 +49,13 @@
   rows.sort((a,b)=>a.items[0].lot.localeCompare(b.items[0].lot,'en',{numeric:true}));
   return {groups:rows,excluded};
  }
+ function senderName(value){
+  if(typeof value!=='string'||!value.trim()||value.trim().length>80||/[\u0000-\u001f\u007f<>]/.test(value))throw Error('보내는 분 이름을 1~80자로 입력해 주세요.');
+  return value.trim();
+ }
  function validate(plan,now=new Date()){
-  if(plan?.schema!=='creo.parge.dispatch.v1'||plan.origin!=='크레오 대구본점'||plan.senderName!=='크레오 대구본점'||plan.senderPhone!=='01050029163')throw Error('CREO 파르게 입력 파일인지 확인해 주세요.');
+  if(plan?.schema!=='creo.parge.dispatch.v1'||plan.origin!=='크레오 대구본점'||plan.senderPhone!=='01050029163')throw Error('CREO 파르게 입력 파일인지 확인해 주세요.');
+  if(senderName(plan.senderName)!==plan.senderName)throw Error('보내는 분 이름의 앞뒤 공백을 지워 주세요.');
   if(!/^[a-zA-Z0-9_-]+$/.test(plan.channelId||''))throw Error('채널 정보가 없어요. 다시 내보내 주세요.');
   const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
   if(!/^\d{4}-\d{2}-\d{2}$/.test(plan.date||'')||!Number.isFinite(Date.parse(plan.date+'T00:00:00Z'))||new Date(plan.date+'T00:00:00Z').toISOString().slice(0,10)!==plan.date||plan.date<today)throw Error('맡김일을 오늘 이후로 선택해 주세요.');
@@ -66,6 +71,6 @@
   }
   return plan;
  }
- function manifest(groups,options){return validate({schema:'creo.parge.dispatch.v1',channelId:options.channelId,date:options.date,origin:'크레오 대구본점',senderName:'크레오 대구본점',senderPhone:'01050029163',createdAt:new Date().toISOString(),groups:groups.map(g=>({name:g.name,phone:g.phone,shop:g.shop,region:g.region,quantity:g.quantity,price:g.price,species:'크레스티드게코',memo:'전크자',items:g.items}))});}
- return {build,manifest,validate,shopNames,partnerQuote};
+ function manifest(groups,options){return validate({schema:'creo.parge.dispatch.v1',channelId:options.channelId,date:options.date,origin:'크레오 대구본점',senderName:senderName(options.senderName??'크레오 대구본점'),senderPhone:'01050029163',createdAt:new Date().toISOString(),groups:groups.map(g=>({name:g.name,phone:g.phone,shop:g.shop,region:g.region,quantity:g.quantity,price:g.price,species:'크레스티드게코',memo:'전크자',items:g.items}))});}
+ return {build,manifest,validate,shopNames,partnerQuote,senderName};
 });
