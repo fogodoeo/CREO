@@ -62,9 +62,9 @@ async function main(){
    assert.ok(m.card.x>=width*.52-1,'centre remains clear');
    assert.ok(m.title.height<=m.title.font*1.14+1,'lot number stays on one line even beside a long vendor');
    if(m.vendor){assert.ok(m.vendor.x>=m.title.right,'vendor follows lot');assert.ok(m.vendor.scroll<=m.vendor.client+1,'whole vendor fits');}
-   if(m.traits){assert.ok(m.traits.scroll<=m.traits.client+1,'whole traits fit');if(m.note)assert.ok(m.note.x>=m.traits.right,'note never overlaps traits');}
+   if(m.traits){assert.ok(m.traits.scroll<=m.traits.client+1,'whole traits fit');if(m.note)assert.ok(m.note.y>=m.traits.bottom,'note never overlaps traits');}
    if(kind==='normal')assert.ok(Math.abs(m.title.font-46*fontScale*width/1920)<.1,'lot font scale preserved');
-   if(kind==='long')assert.equal(m.pan,'1','long note remains readable by panning');
+   if(kind==='long')assert.ok(m.note.scroll<=m.note.client+1,'long note remains readable by wrapping');
    if(kind==='hidden')assert.equal(m.note,null);
    if(kind==='empty')assert.equal(m.detail.height,0,'no empty detail strip');
    results.push({width,fontScale,kind,...m});

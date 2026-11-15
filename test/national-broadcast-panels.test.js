@@ -17,14 +17,15 @@ test('national captions remain theme-scoped, transparent outside their slots, an
  assert.ok(html.indexOf('broadcast-national.css')>html.indexOf('broadcast-bidders.css'));
  const bodyRule=css.match(/body\[data-broadcast-theme="national-stage"\]\{([^}]+)\}/)[1];assert.doesNotMatch(bodyRule,/(?:^|;)\s*(?:background|border|padding|margin):/);
 });
-test('national item notes stay on one still line, including when reduced motion is enabled',()=>{
+test('national item notes wrap on fitted line surfaces without motion or font shrinking',()=>{
  const shared=fs.readFileSync(path.join(__dirname,'../public/broadcast-item-notes.css'),'utf8');
  assert.match(shared,/@media\(prefers-reduced-motion:reduce\)/);
  const selector='body[data-broadcast-theme="national-stage"][data-page="2"] #stage .national-item-detail .broadcast-item-note > span';
  const rule=css.slice(css.indexOf(selector)).split('}')[0];
  assert.ok(css.includes(selector));
- for(const property of ['white-space:nowrap','--national-row-fit','animation-name:none!important','transform:none!important'])assert.ok(rule.includes(property),property);
- assert.doesNotMatch(rule,/ellipsis/);
+ for(const property of ['white-space:normal','box-decoration-break:clone','display:inline','animation-name:none!important','transform:none!important'])assert.ok(rule.includes(property),property);
+ assert.doesNotMatch(rule,/ellipsis|--national-row-fit/);
+ assert.doesNotMatch(css,/\.has-item-note\[data-text-auto-width="1"\]/);
  assert.ok(html.indexOf('broadcast-national.css')>html.indexOf('broadcast-item-notes.css'));
 });
 test('national caption and board color pairs meet text contrast requirements',()=>{

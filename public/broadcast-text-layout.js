@@ -16,7 +16,8 @@
  function fitInfoRows(element){
   // Notes must never make the sex, weight or hatch date smaller.
   for(const row of element.querySelectorAll?.('.national-item-detail .item-inline-traits')||[])row.style.setProperty('--national-row-fit','1');
-  const rows=element.querySelectorAll?.('.item-inline-identity .vendor-tag,.national-item-detail .broadcast-item-note > span')||[];
+  // Notes wrap at their original size; shrinking them hides important details.
+  const rows=element.querySelectorAll?.('.item-inline-identity .vendor-tag')||[];
   for(const row of rows)row.style.setProperty('--national-row-fit','1');
   for(const row of rows){
    if(!row.clientWidth||row.scrollWidth<=row.clientWidth)continue;

@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
 const layout=require('../public/broadcast-text-layout'),draft=require('../public/studio-layout-draft');
-test('national info fits vendor and note rows, resets on resize and preserves trait size',()=>{
+test('national info fits vendor rows, resets on resize and preserves trait size',()=>{
  let width=300;
  const rows=[600,480,120].map(natural=>({textContent:'원문 그대로',scale:1,get clientWidth(){return width;},get scrollWidth(){return Math.max(width,Math.ceil(natural*this.scale+20));},style:{setProperty(name,value){assert.equal(name,'--national-row-fit');this.owner.scale=Number(value);}}}));
  for(const row of rows)row.style.owner=row;
@@ -20,7 +20,7 @@ test('national info fits vendor and note rows, resets on resize and preserves tr
  assert.doesNotMatch(pill,/--national-row-fit/);
  assert.match(css,/:has\(>\.item-inline-traits\):has\(>\.broadcast-item-note\)\{grid-template-columns:max-content minmax\(0,1fr\)\}/);
 });
-test('the whole still note fits after reaching the screen edge and returns to full size when space opens',()=>{
+test('notes are never shrunk by vendor fitting, including after resize',()=>{
  let width=320,scale=1;
  const note={
   get clientWidth(){return width;},
@@ -29,8 +29,7 @@ test('the whole still note fits after reaching the screen edge and returns to fu
  };
  const card={querySelectorAll:selector=>selector.includes('.national-item-detail .broadcast-item-note > span')?[note]:[]};
  layout.fitInfoRows(card);
- assert.ok(scale>0.26&&scale<0.27);
- assert.ok(note.scrollWidth<=width);
+ assert.equal(scale,1);
  width=1300;
  layout.fitInfoRows(card);
  assert.equal(scale,1);
