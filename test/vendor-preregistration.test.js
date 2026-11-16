@@ -5,6 +5,26 @@ const route='/api/platform/national-vendor-directory';
 async function setup(options){const f=await createFixture(options);await f.repository.upsertRecord('national-cre','setting',{id:'vendor-access-policy',mode:'preregistration-only-v1'});return f;}
 const input=(overrides={})=>({id:'test-seoul',name:'서울 테스트',region:'서울',loginPhone:'01000000001',...overrides});
 const admin=(f,body)=>f.call(f.client(),body?'POST':'GET',route,body,{'x-creo-admin':f.secret});
+
+test('renamed company releases its previous trade name without transferring ownership or historical records',async t=>{
+ const f=await setup();t.after(()=>f.close());
+ assert.equal((await admin(f,input())).status,200);
+ const owner=await f.login('01000000001');assert.equal((await f.post(owner,'claim',{id:'test-seoul'})).status,200);
+ const vendor=await require('../vendor-directory').createVendorDirectory(f.repository).find('national-cre','test-seoul');
+ await f.repository.upsertRecord('national-cre','item',{id:'prior-sale',vendorId:vendor.id,status:'sold',soldPrice:100000});
+ const sales=await f.repository.listRecords('national-cre','item');
+ const rename=await f.call(f.client(),'POST','/api/platform/channels/national-cre/vendors',{record:{...vendor,name:'변경된 상호'}},{'x-creo-admin':f.secret});
+ assert.equal(rename.status,201,rename.body);f.restart();
+ const next=input({id:'new-owner',loginPhone:'01000000002'});
+ const created=await admin(f,next);assert.equal(created.status,200,created.body);
+ assert.equal((await admin(f,next)).json().duplicate,true);
+ assert.equal((await admin(f,input({id:'duplicate',name:'변경된 상호',loginPhone:'01000000003'}))).status,409);
+ const current=await f.login('01000000002');assert.equal((await f.post(current,'claim',{id:'new-owner'})).status,200);
+ assert.equal((await f.post(current,'select',{id:'test-seoul'})).status,403);
+ assert.equal((await f.post(owner,'select',{id:'new-owner'})).status,403);
+ assert.equal((await f.post(owner,'select',{id:'test-seoul'})).status,200);
+ assert.deepEqual(await f.repository.listRecords('national-cre','item'),sales);
+});
 test('preregistration is administrator only, validates input, blocks public self-registration and conceals numbers',async t=>{
  const f=await setup();t.after(()=>f.close());
  assert.equal((await f.call(f.client(),'POST',route,input())).status,401);
