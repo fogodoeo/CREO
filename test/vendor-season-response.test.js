@@ -11,14 +11,14 @@ async function fixture(t){
  const tasks=()=>f.call(owner,'GET','/api/platform/vendor-access/tasks?company='+id);
  return {...f,owner,other,id,postSeason:post,tasks};
 }
-test('campaign boundaries keep unanswered vendors pending, scoped to November only',()=>{
- const c={},start=Date.parse(CAMPAIGN.startsAt),end=Date.parse(CAMPAIGN.deadline);
- assert.equal(summary(c,start-1).visible,false);assert.equal(summary(c,start).open,true);assert.equal(summary(c,end).open,true);
- assert.equal(summary(c,end+1).open,false);assert.equal(summary(c,end+1).status,'pending');
- assert.equal(summary(c,Date.parse(CAMPAIGN.endsAt)).visible,false);
+test('season 3 starts independently of November responses and has no invented deadline',()=>{
+ const c={},start=Date.parse(CAMPAIGN.startsAt);
+ assert.equal(summary(c,start-1).visible,false);assert.equal(summary(c,start).open,true);
+ assert.equal(CAMPAIGN.deadline,null);assert.equal(summary(c,start+60*86400000).open,true);
  assert.throws(()=>update(c,{campaign:'other',action:'accepted'},start,'a'),/안내가 변경/);
- assert.throws(()=>update(c,{campaign:CAMPAIGN.id,action:'accepted'},end+1,'a'),/기한/);
- assert.equal(summary({seasonResponses:{old:{status:'declined'}}},start).status,'pending');
+ const company={seasonResponses:{'national-2026-11':{status:'declined'}}};
+ assert.equal(summary(company,start).status,'pending');update(company,{campaign:CAMPAIGN.id,action:'accepted'},start,'a');
+ assert.equal(company.seasonResponses['national-2026-11'].status,'declined');
 });
 test('authentication, owner membership, CSRF and active vendor are checked before writes',async t=>{
  const f=await fixture(t);
@@ -47,11 +47,13 @@ test('decline requires explicit confirmation, survives restart and retains vendo
  f.restart();assert.equal((await f.tasks()).json().seasonResponse.status,'declined');
  assert.equal((await f.postSeason('declined',{confirmDecline:true})).json().duplicate,true);
  assert.equal((await f.postSeason('accepted')).status,409);
+ assert.equal((await f.postSeason('accepted',{expectedRevision:1})).status,200);
+ f.restart();assert.equal((await f.tasks()).json().seasonResponse.status,'accepted');
  assert.deepEqual(await f.repository.getRecord('national-cre','vendor',f.id),before);
  assert.equal((await f.repository.getRecord('national-cre','shipment','historic-shipment')).status,'delivered');
  assert.equal((await f.post(f.owner,'select',{id:f.id})).status,200);
  const directory=await f.call(f.owner,'GET','/api/platform/national-vendor-directory',undefined,{'x-creo-admin':f.secret});
- assert.equal(directory.status,200,directory.body);assert.equal(directory.json().companies.find(c=>c.id===f.id).seasonResponse.status,'declined');
+ assert.equal(directory.status,200,directory.body);assert.equal(directory.json().companies.find(c=>c.id===f.id).seasonResponse.status,'accepted');
  assert.doesNotMatch(JSON.stringify((await f.tasks()).json().seasonResponse),/actorId|01000000001|bankAccount/);
 });
 test('conflicting concurrent answers commit one decision without last-writer overwrites',async t=>{
@@ -67,9 +69,14 @@ test('storage failure never acknowledges a response and retries safely',async t=
  f.repository.compareAndSwapRows=save;assert.equal((await f.tasks()).json().seasonResponse.status,'pending');
  assert.equal((await f.postSeason('accepted')).status,200);
 });
-test('late unanswered responses stay pending and submitted decisions remain retryable',async t=>{
+test('later leaves a pending response available and changed responses reject stale revisions',async t=>{
  const f=await fixture(t);await f.postSeason('seen');f.advance(2*86400000);
- assert.equal((await f.postSeason('accepted')).status,409);
- const s=(await f.tasks()).json().seasonResponse;assert.equal(s.status,'pending');assert.equal(s.open,false);assert.equal((await f.postSeason('seen')).json().show,false);
- const c={},body={campaign:CAMPAIGN.id,action:'accepted'};update(c,body,Date.parse(CAMPAIGN.startsAt),'actor');assert.equal(update(c,body,Date.parse(CAMPAIGN.deadline)+1,'actor').duplicate,true);
+ const s=(await f.tasks()).json().seasonResponse;assert.equal(s.status,'pending');assert.equal(s.open,true);assert.equal((await f.postSeason('seen')).json().show,false);
+ assert.equal((await f.postSeason('accepted')).status,200);
+ assert.equal((await f.postSeason('declined',{expectedRevision:1,confirmDecline:true})).status,200);
+ assert.equal((await f.postSeason('accepted',{expectedRevision:1})).status,409);
+ assert.equal((await f.postSeason('declined',{expectedRevision:1,confirmDecline:true})).json().duplicate,true);
+ const work=await f.call(f.owner,'GET','/api/platform/vendor-access/work');assert.equal(work.status,200,work.body);
+ const row=work.json().rows.find(r=>r.companyId===f.id);assert.equal(row.seasonResponse.status,'declined');assert.equal(row.seasonResponse.revision,2);
+ assert.doesNotMatch(JSON.stringify(row.seasonResponse),/actorId|01000000001/);
 });

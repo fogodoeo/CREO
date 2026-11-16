@@ -5,7 +5,14 @@
  const api=(body)=>CreoPlatform.api('national-vendor-directory',{cache:'no-store',signal:AbortSignal.timeout(20000),...(body?{method:'POST',body:JSON.stringify(body)}:{})});
  function error(message){const el=$($('review').open?'review-error':$('editor').open?'editor-error':'error');el.textContent=message||'';el.hidden=!message;}
  async function run(work){if(busy)return;busy=true;error('');try{await work();}catch(e){error(e.message);if(e.status===401){$('content').hidden=true;$('login').hidden=false;}}finally{busy=false;$('save').disabled=false;$('save').textContent='저장';}}
- async function load(){data=await api();$('login').hidden=true;$('content').hidden=false;$('companies').innerHTML=data.companies.length?data.companies.map(c=>`<button class="result" type="button" data-id="${esc(c.id)}"><span><strong>${esc(c.name)}</strong><small>${esc(c.region)} · ${c.claimed?'대표 연결됨':c.registered?'대표 접속 전':'로그인 번호 미등록'}</small>${c.seasonResponse?`<small>11월 참가 확인 · ${{accepted:'참가 희망',declined:'불참',pending:'미응답'}[c.seasonResponse.status]||'미응답'}${c.seasonResponse.respondedAt?' · '+esc(new Date(c.seasonResponse.respondedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})):''}</small>`:''}</span><span class="chevron" aria-hidden="true">›</span></button>`).join(''):'<p class="empty">등록된 업체가 없어요.</p>';for(const el of document.querySelectorAll('[data-id]'))el.onclick=()=>open(data.companies.find(c=>c.id===el.dataset.id));renderDeletions();renderOwnerSetups();}
+ async function load(){data=await api();$('login').hidden=true;$('content').hidden=false;renderCompanies();renderDeletions();renderOwnerSetups();}
+ function renderCompanies(){
+  const status=c=>c.seasonResponse?.status||'pending',filter=$('season-filter')?.value||'',companies=data.companies.filter(c=>!filter||status(c)===filter);
+  if($('season-counts'))$('season-counts').textContent=['accepted','declined','pending'].map(s=>({accepted:'참가',declined:'불참',pending:'미응답'}[s])+' '+data.companies.filter(c=>status(c)===s).length+'곳').join(' · ');
+  $('companies').innerHTML=companies.length?companies.map(c=>`<button class="result" type="button" data-id="${esc(c.id)}"><span><strong>${esc(c.name)}</strong><small>${esc(c.region)} · ${c.claimed?'대표 연결됨':c.registered?'대표 접속 전':'로그인 번호 미등록'}</small><small>시즌3 · ${{accepted:'참가',declined:'불참',pending:'미응답'}[status(c)]}${c.seasonResponse?.respondedAt?' · '+esc(new Date(c.seasonResponse.respondedAt).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'})):''}</small></span><span class="chevron" aria-hidden="true">›</span></button>`).join(''):'<p class="empty">해당하는 업체가 없어요.</p>';
+  for(const el of document.querySelectorAll('[data-id]'))el.onclick=()=>open(data.companies.find(c=>c.id===el.dataset.id));
+ }
+ $('season-filter')?.addEventListener('change',renderCompanies);
  function renderOwnerSetups(){
   const requests=data.ownerSetups||[];$('owner-setups').hidden=!requests.length;
   $('owner-setups').querySelector('h2').textContent='대표 번호 연결 요청 '+requests.length+'건';

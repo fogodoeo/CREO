@@ -5,7 +5,7 @@ const source=fs.readFileSync(require.resolve('../public/vendor-portal-shell.js')
 function fixture(){
  const {document}=parseHTML('<html><body><section id="notice"></section></body></html>'),create=document.createElement.bind(document),calls=[];
  document.createElement=tag=>{const el=create(tag);if(tag==='dialog'){el.showModal=()=>el.setAttribute('open','');el.close=()=>el.removeAttribute('open');}return el;};
- const context={document,seasonState:{id:'national-2026-11',title:'11월 전국크레자랑 참가 확인'},seasonBusy:false,seasonDialog:null,seasonGeneration:1,seasonHost:document.getElementById('notice'),esc:String,seasonBanner(){},seasonWrite:async(...args)=>{calls.push(args);return {status:args[0]};}};
+ const context={document,global:{dispatchEvent(){}},CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail;}},seasonCompany:'test-company',seasonState:{id:'national-season-3',title:'전국크레자랑 시즌3 참가 확인'},seasonBusy:false,seasonDialog:null,seasonGeneration:1,seasonHost:document.getElementById('notice'),esc:String,seasonBanner(){},seasonWrite:async(...args)=>{calls.push(args);return {status:args[0]};}};
  vm.runInNewContext(source.slice(source.indexOf(' function openSeason('),source.indexOf(' async function showSeason('))+'\nopenSeason();',context);
  const find=selector=>document.querySelector(selector),click=selector=>find(selector).onclick();return {context,calls,find,click};
 }

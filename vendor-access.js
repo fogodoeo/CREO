@@ -235,13 +235,14 @@ function createVendorAccess({repository,secret,origin='https://creok.onrender.co
    }
    if(route==='/work'&&method==='GET'){
     if(!s||!phone(s.verifiedPhone))throw fail('전화번호 인증 후 다시 로그인해 주세요.',401);
-    const current=await view(req),rows=[];
+    const current=await view(req),rows=[],seasonDirectory=(await read(STATE)).value||fresh();
     // A read-only inbox. No claims, identity matching or registration as a side effect.
     // Failures remain visible on the affected card, never masquerading as completion.
     for(const c of current.companies||[]){
      let tasks={};
      if(!c.canClaim&&!c.setupRequired&&taskSummary)try{tasks=await taskSummary(c.id);}catch{tasks={unavailable:true};}
-     rows.push({kind:'national',companyId:c.id,name:'전국크레자랑',vendorName:c.name,region:c.region,setupRequired:c.setupRequired,canClaim:c.canClaim,...tasks});
+     const registered=member(seasonDirectory,s.actorId,c.id);
+     rows.push({kind:'national',companyId:c.id,name:'전국크레자랑',vendorName:c.name,region:c.region,setupRequired:c.setupRequired,canClaim:c.canClaim,...tasks,seasonResponse:registered?SeasonResponse.summary(registered,now(),registered.ownerId===s.actorId?'owner':'staff'):null});
     }
     const nationalIds=new Set((current.companies||[]).map(c=>c.id));
     for(const p of current.participations||[]){

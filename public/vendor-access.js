@@ -115,7 +115,15 @@
   if(screen==='auctions'&&!state.companies.length&&!state.participations?.length)$('back').hidden=true;
   if(screen==='work')for(const card of document.querySelectorAll('.work-card')){
    const row=workRows[Number(card.querySelector('[data-work]')?.dataset.work)];if(!row)continue;
-   if(row.kind==='national'){const link=document.createElement('a');link.className='help-link';link.href='/promo-center.html?company='+encodeURIComponent(row.companyId);link.textContent='전크자 홍보 원고';card.append(link);}
+   if(row.kind==='national'){
+    const link=document.createElement('a');link.className='help-link';link.href='/promo-center.html?company='+encodeURIComponent(row.companyId);link.textContent='전크자 홍보 원고';card.append(link);
+    if(row.seasonResponse?.visible){
+     const button=document.createElement('button');button.type='button';button.className='secondary';button.dataset.seasonCompany=row.companyId;
+     button.textContent='시즌3 참가 여부 · '+({accepted:'참가',declined:'불참',pending:'미응답'}[row.seasonResponse.status]||'미응답');
+     button.onclick=async()=>{try{const status=await request('tasks?company='+encodeURIComponent(row.companyId));await window.CreoVendorShell?.showSeason(row.companyId,{...status,vendorName:row.vendorName});window.CreoVendorShell?.openSeason();}catch(e){error(e.message);}};
+     card.append(button);
+    }
+   }
    const detail=document.createElement('div');detail.className='work-rounds';
    for(const r of (row.broadcasts||[]).filter(r=>!r.past)){
     const line=document.createElement('p');line.textContent=`${r.date.slice(5).replace('-','/')} ${r.region} · ${r.complete?'등록 완료':r.count?'작성 중':'출품 등록'}`;detail.append(line);
@@ -128,6 +136,10 @@
     for(const round of row.workRounds){const button=document.createElement('button');button.type='button';button.className='result';button.textContent=`${round.date||'방송일 미지정'} · ${round.actionCount?'확인 '+round.actionCount+'건':round.waitingCount?'대기 '+round.waitingCount+'건':'내역 보기'}`;button.onclick=()=>run(()=>openWorkRow(Number(card.querySelector('[data-work]').dataset.work),'settlement',round));rounds.append(button);}
     card.append(rounds);
    }
+  }
+  if(screen==='work'){
+   const next=workRows.find(r=>r.kind==='national'&&r.seasonResponse?.visible&&r.seasonResponse.open&&r.seasonResponse.canRespond&&r.seasonResponse.status==='pending'&&!r.seasonResponse.seenAt);
+   if(next)window.CreoVendorShell?.showSeason(next.companyId,next);
   }
   bind('reload-work',openWork);bind('work-auctions',openAuctions);bind('reload-auctions',openAuctions);
   for(const b of document.querySelectorAll('[data-join-auction]'))b.onclick=()=>run(()=>selectAuction(b.dataset.joinAuction));
@@ -266,5 +278,10 @@
  }
  $('back').onclick=()=>{if(busy)return;if(screen==='directory'){run(openAuctions);return;}if(['auctions','auctions-error'].includes(screen)){run(openWork);return;}if(screen.startsWith('auction-')){run(()=>screen==='auction-vendors'||screen==='auction-vendors-loading'?openAuctions():selectAuction(joinAuction.id));return;}if(['register','join','pending','search','owner-setup','owner-pending'].includes(screen)){run(()=>openDirectory());return;}go(previousScreen());};
  $('account').onclick=()=>run(async()=>{await request('logout',{});company='';sessionStorage.removeItem('vendor-setup-company');await refresh();go('login');});
+ window.addEventListener('vendor-season-changed',event=>{
+  const {companyId,seasonResponse}=event.detail||{},row=workRows.find(r=>r.kind==='national'&&r.companyId===companyId);
+  if(row)row.seasonResponse=seasonResponse;
+  for(const button of document.querySelectorAll('[data-season-company]'))if(button.dataset.seasonCompany===companyId)button.textContent='시즌3 참가 여부 · '+({accepted:'참가',declined:'불참',pending:'미응답'}[seasonResponse?.status]||'미응답');
+ });
   run(async()=>{if(q.get('from')==='kakao'){await refresh();await request('kakao',{remember:sessionStorage.getItem('vendor-remember')!=='false'});history.replaceState(null,'','/vendor-access.html');}await enter();if(q.has('error'))error('카카오 로그인을 완료하지 못했어요. 다시 시도해 주세요.');});
 })();

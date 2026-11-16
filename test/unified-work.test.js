@@ -18,7 +18,7 @@ test('past broadcasts stay in current work when any action or waiting state rema
  assert.equal(Work.primarySection({defaultSection:'settlement'}),'settlement');
 });
 test('unified work respects verified membership, isolates failures and survives reload without creating records',async t=>{
- const f=await createFixture();t.after(f.close);
+ const f=await createFixture();t.after(f.close);f.advance(Date.parse('2026-11-16T00:00:00+09:00')-Date.parse('2026-09-23T09:00:00+09:00'));
  const channels=['clab-test','other-test'].map(id=>normalizeChannel({id,name:id,status:'active',dataAdapter:'platform'}));
  await f.repository.saveCatalog([...(await f.repository.getCatalog()).channels,...channels]);
  for(const c of channels)await f.repository.upsertRecord(c.id,'vendor',{id:'v',name:c.id,phone:c.id==='clab-test'?'01000000001':'01000000002',active:true});
@@ -26,6 +26,7 @@ test('unified work respects verified membership, isolates failures and survives 
  const owner=await f.login('01000000001'),read=()=>f.call(owner,'GET','/api/platform/vendor-access/work');
  let response=await read();assert.equal(response.status,200,response.body);
  const row=response.json().rows[0];assert.equal(row.channelId,'clab-test');assert.equal(response.json().rows.length,1);assert.equal(row.workflow.fulfillment,'organizer');assert.equal(row.workflow.settlementContact,'크레용');assert.equal(row.hasSales,false);
+ assert.equal(row.seasonResponse,undefined,'channel-only vendors never receive the national season prompt');
  await Promise.all([read(),read(),read()]);f.restart();assert.deepEqual((await read()).json().rows,[row]);
  assert.equal((await f.repository.listRecords('clab-test','vendor')).length,1);
  const before=f.repository.getRecord.bind(f.repository);f.repository.getRecord=async(c,type,id)=>{if(type==='setting'&&id==='entry-policy')throw Error('isolated failure');return before(c,type,id);};

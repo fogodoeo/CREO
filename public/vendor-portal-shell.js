@@ -106,26 +106,27 @@
   showPromoNotice(nav,status);
   showSeason(nav.dataset.company||query.get('company')||query.get('portal'),status);
  }
- let seasonHost,seasonDialog,seasonCompany='',seasonState,seasonBusy=false,seasonClaiming=false,seasonGeneration=0;
- function clearSeason(){seasonGeneration++;seasonCompany='';seasonState=null;seasonHost?.remove();seasonHost=null;seasonDialog?.close();seasonDialog?.remove();seasonDialog=null;}
+ let seasonHost,seasonDialog,seasonCompany='',seasonState,seasonBusy=false,seasonClaiming=false,seasonGeneration=0,seasonVendorName='';
+ function clearSeason(){seasonGeneration++;seasonCompany='';seasonVendorName='';seasonState=null;seasonHost?.remove();seasonHost=null;seasonDialog?.close();seasonDialog?.remove();seasonDialog=null;}
  function seasonBanner(){
   if(!seasonHost||!seasonState)return;
   const s=seasonState,label={accepted:'참가 희망으로 제출했어요',declined:'이번 시즌 불참으로 제출했어요',pending:s.open?'참가 여부를 알려주세요':'참가 여부 미응답 · 응답 기한 종료'}[s.status];
-  seasonHost.innerHTML='<h2>'+esc(s.title)+'</h2><p>'+label+'</p><p>'+(s.status==='pending'?(s.open?'11월 2일(월) 밤 11시 59분까지 업체 대표가 응답해 주세요.':'미응답을 불참으로 처리하지 않았어요. 운영자에게 참가 여부를 알려주세요.'):'기존 정산·배송 내역은 계속 확인할 수 있어요. 응답 변경은 운영자에게 문의해 주세요.')+'</p>'+(s.status==='pending'&&s.open&&s.canRespond?'<button type="button">참가 여부 확인</button>':'');
+  seasonHost.innerHTML='<h2>'+esc(s.title)+'</h2><p>'+esc(seasonVendorName)+(seasonVendorName?' · ':'')+label+'</p><p>'+(s.open?(s.canRespond?'응답은 나중에 변경할 수 있어요.':'업체 대표가 응답할 수 있어요.'):'응답 접수가 끝났어요. 변경은 운영자에게 문의해 주세요.')+'</p>'+(s.open&&s.canRespond?'<button type="button">'+(s.status==='pending'?'참가 여부 선택':'응답 변경')+'</button>':'');
   seasonHost.querySelector('button')?.addEventListener('click',()=>openSeason());
  }
  async function seasonWrite(action,confirmDecline=false){
-  const companyId=seasonCompany,campaign=seasonState.id,session=await access('session');
+  const companyId=seasonCompany,campaign=seasonState.id,expectedRevision=seasonState.revision||0,session=await access('session');
   if(!session.authenticated)throw Error('다시 로그인한 뒤 참가 여부를 제출해 주세요.');
-  return access('season-response',session,{companyId,campaign,action,confirmDecline});
+  return access('season-response',session,{companyId,campaign,action,confirmDecline,expectedRevision});
  }
  function openSeason(){
-  if(!seasonState||seasonBusy||document.querySelector('dialog[open]'))return;
+  if(!seasonState||seasonState.canRespond===false||seasonState.open===false||seasonBusy||document.querySelector('dialog[open]'))return;
   const s=seasonState;
   seasonDialog?.remove();seasonDialog=document.createElement('dialog');const dialog=seasonDialog,generation=seasonGeneration;
   dialog.className='vendor-season-dialog';dialog.setAttribute('aria-labelledby','vendor-season-title');dialog.setAttribute('aria-describedby','vendor-season-description');
-  dialog.innerHTML='<header><h2 id="vendor-season-title">'+esc(s.title)+'</h2><button type="button" data-season-close aria-label="참가 안내 닫기">×</button></header><p class="season-deadline">응답 기한 · 11월 2일(월) 밤 11시 59분</p><div id="vendor-season-description"><p>11월 전국크레자랑 참가를 희망하시나요?</p><p>불참으로 생긴 자리는 다른 업체로 충원합니다. 이후 시즌 재참여는 잔여 자리와 운영 일정에 따라 제한될 수 있습니다.</p><p>참가 희망 제출 후 방송 일정과 출품 내용은 출품 관리에서 확인해 주세요.</p></div><div class="season-decline-confirm" hidden><label><input type="checkbox"> 이번 시즌 불참 및 자리 충원 안내를 확인했습니다.</label><p>불참해도 기존 정산·배송 내역은 유지됩니다. 제출 후 변경은 운영자에게 문의해 주세요.</p></div><p class="season-error" role="alert"></p><div class="season-actions"><button type="button" data-season-decline>이번 시즌 불참</button><button type="button" data-season-accept class="season-primary">참가 희망</button></div><button type="button" data-season-later class="season-later">나중에 응답</button>';
+  dialog.innerHTML='<header><h2 id="vendor-season-title">'+esc(s.title)+'</h2><button type="button" data-season-close aria-label="참가 안내 닫기">×</button></header><div id="vendor-season-description"><p>시즌3에 함께하시겠어요?</p><p>참가 여부만 확인하며, 응답은 나중에 변경할 수 있어요.</p></div><div class="season-decline-confirm" hidden><label><input type="checkbox"> 시즌3 불참으로 응답합니다.</label><p>기존 출품·정산·배송 내역은 유지됩니다.</p></div><p class="season-error" role="alert"></p><div class="season-actions"><button type="button" data-season-decline>불참</button><button type="button" data-season-accept class="season-primary">참가</button></div><button type="button" data-season-later class="season-later">나중에 결정</button>';
   document.body.append(dialog);dialog.showModal();
+  if(typeof seasonVendorName==='string'&&seasonVendorName){const label=document.createElement('p');label.className='season-deadline';label.textContent=seasonVendorName;dialog.querySelector('#vendor-season-description').prepend(label);}
   const close=()=>{if(!seasonBusy)dialog.close();};dialog.querySelector('[data-season-close]').onclick=close;dialog.querySelector('[data-season-later]').onclick=close;
   dialog.addEventListener('cancel',e=>{if(seasonBusy)e.preventDefault();});
   dialog.addEventListener('close',()=>seasonHost?.querySelector('button')?.focus({preventScroll:true}));
@@ -135,7 +136,7 @@
    if(seasonBusy)return;selectedAction=action;dialog.querySelector('.season-error').textContent='';confirmation.querySelector('input').checked=false;
    const declined=action==='declined';confirmation.hidden=!declined;
    title.textContent=action?(declined?'이번 시즌 불참으로 제출할까요?':'참가 희망으로 제출할까요?'):s.title;
-   description.innerHTML=action?'<p>'+(declined?'불참으로 제출하면 빈자리는 다른 업체로 충원됩니다. 이후 시즌 재참여는 잔여 자리와 운영 일정에 따라 제한될 수 있습니다.':'11월 전국크레자랑 참가 희망으로 제출합니다. 방송 일정과 출품 내용은 출품 관리에서 확인해 주세요.')+'</p><p>제출 후 응답 변경은 운영자에게 문의해 주세요.</p>':originalDescription;
+   description.innerHTML=action?'<p>'+(declined?'시즌3 불참으로 응답합니다.':'시즌3 참가 희망으로 응답합니다.')+' 나중에 변경할 수 있어요.</p>':originalDescription;
    actions.innerHTML=action?'<button type="button" data-season-back>돌아가기</button><button type="button" data-season-submit class="season-primary">'+(declined?'불참 제출':'참가 희망 제출')+'</button>':'<button type="button" data-season-decline>이번 시즌 불참</button><button type="button" data-season-accept class="season-primary">참가 희망</button>';
    if(action){actions.querySelector('[data-season-back]').onclick=()=>choose(null);actions.querySelector('[data-season-submit]').onclick=()=>submit(selectedAction);actions.querySelector('[data-season-back]').focus();}
    else{actions.querySelector('[data-season-accept]').onclick=()=>choose('accepted');actions.querySelector('[data-season-decline]').onclick=()=>choose('declined');actions.querySelector('[data-season-accept]').focus();}
@@ -143,10 +144,10 @@
   const submit=async action=>{
    if(seasonBusy||!action||action!==selectedAction)return;const error=dialog.querySelector('.season-error');error.textContent='';
    if(action==='declined'){
-    if(!confirmation.querySelector('input').checked){error.textContent='자리 충원 안내를 확인한 뒤 체크해 주세요.';confirmation.querySelector('input').focus();return;}
+    if(!confirmation.querySelector('input').checked){error.textContent='불참 선택을 확인한 뒤 체크해 주세요.';confirmation.querySelector('input').focus();return;}
    }
    seasonBusy=true;dialog.setAttribute('aria-busy','true');dialog.querySelectorAll('button,input').forEach(b=>b.disabled=true);
-   try{const result=await seasonWrite(action,action==='declined');if(generation!==seasonGeneration)return;seasonState=result;seasonBanner();dialog.close();seasonHost?.focus({preventScroll:true});}
+   try{const result=await seasonWrite(action,action==='declined');if(generation!==seasonGeneration)return;seasonState=result;seasonBanner();dialog.close();seasonHost?.focus({preventScroll:true});global.dispatchEvent(new CustomEvent('vendor-season-changed',{detail:{companyId:seasonCompany,seasonResponse:result}}));}
    catch(e){if(generation===seasonGeneration)error.textContent=e.name==='TimeoutError'||e instanceof TypeError?'저장 결과를 확인하지 못했어요. 연결을 확인한 뒤 같은 선택으로 다시 제출해 주세요.':e.message;}
    finally{seasonBusy=false;dialog.removeAttribute('aria-busy');dialog.querySelectorAll('button,input').forEach(b=>b.disabled=false);}
   };
@@ -155,7 +156,7 @@
  async function showSeason(company,status){
   const s=status.seasonResponse;if(!company||!s?.visible){clearSeason();return;}
   if(seasonCompany!==company)clearSeason();
-  seasonCompany=company;if(!seasonBusy&&(!seasonState||seasonState.status==='pending'))seasonState=s;
+  seasonCompany=company;seasonVendorName=status.vendorName||status.name||seasonVendorName;if(!seasonBusy&&(!seasonState||(s.revision||0)>=(seasonState.revision||0)))seasonState=s;
   const main=document.getElementById('main')||document.querySelector('main');if(!main)return;
   if(!seasonHost?.isConnected){seasonHost=document.createElement('section');seasonHost.className='vendor-season-notice';seasonHost.tabIndex=-1;seasonHost.setAttribute('aria-label','시즌 참가 여부');main.prepend(seasonHost);}
   seasonBanner();
@@ -221,7 +222,7 @@
  global.addEventListener('vendor-tasks-changed',refreshTasks);
  global.addEventListener('focus',refreshTasks);
  document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshTasks();});
- global.CreoVendorShell={mount,clear,header,applyAttention,refreshAttention,mountPromo,showSeason};
+ global.CreoVendorShell={mount,clear,header,applyAttention,refreshAttention,mountPromo,showSeason,openSeason};
  // Keep the same header and page width before and after the first API response.
  function boot(){if(document.documentElement.classList.contains('vendor-shell-pending')){document.body.classList.add('national-vendor-shell');header();}}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
