@@ -1173,6 +1173,8 @@ function createPlatformApi({
         buyerName:buyerDisplayName,winningBid,prepareLink:prepareBuyerCheckoutLink,notifications:notificationService,touch:touchChannel,
         vendorName:async(channelId,id)=>(await vendorDirectory.find(channelId,id))?.name||'업체'
     });
+    const pargeDelay=require('./parge-november-delay').create({repository,channelKey,workspace,notifications:notificationService,now:bookingNow,
+        estimate:async s=>deliverySchedules?.estimate((await loadCatalog()).channels.find(c=>c.id==='national-cre-20261116'),{destinationType:'parge',pargeRegion:s.pargeRegion,pargeShop:s.pargeShop},s.destinationRegisteredAt||s.buyerSubmittedAt)});
     const closingOperations=require('./closing-operations').createClosingOperations({
         repository,channelKey,notifications:notificationService,now:bookingNow,read:closingSnapshot,
         confirmPayment:async(channelId,archiveId,target,requestId,req)=>{
@@ -1584,7 +1586,8 @@ function createPlatformApi({
         const latest = latestBundleShipment(context);
         const rates = await pargeRates(latest?.destinationType || ({'파르게':'parge','도도시':'dodosi'})[latest?.carrier],context.channel);
         const selection = shipmentSelection(latest,context.channel,rates);
-        const shipping = Checkout.allocateShipping(context.bundleItems, selection, context.channel, rates, context.shipments);
+        const combinedShipping = await pargeDelay.bundle(context);
+        const shipping = Checkout.allocateShipping(context.bundleItems, selection, {...context.channel,combinedShipping}, rates, context.shipments);
         // Saved allocations are the quoted shipping price; settings changes do not reprice them.
         for (const row of context.shipments) {
             if (shipping.allocations.has(row.itemId) && row.buyerSubmittedAt) shipping.allocations.set(row.itemId, Math.max(0, Number(row.cost) || 0));
@@ -1601,10 +1604,11 @@ function createPlatformApi({
             const shippingSupportAmount=group.items.reduce((sum,item)=>sum+(shipping.supportAllocations?.get(item.id)||0),0);
             const hasBaseItem = Boolean(orderedBundle[0] && group.items.some((item) => item.id === orderedBundle[0].id));
             const shippingBreakdown = selection ? { multiVendor: rawGroups.length > 1, hasBaseItem, additionalOnly: rawGroups.length > 1 && !hasBaseItem && ['parge', 'dodosi'].includes(selection.destinationType), ownItemCount: group.items.length, additionalItemCount: hasBaseItem ? Math.max(0, group.items.length - 1) : group.items.length, destinationType: selection.destinationType || '' } : null;
+            if(shippingBreakdown && selection.destinationType==='parge' && combinedShipping?.eligible && selection.pargeRegion===combinedShipping.pargeRegion && selection.pargeShop===combinedShipping.pargeShop)Object.assign(shippingBreakdown,{crossRound:true,additionalItemCount:group.items.length});
             return { ...group, shipments, settlement, shippingAmount, shippingSupportAmount, totalAmount, payment, shippingBreakdown };
         });
         const deliverySchedule = deliverySchedules ? await deliverySchedules.estimate(context.channel, selection, latest?.destinationRegisteredAt || latest?.buyerSubmittedAt) : null;
-        return { rates, latest, selection, shipping, groups, deliverySchedule };
+        return { rates, latest, selection, shipping, groups, deliverySchedule, combinedShipping };
     }
 
     function groupPublicPayload(group) {
@@ -1745,6 +1749,8 @@ function createPlatformApi({
                 payments: groups.map((group) => ({ vendorKey: group.key, method: group.payment.method }))
             } : null,
             deliverySchedule: snapshot.deliverySchedule,
+            deliveryNotice: await pargeDelay.notice(context,snapshot.selection,snapshot.deliverySchedule),
+            combinedShipping: snapshot.combinedShipping,
             payment: { status: overallStatus, confirmedAmount, additionalDue },
             totals: {
                 auctionAmount,
@@ -1780,6 +1786,8 @@ function createPlatformApi({
                 pargeShop: payload.selection.pargeShop
             } : null,
             deliverySchedule: payload.deliverySchedule,
+            deliveryNotice: payload.deliveryNotice,
+            combinedShipping: payload.combinedShipping,
             submittedAt: payload.submittedAt,
             updatedAt: payload.updatedAt
         };
@@ -2077,7 +2085,8 @@ function createPlatformApi({
         }
         const groups = Checkout.groupItemsByVendor(context.bundleItems, context.vendors);
         const requestedMethods = requestedPaymentMethods(body, groups);
-        const shipping = Checkout.allocateShipping(context.bundleItems, selection, context.channel, rates, unchangedDestination ? context.shipments : []);
+        const combinedShipping = await pargeDelay.bundle(context);
+        const shipping = Checkout.allocateShipping(context.bundleItems, selection, {...context.channel,combinedShipping}, rates, unchangedDestination ? context.shipments : []);
         if(options.operatorCustom?.allocations)for(const [id,cost] of options.operatorCustom.allocations)shipping.allocations.set(id,cost);
         const existingByItem = new Map(context.shipments.map((shipment) => [shipment.itemId, shipment]));
         const now = new Date().toISOString();
@@ -3779,6 +3788,12 @@ function createPlatformApi({
                 return true;
             }
 
+            if(segments.length===2&&['buyer-shipping','buyer-delivery'].includes(segments[0])&&segments[1]==='delivery-notice-ack'&&method==='POST'){
+                const body=await readJson(req),context=await buyerBundleContext(await resolveBuyerShippingCredential(body));
+                if(!context)throw buyerInputError('낙찰자 링크를 다시 열어 주세요.',401);
+                const snapshot=await checkoutSnapshot(context);
+                replyJson(res,200,await pargeDelay.acknowledge(context,snapshot.selection),buyerCorsHeaders(req));return true;
+            }
             if(segments.length===1&&segments[0]==='carrier-request-link'&&method==='GET'){
                 if(!await requireAdmin(req,res))return true;
                 const code=cleanText(url.searchParams.get('code'),24);
@@ -4591,7 +4606,8 @@ function createPlatformApi({
                             const shipment = Checkout.newestShipment(data.shipments.filter(s => s.itemId === row.id && (!phone || !s.recipientPhone || normalizePhone(s.recipientPhone) === normalizePhone(phone))));
                             const carrier = shipment?.destinationType || ({'파르게':'parge','도도시':'dodosi'})[shipment?.carrier];
                             const selection = shipmentSelection(shipment, channel, rateMap[carrier] || []);
-                            return { ...row, deliverySchedule: await deliverySchedules.estimate(channel, selection, shipment?.destinationRegisteredAt || shipment?.buyerSubmittedAt) };
+                            const combinedShipping=await pargeDelay.bundle({channel,anchorPhone:normalizePhone(phone),bundleItems:[item]});
+                            return { ...row, combinedShipping, shippingNote:[row.shippingNote,combinedShipping?.label,combinedShipping?.review?'수령인·거점 확인 필요':''].filter(Boolean).join(' · '),deliverySchedule: await deliverySchedules.estimate(channel, selection, shipment?.destinationRegisteredAt || shipment?.buyerSubmittedAt) };
                         }));
                     }
                     const missing = require('./shipping-settlement').summarizeMissingDestinations(data.items,data.shipments,data.vendors);
@@ -4719,6 +4735,17 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 3 && segments[2] === 'parge-delay-notice' && ['GET','POST'].includes(method)) {
+                if(!await requireAdmin(req,res))return true;
+                if(channelId!=='national-cre-20261116')throw buyerInputError('11월 16일 파르게 전용 안내입니다.',422);
+                if(method==='GET'){
+                    const plan=await pargeDelay.preview();
+                    replyJson(res,200,{...plan,entries:plan.entries.map(({name,phone,itemIds,message})=>({name,phoneLast4:phone.slice(-4),itemCount:itemIds.length,message}))});
+                }else{
+                    const body=await readJson(req);if(body.confirmed!==true)throw buyerInputError('발송 내용을 확인해 주세요.',422);
+                    replyJson(res,200,await withMutationLock('channel:'+channelId,()=>pargeDelay.enqueue()));
+                }return true;
+            }
             if (segments.length === 3 && segments[2] === 'closing-tools' && ['GET','POST'].includes(method)) {
                 if(!await requireAdmin(req,res))return true;
                 if(method==='GET')replyJson(res,200,await closingOperations.list(channelId,url.searchParams.get('archive')||''));
@@ -6243,7 +6270,7 @@ function createPlatformApi({
 
             if (segments.length === 3 && segments[2] === 'parge-dispatch') {
                 if (!await requireAdmin(req,res)) return true;
-                if (method === 'GET') replyJson(res,200,{records:await pargeDispatch.list(channelId),sender:await pargeDispatch.sender(channelId)});
+                if (method === 'GET') replyJson(res,200,{records:await pargeDispatch.list(channelId),sender:await pargeDispatch.sender(channelId),combinedCandidates:channelId==='national-cre-20261118'?(await pargeDelay.rows()).map(s=>({phone:s.recipientPhone,name:s.recipientName,shop:s.pargeShop})):[]});
                 else if (method === 'POST') replyJson(res,200,{record:await pargeDispatch.command(channelId,await readJson(req))});
                 else replyJson(res,405,{error:'Method not allowed'});
                 return true;
@@ -6488,6 +6515,7 @@ function createPlatformApi({
     }
 
     async function assertBuyerNotificationLink(channelId,notification) {
+        if(notification.templateKey==='buyer_parge_schedule_changed')return pargeDelay.assertCurrent(channelId,notification);
         if(notification.templateKey==='buyer_parge_booking_confirmed')return pargeDispatch.assertNotification(channelId,notification);
         await closingOperations.assertCurrent(channelId,notification);
         if(notification.templateKey==='vendor_join_requested')return vendorAccess.assertNotification(notification);

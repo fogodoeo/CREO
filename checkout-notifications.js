@@ -14,6 +14,7 @@ const NOTIFICATION_STATUSES = new Set([
 ]);
 
 const TEMPLATE_KEYS = Object.freeze([
+    'buyer_parge_schedule_changed',
     'buyer_parge_booking_confirmed',
     'broadcast_booking_updated',
     'vendor_join_requested',
@@ -242,7 +243,7 @@ class AligoNotificationProvider {
 
     async sendSms(notification, testMode = this.testMode) {
         const message = messageText(notification.fallbackText, 2000);
-        const manualLms=['operator_vendor_reminder','operator_buyer_reminder'].includes(notification.templateKey);
+        const manualLms=['operator_vendor_reminder','operator_buyer_reminder','buyer_parge_schedule_changed'].includes(notification.templateKey);
         if (manualLms && (!message || Buffer.byteLength(message,'utf8')>2000)) throw new Error('안내 문자 본문이 없거나 너무 깁니다.');
         if (!manualLms && (!message || Buffer.byteLength(message, 'utf8') > 90)) {
             throw new Error('SMS 90바이트 초과 또는 빈 본문: 자동 LMS 전환하지 않습니다.');

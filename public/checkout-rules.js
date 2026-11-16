@@ -84,6 +84,14 @@
             : Number(channel?.shippingDefaults?.pargeAdditionalFee ?? 7000);
         allocations.set(ordered[0].id, Math.max(0, Number(rate.baseCost) || 0));
         ordered.slice(1).forEach((item) => allocations.set(item.id, Math.max(0, additionalFee)));
+        const combined = channel.combinedShipping;
+        if (selection.destinationType === 'parge' && combined?.eligible && combined.pargeRegion === selection.pargeRegion && combined.pargeShop === selection.pargeShop) {
+            // Monday already carries the base fee; Wednesday lots use the additional-animal fee.
+            ordered.forEach(item => {
+                const quoted = newestShipment(saved.filter(s => s.itemId === item.id && s.buyerSubmittedAt));
+                allocations.set(item.id, quoted ? Math.max(0, Number(quoted.cost)||0) : Math.max(0, additionalFee));
+            });
+        }
         const policy = channel.shippingSupport;
         const prior = new Map();
         for (const row of saved) {

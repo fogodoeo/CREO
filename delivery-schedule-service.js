@@ -112,8 +112,17 @@ function createDeliveryScheduleService({ repository, notificationService = null,
         if (!covered) { nextAttempt = 0; refreshSoon(); }
     }
     function isEnabled(channel) { return Boolean(Core.channelConfig(channel)?.enabled); }
+    async function effectiveConfig(channel, carrier) {
+        if (channel.id === 'national-cre-20261116' && carrier === 'parge') {
+            const target = (await repository.getCatalog()).channels.find(c => c.id === 'national-cre-20261118');
+            // Match the Wednesday route, including any operator dispatch override.
+            if (target) return Core.channelConfig(target);
+            return Core.normalizeConfig({...Core.channelConfig(channel), auctionDate:'2026-11-18', pargeDispatchDate:''});
+        }
+        return Core.channelConfig(channel);
+    }
     async function estimate(channel, selection, submittedAt = '') {
-        const config = Core.channelConfig(channel);
+        const config = await effectiveConfig(channel, selection?.destinationType);
         if (!config?.enabled || !selection) return null;
         const carrier = selection.destinationType;
         if (!carriers.includes(carrier)) return null;
@@ -124,7 +133,7 @@ function createDeliveryScheduleService({ repository, notificationService = null,
             destination: { region: selection.pargeRegion, shop: selection.pargeShop }, source: snapshot[carrier], submittedAt, now: now() });
     }
     async function enrichRates(channel, carrier, regions, submittedAt = '', selection = null) {
-        const config = Core.channelConfig(channel);
+        const config = await effectiveConfig(channel, carrier);
         if (!config?.enabled) return regions;
         try { await load(); } catch { /* Missing data produces a pending estimate, never blocks checkout. */ }
         checkConfiguration(channel, carrier, config);
