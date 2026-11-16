@@ -587,12 +587,15 @@ test('failed inbound preference persistence leaves the previous choice and permi
 test('batch photos remain associated with their row and invalid media rolls back every row',async t=>{
  const f=await fixture(t),view=(await f.command({type:'reserve',date:'2026-10-14',quantity:4})).json(),r=view.reservations[0];
  const channel={id:'national-cre',name:'전국크레자랑',status:'active',dataAdapter:'platform'},context={profile:{id:view.entryState.ownerId,members:[{channelId:channel.id,vendorId:f.vendorId}]},channel,vendor:{id:f.vendorId},catalog:{channels:[channel]}};
- const service=createVendorEntries(f.repository),animal=randomUUID(),parent=randomUUID();
- for(const id of [animal,parent])await service.addMedia(context,{id,url:'/assets/'+id+'.webp',thumbnailUrl:'/assets/'+id+'-thumb.webp',size:100,thumbnailSize:50});
+ const service=createVendorEntries(f.repository),animal=randomUUID(),parent=randomUUID(),sibling=randomUUID();
+ for(const id of [animal,parent,sibling])await service.addMedia(context,{id,url:'/assets/'+id+'.webp',thumbnailUrl:'/assets/'+id+'-thumb.webp',size:100,thumbnailSize:50});
  const body={type:'save-entries',id:r.id,submit:true,entries:[0,1].map(slot=>({slot,expectedVersion:0,entry:{sex:'unknown',weight:'8',hatchDate:'2026-09-01',photoIds:slot===0?[animal]:[]},parents:{sire:{photoId:slot===0?parent:randomUUID()}}}))};
  assert.equal((await f.command(body)).status,422);assert.ok((await f.get()).json().reservations[0].entries.every(e=>e===null));
- body.entries[1].parents={};const saved=await f.command(body);assert.equal(saved.status,200,saved.body);
+ body.entries[1].parents={sibling:{photoId:sibling,name:'동배 참고'}};const saved=await f.command(body);assert.equal(saved.status,200,saved.body);
  const result=saved.json(),rows=result.reservations[0].entries;assert.deepEqual(rows[0].photoIds,[animal]);assert.deepEqual(rows[1].photoIds,[]);
  assert.equal(result.entryState.parents.find(p=>p.id===rows[0].sireId).photoId,parent);assert.ok(!rows[1].sireId);
+ assert.equal(result.entryState.parents.find(p=>p.id===rows[1].siblingId).photoId,sibling);
+ assert.equal(result.entryState.parents.find(p=>p.id===rows[1].siblingId).sex,'unknown');
+ f.restart();const restored=(await f.get()).json();assert.equal(restored.entryState.parents.find(p=>p.id===rows[1].siblingId).name,'동배 참고');
  const queue=(await f.call(f.client,'GET','/api/platform/channels/national-cre/entries',undefined,f.admin)).json();assert.equal(queue.groups[0].entries.length,2);
 });

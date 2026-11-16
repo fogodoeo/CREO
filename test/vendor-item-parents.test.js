@@ -87,3 +87,16 @@ test('name and photo patches preserve each other and the opposite parent',async(
  assert.equal(item.attributes.parents.find(p=>p.role==='sire').media.length,1);assert.equal(item.attributes.parents.find(p=>p.role==='sire').name,'');
  const before=[...f.rows],upsert=f.repository.upsertRows;f.repository.upsertRows=async()=>{throw Error('storage failed')};await assert.rejects(save('dam',{name:'저장 실패'}),/storage failed/);assert.deepEqual([...f.rows],before);f.repository.upsertRows=upsert;
 });
+
+test('sibling photos share ownership, retry, restart and removal protection without altering parents or auction facts',async()=>{
+ const f=fixture(),photoId=await f.media('sibling'),body=f.command(photoId,{side:'sibling',name:'동배 이름'});
+ const results=await Promise.all([f.service.updateItemParents(f.context,body),f.service.updateItemParents(f.context,body)]);
+ assert.deepEqual(results.map(r=>r.duplicate).sort(),[false,true]);
+ const restarted=createVendorEntries(f.repository,f.options);assert.equal((await restarted.updateItemParents(f.context,body)).duplicate,true);
+ const visible=(await restarted.auctionPhotos(f.context))[0];assert.equal(visible.parentPhotoIds.sibling,photoId);assert.equal(visible.parents[0].role,'sibling');assert.equal(visible.parents[0].name,'동배 이름');
+ const saved=await f.repository.getRecord('national-cre','item',f.item.id);
+ assert.deepEqual({...saved,updatedAt:f.item.updatedAt,attributes:f.item.attributes},f.item);
+ await assert.rejects(restarted.updateItemParents(f.context,{...body,requestId:randomUUID()}),/개체가 변경/);
+ await restarted.updateItemParents(f.context,{...body,photoId:'',expectedUpdatedAt:saved.updatedAt,requestId:randomUUID()});
+ const removed=(await restarted.auctionPhotos(f.context))[0];assert.equal(removed.parents[0].media.length,0);assert.equal(removed.parents[0].name,'동배 이름');
+});

@@ -38,4 +38,6 @@ test('parent roles, names and urls stay paired; absent, private and invalid phot
  assert.deepEqual(summary.parentPhotos({attributes:{photo_sire:'/old.webp',parents:[{role:'sire',name:'삭제',media:[]}]}}),[]);
  for(const url of ['javascript:alert(1)','//bad.test/x','/__entry_photo__/private',''])assert.deepEqual(summary.parentPhotos({attributes:{photo_sire:url}}),[]);
  assert.equal(summary.parentPhotos({attributes:{parents:[{role:'dam',name:'새 이름',media:[{url:'https://example.org/new.webp'}]}]}})[0].label,'모');
+ assert.deepEqual(summary.parentPhotos({attributes:{parents:[{role:'sibling',name:'동배 예시',media:[{url:'/sibling.webp'}]}]}}),[{role:'sibling',label:'동배',name:'동배 예시',url:'/sibling.webp'}]);
+ assert.deepEqual(summary.parentPhotos({photoSibling:'/sibling.webp'}),[{role:'sibling',label:'동배',name:'',url:'/sibling.webp'}]);
 });

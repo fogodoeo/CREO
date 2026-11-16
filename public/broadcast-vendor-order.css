@@ -1,0 +1,17 @@
+/* A channel-configured, two-part running order inside the editable P3 board. */
+body[data-page="3"] .board.vendor-order-board{inset:6% 8%;display:grid;grid-template-rows:auto minmax(0,1fr);gap:24px;padding:32px 42px;border-radius:24px;background:var(--broadcast-card,#111720);color:#fff;container-type:size;overflow:hidden!important}
+.vendor-order-header{display:flex;align-items:center;justify-content:space-between;gap:24px;padding-bottom:20px;border-bottom:1px solid #ffffff30}
+.vendor-order-header h1{margin:0;font-size:clamp(28px,4.5cqw,60px);line-height:1.15;letter-spacing:-.035em;font-weight:750}
+.vendor-order-header>span{color:#bdc9da;font-size:clamp(20px,2.4cqw,32px);white-space:nowrap}
+.vendor-order-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:36px;min-height:0}
+.vendor-order-part{display:grid;grid-template-rows:auto minmax(0,1fr);gap:12px;min-width:0;min-height:0}
+.vendor-order-part h2{margin:0;color:var(--secondary,#a8ccff);font-size:clamp(26px,3.3cqw,44px);line-height:1.1;font-weight:750}
+.vendor-order-part ol{list-style:none;margin:0;padding:0;display:grid;grid-template-rows:repeat(var(--order-count),minmax(0,1fr));min-height:0}
+.vendor-order-part li{display:grid;grid-template-columns:1.6em minmax(0,1fr) 2.7em;align-items:center;gap:.35em;padding:0 .3em;border-bottom:1px solid #ffffff20;border-left:4px solid transparent;font-size:min(38px,3.1cqw,5cqh);line-height:1.15;min-width:0}
+.vendor-order-part li:last-child{border-bottom-color:transparent}
+.vendor-order-number{font-size:.76em;font-variant-numeric:tabular-nums;color:#b5c1cf}
+.vendor-order-part strong{font-weight:650;letter-spacing:-.035em;white-space:nowrap}
+.vendor-order-status{font-size:.6em;white-space:nowrap;font-weight:750}
+.vendor-order-part li.is-current{border-left-color:var(--secondary,#a8ccff);background:#ffffff15;border-radius:4px;color:#fff}
+.vendor-order-part li.is-current .vendor-order-status{color:var(--secondary,#a8ccff)}
+.vendor-order-empty{align-self:center;text-align:center;font-size:32px;color:#bdc9da}

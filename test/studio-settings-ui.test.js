@@ -6,6 +6,7 @@ const tick=()=>new Promise(setImmediate);
 function setup({compact=false,page=1,basic=false}={}){
  const {document,window}=parseHTML(source),form=document.getElementById('control-form'),writes=[],messages=[];
  const tag=document.createElement('input');tag.name='page2VendorTagOn';tag.type='checkbox';form.append(tag);
+ for(const name of ['page3Content','page3VendorOrder','page3VendorOrderSecond']){const el=document.createElement('textarea');el.name=name;form.append(el)}
  Object.defineProperty(form,'elements',{get(){const elements=[...form.querySelectorAll('input[name],select[name],textarea[name]')];for(const el of elements)elements[el.name]=el;return elements;}});
  for(const el of form.elements){if(el.localName==='select')Object.defineProperty(el,'value',{writable:true,value:''});if(el.type==='checkbox')el.checked=true;else el.value=el.name==='hostName1'?'진행자':el.name.endsWith('Interval')?'5':'';}
  let failure=null,held=null,server={mode:'sold',page:3,activeItemId:'new-winner',layoutPlacements:{slot:{x:40}},...Object.fromEntries(form.elements.map(el=>[el.name,el.type==='checkbox'?el.checked:el.value]))};
@@ -15,6 +16,7 @@ function setup({compact=false,page=1,basic=false}={}){
  const context=vm.createContext({document,window,location:{origin:'http://test.invalid'},channelId:'national-cre-20261021',workspaceLoadSequence:0,state:{mode:'live',activeItemId:'old-item'},page,compactMode:compact,$:id=>document.getElementById(id),form,isBasicDice:()=>basic,CreoStudioSettings:settings,syncBidderOpacityValue(){},toast(){},confirm:()=>false,CreoPlatform:{api:async(path,options)=>{const patch=JSON.parse(options.body);writes.push([path,patch]);if(held)await held;if(failure)throw failure;server={...server,...patch};return {state:{...server}}}}});
  vm.runInContext(between('function read(){','function updatePositionWarnings'),context);
  context.settingsView=settingsView;
+ context.syncOrderSettings=()=>{}; // presentation is covered in the real browser preview
  vm.runInContext(between('function syncBasicTickerFields','function isCrewart'),context);
  vm.runInContext(between('let settingsDraft=null','async function fileToBase64'),context);
  vm.runInContext(between('function saveVendorTag(',"\nform.addEventListener('change'"),context);
@@ -27,6 +29,12 @@ test('whole settings save only changed config, preserving a newer auction and la
  assert.deepEqual(f.writes,[['channels/national-cre-20261021/broadcast-state',{hostName1:'새 진행자'}]]);
  assert.equal(f.server().mode,'sold');assert.equal(f.server().activeItemId,'new-winner');assert.equal(f.server().page,3);assert.equal(f.server().layoutPlacements.slot.x,40);
  await f.save();f.reload({});await f.save();assert.equal(f.writes.length,1);assert.equal(f.value('hostName1'),'새 진행자');assert.equal(f.status().dirty,false);
+});
+
+test('P3 roster drafts save with the selected content mode and survive unrelated fresh settings',async()=>{
+ const f=setup({compact:true,page:3});f.edit('page3Content','vendor-order');f.edit('page3VendorOrder','첫 업체\n두번째 업체');f.edit('page3VendorOrderSecond','두번째 업체\n첫 업체');
+ f.reload({page1Ticker:'최신 안내'});assert.equal(f.value('page3VendorOrder'),'첫 업체\n두번째 업체');await f.save();
+ assert.equal(f.writes[0][1].page3Content,'vendor-order');assert.equal(f.server().page3VendorOrderSecond,'두번째 업체\n첫 업체');assert.equal(f.server().activeItemId,'new-winner');await f.save();assert.equal(f.writes.length,1);
 });
 test('compact settings preserve other-page edits; shared basic ticker saves only its changed peers',async()=>{
  const f=setup({compact:true,page:2,basic:true});f.edit('hostName1','아직 저장 전');f.edit('page2Ticker','공통 안내');f.context.syncBasicTickerFields('page2Ticker');await f.save();

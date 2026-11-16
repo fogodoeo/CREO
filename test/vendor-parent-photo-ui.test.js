@@ -8,8 +8,8 @@ test('assigned auction lots stay together in the spreadsheet view with inline pa
  vm.createContext(context);vm.runInContext(fn('auctionPhotoList','openAuctionList'),context);const html=context.auctionPhotoList();
  assert.equal((html.match(/class="auction-photo-row"/g)||[]).length,4);
  for(const row of rows)assert.ok(html.includes('aria-label="'+row.displayNumber+'"'));
- assert.equal((html.match(/type="file"/g)||[]).length,6,'each editable item has its own sire/dam upload');
- assert.equal((html.match(/data-auction-name=/g)||[]).length,6,'each editable parent can be named without uploading a photo');
+ assert.equal((html.match(/type="file"/g)||[]).length,9,'each editable item has its own sire/dam/sibling upload');
+ assert.equal((html.match(/data-auction-name=/g)||[]).length,9,'each editable parent can be named without uploading a photo');
  assert.ok(html.includes('data-item="item-0"'));assert.ok(!html.includes('data-item="item-2"'),'sold rows cannot upload or delete');
  assert.ok(!html.includes('data-auction-photo'),'no detour through an individual photo page');
  assert.ok(html.includes('성별')&&html.includes('체중(g)')&&html.includes('출생년월일'));

@@ -25,11 +25,11 @@
  function photoUrl(value){const url=String(value||'').trim();return !url.startsWith('/__entry_photo__/')&&(/^(https?:\/\/|\/[^/])/.test(url))?url:''}
  function parentPhotos(item){
   const attributes=item?.attributes||{};
-  return ['sire','dam'].map(role=>{
+  return ['sire','dam','sibling'].map(role=>{
    const parent=(Array.isArray(attributes.parents)?attributes.parents:[]).find(row=>row?.role===role),media=parent?.media?.[0];
-   const url=parent?photoUrl(media?.url)||photoUrl(media?.thumbnailUrl):photoUrl(attributes['photo_'+role]||item?.[role==='sire'?'photoSire':'photoDam']);
+   const url=parent?photoUrl(media?.url)||photoUrl(media?.thumbnailUrl):photoUrl(attributes['photo_'+role]||item?.[{sire:'photoSire',dam:'photoDam',sibling:'photoSibling'}[role]]);
    const name=String(parent?.name||attributes['photo_'+role+'_name']||attributes[role+'_name']||'').trim().slice(0,80);
-   return url?{role,label:role==='sire'?'부':'모',name,url}:null;
+   return url?{role,label:{sire:'부',dam:'모',sibling:'동배'}[role],name,url}:null;
   }).filter(Boolean);
  }
  function samples(){return [

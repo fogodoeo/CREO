@@ -30,9 +30,9 @@ function fixture(rows){
 test('parent player keeps first decoded photo while the second loads then swaps photo and caption together',async()=>{
  const f=fixture([{label:'부',name:'펩시콜라',url:'/s.webp'},{label:'모',name:'코카콜라',url:'/d.webp'}]);
  const [s,d]=f.box.children;assert.ok(s.hidden&&d.hidden);
- await s.children[0].onload();assert.equal(s.hidden,false);assert.equal(s.children[1].textContent,'부 펩시콜라');
+ await s.children[0].onload();assert.equal(s.hidden,false);assert.equal(s.children[1].children.map(c=>c.textContent).join(' '),'부 펩시콜라');
  f.advance(5000);assert.equal(s.hidden,false);assert.equal(d.hidden,true);
- await d.children[0].onload();f.advance(6000);assert.equal(s.hidden,true);assert.equal(d.hidden,false);assert.equal(d.children[1].textContent,'모 코카콜라');
+ await d.children[0].onload();f.advance(6000);assert.equal(s.hidden,true);assert.equal(d.hidden,false);assert.equal(d.children[1].children.map(c=>c.textContent).join(' '),'모 코카콜라');
  f.advance(11000);assert.equal(s.hidden,false);assert.equal(d.hidden,true);
  f.api.hydrate(f.root);assert.equal(f.box.children.length,2,'refresh does not create more images or reset phase');
 });
@@ -44,4 +44,17 @@ test('failed second photo and disposal cannot blank or resurrect the current ite
 test('both photo failures hide production container instead of showing a broken image',()=>{
  const f=fixture([{label:'부',url:'/bad.webp'},{label:'모',url:'/bad2.webp'}]);for(const slide of f.box.children)slide.children[0].onerror();
  assert.equal(f.box.dataset.photosFailed,'1');assert.ok(f.box.children.every(s=>s.hidden));
+});
+
+test('three references rotate sire, dam, sibling and wrap without starving the third photo',async()=>{
+ const f=fixture(['부','모','동배'].map((label,i)=>({label,name:i===2?'':'개체 '+i,url:'/p'+i+'.webp'})));
+ for(const slide of f.box.children)await slide.children[0].onload();
+ for(const [time,index] of [[0,0],[5000,1],[10000,2],[15000,0],[20000,1]]){f.advance(time);assert.equal(f.box.children.findIndex(s=>!s.hidden),index)}
+ assert.equal(f.box.children[2].children[1].children.length,1,'unnamed sibling shows only its role');
+});
+
+test('a failed middle reference is skipped while sibling still rotates',async()=>{
+ const f=fixture(['부','모','동배'].map((label,i)=>({label,url:'/p'+i+'.webp'})));
+ await f.box.children[0].children[0].onload();f.box.children[1].children[0].onerror();await f.box.children[2].children[0].onload();
+ f.advance(5000);assert.equal(f.box.children[2].hidden,false);f.advance(10000);assert.equal(f.box.children[0].hidden,false);
 });

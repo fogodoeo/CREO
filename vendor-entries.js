@@ -225,7 +225,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                     if(context.channel.id!=='national-cre'||(current?.broadcastDate&&current.broadcastDate!==broadcast.date))throw fail('방송 연결을 확인해 주세요.',403);
                     normalized.sex=['male','female','unknown'].includes(input.entry.sex)?input.entry.sex:'';
                     if(type==='submit'&&(!['male','female','unknown'].includes(input.entry.sex)||!normalized.weight||!normalized.hatchDate||normalized.hatchDate>broadcast.today))throw fail('성별·체중·출생년월일을 확인해 주세요. 미래 출생일은 등록할 수 없어요.',422);
-                    for(const role of ['sire','dam']){
+                    for(const role of ['sire','dam','sibling']){
                         normalized[role+'Id']='';
                         const digest=crypto.createHash('sha256').update(id+':'+role).digest('hex');
                         const parentId=digest.slice(0,8)+'-'+digest.slice(8,12)+'-4'+digest.slice(13,16)+'-a'+digest.slice(17,20)+'-'+digest.slice(20,32);
@@ -236,7 +236,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                         if(!photoId&&!name)continue;
                         photos(state,[photoId]);
                         if(old)state.parentHistory.push({...copy(old),replacedAt:now});
-                        const value={id:parentId,vendorId:ownerId,name,code:broadcast.date+'-'+(broadcast.slot+1)+'-'+role,morph:previous?.morph||'',sex:role==='sire'?'male':'female',photoId,version:(old?.version||0)+1,updatedAt:now};
+                        const value={id:parentId,vendorId:ownerId,name,code:broadcast.date+'-'+(broadcast.slot+1)+'-'+role,morph:previous?.morph||'',sex:role==='sire'?'male':role==='dam'?'female':'unknown',photoId,version:(old?.version||0)+1,updatedAt:now};
                         state.parents=state.parents.filter(p=>p.id!==parentId).concat(value);normalized[role+'Id']=parentId;
                     }
                 }
@@ -454,7 +454,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
                 ...require('./checkout-item-data').checkoutItem(item), channelId:context.channel.id, date:item.attributes.broadcastDate,
                 status:item.status, updatedAt:item.updatedAt, auctionKind:item.attributes?.auctionKind==='event'?'event':'regular',
                 canEdit:item.attributes.broadcastDate>=new Date(now()+9*3600000).toISOString().slice(0,10)&&!AuctionRounds.isArchived(item)&&['draft','active'].includes(context.channel.status)&&context.vendor.active!==false&&['waiting','live','passed'].includes(item.status),
-                parentPhotoIds:Object.fromEntries(['sire','dam'].map(role=>{
+                parentPhotoIds:Object.fromEntries(['sire','dam','sibling'].map(role=>{
                     const url=parents.find(p=>p.role===role)?.media?.[0]?.url;
                     return [role,state.media.find(m=>m.url===url)?.id||''];
                 }))
@@ -465,7 +465,7 @@ function createVendorEntries(repository, { resolveMediaUrl = async value => valu
         const ownerId=owner(context),id=cleanText(input.itemId,64),side=input.side,photoId=cleanText(input.photoId,80),requestId=cleanText(input.requestId,80);
         const hasPhoto=Object.hasOwn(input,'photoId'),hasName=Object.hasOwn(input,'name'),name=cleanText(input.name,40);
         if((context.channel.id!=='national-cre'&&context.channel.nationalRound?.parentId!=='national-cre')||!['draft','active'].includes(context.channel.status)||context.vendor.active===false)throw fail('현재 방송에서는 부모정보를 변경할 수 없어요.',403);
-        if(!['sire','dam'].includes(side)||!id||(!hasPhoto&&!hasName)||!/^[a-zA-Z0-9_-]{8,80}$/.test(requestId))throw fail('부모정보를 다시 확인해 주세요.',422);
+        if(!['sire','dam','sibling'].includes(side)||!id||(!hasPhoto&&!hasName)||!/^[a-zA-Z0-9_-]{8,80}$/.test(requestId))throw fail('부모정보를 다시 확인해 주세요.',422);
         return locked(ownerId,async()=>{
             const state=await readOwner(ownerId),key=context.channel.id+':item-parents:'+requestId;
             const signature=hash({id,side,...(hasPhoto?{photoId}:{}),...(hasName?{name}:{}),expectedUpdatedAt:input.expectedUpdatedAt}),prior=state.requests.find(r=>r.key===key);
