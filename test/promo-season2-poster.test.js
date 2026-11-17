@@ -12,6 +12,18 @@ test('Gyeonggi proclamation stays a single poster in thumbnail, preview and clip
  assert.ok(fs.existsSync(require('node:path').join(__dirname,'../public',src)));
  assert.equal(require('../promo-media.json')[src],'https://creok.onrender.com'+src);
 });
+test('Daegu November 18 uses only its selected poster for preview and copy',()=>{
+ const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8');
+ const ctx=vm.createContext({URL,location:{origin:'https://creok.onrender.com'},esc:v=>String(v)});
+ vm.runInContext(source.slice(source.indexOf(' function imageURL('),source.indexOf('\n const kst=')),ctx);
+ vm.runInContext(source.slice(source.indexOf(' function bodyHTML('),source.indexOf('\n function preview(')),ctx);
+ const src='/promo-assets/jeoncre-daegu-gyeongbuk-20261118-v1.jpg';
+ const t={name:'대구·경북편',title:'전국크레자랑',blocks:[{type:'image',src,alt:'대구·경북편'},{type:'text',text:'11월 18일 수요일 밤 8시',size:20,bold:true}]};
+ assert.equal(ctx.thumbnailImage(t).src,src);
+ for(const copy of [false,true]){const html=ctx.bodyHTML(t,copy);assert.equal((html.match(/<img /g)||[]).length,1);assert.match(html,/20261118-v1/);assert.doesNotMatch(html,/museum|ticket|partners|hero-wolssu/);}
+ assert.equal(require('../promo-media.json')[src],'https://creok.onrender.com'+src);
+});
+
 test('season 2 preview, copy and thumbnail use approved museum poster while historical manuscripts retain theirs',()=>{
  const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8');
  const ctx=vm.createContext({URL,location:{origin:'https://creok.onrender.com'},esc:v=>String(v)});
