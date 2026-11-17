@@ -1,5 +1,13 @@
 # Broadcast caption layout
 
+## C-LAB silver plates and embedded-browser sizing — 2026-11-17
+
+- The current `clab-gallery` overlay uses silver-gray metal plates over the dark navy chroma background: surface range `#cbd4dc`–`#e4e9ed`, main ink `#17212c`, secondary ink `#394956`. Leader/detail surfaces are slightly darker silver. Native text remains live; camera canvas stays transparent. This supersedes the former dark gunmetal panel colors for this theme.
+- `broadcast-clab-compat.css` loads after the theme sheets. P1 names and P2 information use self-hosted Gmarket Sans, with explicit viewport-scaled font sizes and padding. 1080p P2 sizes and configured fontScale are preserved. At 800×600 the former fixed 53.2px note size exceeded the canvas; it now scales with the source resolution.
+- P1 host content no longer depends on CSS zoom applied to a flex child. Names and roles form two block rows, wrap without ellipses, and use measured glyph bounds to fit the allocated plate after rendering, font load and viewport changes. Saved placements and auction data are unchanged. Arbitrarily small boxes still cannot guarantee legibility.
+- Regression renderer: `node tools/verify-clab-compat.cjs`. Synthetic records with the saved Nov17 layout, current Chrome and Chrome 115, 1920×1080 / 1280×720 / 800×600, normal/long names and notes. Chrome 115 is a compatibility check, not proof of the user's exact PRISM/CEF build. Actual PRISM source settings on the broadcasting PC are not yet available.
+- Verified 24 render cases, including 190% host text setting and long roles. All measured text remains within its panel/canvas. Minimum declared contrast: main text 10.84:1, secondary text 5.14:1; silver surface against navy `#0b1d31` 11.33:1. P1/P2 screenshots inspected over the actual supplied airport background. Desktop suite retains the pre-existing niimprint dependency error (136/137 passing); no desktop files changed.
+
 ## Night airport — current 2026-11-17
 
 - User selected the aircraft-free nighttime terminal background and requested matching P1/P2/P3. Stable `departure-blue` ID now displays as `과천 · 야간공항`. `broadcast-airport.css` overrides earlier embroidery styling: smooth navy `#0b1d31`, cool off-white `#eef4f9`, muted blue-gray, thin warm guide-light borders. Gmarket Sans Medium/Bold remain self-hosted. No stitched raster borders or engraved text filter in the current appearance; old unique assets are retained.

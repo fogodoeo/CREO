@@ -1,0 +1,44 @@
+/* Silver plates on the navy camera background. No data or saved geometry changes. */
+body[data-broadcast-theme="clab-gallery"]{
+ --clab-unit:min(.052083333vw,.092592593vh);
+ --studio-panel:#d7dde2;--studio-text:#17212c;--studio-text-muted:#394956;
+ --studio-accent:#324958;--studio-on-accent:#f5f7f8;--studio-row:#bbc7ce;
+ --studio-rule:#8a9aa6;--studio-frame:#a8b6c0;
+ --studio-surface-shadow:inset 0 1px 0 #fff,inset 0 0 0 1px #a8b6c0,inset 0 -2px 0 #8b9aa7,0 3px 10px #0005;
+ --studio-accent-shadow:inset 0 1px 0 #f4f7f9,inset 0 0 0 1px #8b9aa7,0 3px 10px #0005;
+ --clab-metal-surface:linear-gradient(112deg,#d3dae0,#e4e9ed 42%,#cbd4dc);
+ --clab-metal-leader:linear-gradient(112deg,#bbc8d1,#d4dfe6 42%,#b3c3cf);
+ --clab-metal-inset:#cbd4dc;
+}
+body[data-broadcast-theme="clab-gallery"] #stage,
+body[data-broadcast-theme="clab-gallery"] #stage *{font-family:'Gmarket Sans','Broadcast Pretendard','Malgun Gothic',sans-serif!important;font-synthesis:none}
+body[data-broadcast-theme="clab-gallery"] #stage .layer.enter{animation:none!important}
+/* CEF and Chrome must measure the same unzoomed nameplate content. Scale type,
+   padding and line spacing together instead of zooming a flex child. */
+body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-card{
+ padding:calc(10 * var(--clab-unit)) calc(28 * var(--clab-unit))!important;
+ min-height:0;--clab-host-fit:1;
+}
+body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-card>strong{
+ zoom:1!important;display:block;width:100%;min-width:0;flex:none;white-space:normal;overflow:visible;
+}
+body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-name{
+ display:block;max-width:100%;font-size:calc(60 * var(--clab-unit) * var(--layout-font-scale,1) * var(--clab-host-fit))!important;
+ line-height:1.12;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;overflow:visible;text-overflow:clip;font-weight:700;
+}
+body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-role{
+ display:block;margin-top:calc(6 * var(--clab-unit));font-size:calc(28 * var(--clab-unit) * var(--layout-font-scale,1) * var(--clab-host-fit))!important;
+ line-height:1.3;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;overflow:visible;text-overflow:clip;font-weight:500!important;
+}
+body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-role::before{display:inline-block;vertical-align:middle;width:1.2em;height:.2em;margin-right:.65em}
+/* P2 keeps the established 46/32/30/28 hierarchy at 1080p; lower-resolution
+   browser sources use proportional sizes, rather than 1080p fixed pixels. */
+body[data-broadcast-theme="clab-gallery"][data-page="2"] #stage .item-inline-main .item-inline-identity{
+ gap:calc(18 * var(--clab-unit));padding:calc(10 * var(--clab-unit)) calc(20 * var(--clab-unit));flex-wrap:wrap;justify-content:flex-end;overflow:visible;
+}
+body[data-broadcast-theme="clab-gallery"][data-page="2"] #stage .item-inline-identity h1{font-size:calc(46 * var(--clab-unit) * var(--layout-font-scale,1))!important;font-weight:700!important}
+body[data-broadcast-theme="clab-gallery"][data-page="2"] #stage .item-inline-identity .vendor-tag{font-size:calc(32 * var(--clab-unit) * var(--layout-font-scale,1))!important;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;font-weight:500}
+body[data-broadcast-theme="clab-gallery"][data-page="2"] #stage .national-item-detail>.item-inline-traits{padding:calc(9 * var(--clab-unit)) calc(20 * var(--clab-unit));gap:calc(8 * var(--clab-unit)) 0;overflow:visible}
+body[data-broadcast-theme="clab-gallery"][data-page="2"] #stage .item-inline-pill{font-size:calc(30 * var(--clab-unit) * var(--layout-font-scale,1))!important;padding:calc(5 * var(--clab-unit)) calc(18 * var(--clab-unit));font-weight:500}
+body[data-broadcast-theme="clab-gallery"][data-page="2"] #stage .item-copy.is-inline-info .broadcast-item-note{font-size:calc(28 * var(--clab-unit) * var(--layout-font-scale,1))!important;padding:calc(4 * var(--clab-unit)) calc(14 * var(--clab-unit)) calc(8 * var(--clab-unit));font-weight:500}
+body[data-broadcast-theme="clab-gallery"][data-page="2"] #stage .broadcast-item-note>span{padding:.16em calc(14 * var(--clab-unit))}
