@@ -8,6 +8,8 @@
   const canvas=stage.getBoundingClientRect();stage.style.setProperty('--airport-unit',canvas.width/1920+'px');
   const roots=[...stage.querySelectorAll('.host-card,.item-progress,.item-copy,.live-bid-row:not(.is-exiting),.simple-ranking,.ticker,.studio-plate,.price-card,.sold-notice,.standby-note')];
   for(const root of roots){
+   // The shared nameplate fitter handles glyph bounds without CSS zoom.
+   if(root.matches('.host-card')&&window.CreoClabCompat)continue;
    if(!root.getClientRects().length||getComputedStyle(root).visibility==='hidden')continue;
    root.dataset.airportFit='1';root.style.setProperty('--airport-fit','1');
    const isInfo=root.matches('.item-copy');

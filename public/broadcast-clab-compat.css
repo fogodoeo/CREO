@@ -15,22 +15,22 @@ body[data-broadcast-theme="clab-gallery"] #stage *{font-family:'Gmarket Sans','B
 body[data-broadcast-theme="clab-gallery"] #stage .layer.enter{animation:none!important}
 /* CEF and Chrome must measure the same unzoomed nameplate content. Scale type,
    padding and line spacing together instead of zooming a flex child. */
-body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-card{
+body:is([data-broadcast-theme="clab-gallery"],[data-broadcast-theme="departure-blue"])[data-page="1"] #stage .host-card{
  padding:calc(10 * var(--clab-unit)) calc(28 * var(--clab-unit))!important;
  min-height:0;--clab-host-fit:1;
 }
-body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-card>strong{
+body:is([data-broadcast-theme="clab-gallery"],[data-broadcast-theme="departure-blue"])[data-page="1"] #stage .host-card>strong{
  zoom:1!important;display:block;width:100%;min-width:0;flex:none;white-space:normal;overflow:visible;
 }
-body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-name{
+body:is([data-broadcast-theme="clab-gallery"],[data-broadcast-theme="departure-blue"])[data-page="1"] #stage .host-name{
  display:block;max-width:100%;font-size:calc(60 * var(--clab-unit) * var(--layout-font-scale,1) * var(--clab-host-fit))!important;
  line-height:1.12;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;overflow:visible;text-overflow:clip;font-weight:700;
 }
-body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-role{
+body:is([data-broadcast-theme="clab-gallery"],[data-broadcast-theme="departure-blue"])[data-page="1"] #stage .host-role{
  display:block;margin-top:calc(6 * var(--clab-unit));font-size:calc(28 * var(--clab-unit) * var(--layout-font-scale,1) * var(--clab-host-fit))!important;
  line-height:1.3;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;overflow:visible;text-overflow:clip;font-weight:500!important;
 }
-body[data-broadcast-theme="clab-gallery"][data-page="1"] #stage .host-role::before{display:inline-block;vertical-align:middle;width:1.2em;height:.2em;margin-right:.65em}
+body:is([data-broadcast-theme="clab-gallery"],[data-broadcast-theme="departure-blue"])[data-page="1"] #stage .host-role::before{display:inline-block;vertical-align:middle;width:1.2em;height:.2em;margin-right:.65em}
 /* P2 keeps the established 46/32/30/28 hierarchy at 1080p; lower-resolution
    browser sources use proportional sizes, rather than 1080p fixed pixels. */
 body[data-broadcast-theme="clab-gallery"][data-page="2"] #stage .item-inline-main .item-inline-identity{
@@ -42,3 +42,16 @@ body[data-broadcast-theme="clab-gallery"][data-page="2"] #stage .national-item-d
 body[data-broadcast-theme="clab-gallery"][data-page="2"] #stage .item-inline-pill{font-size:calc(30 * var(--clab-unit) * var(--layout-font-scale,1))!important;padding:calc(5 * var(--clab-unit)) calc(18 * var(--clab-unit));font-weight:500}
 body[data-broadcast-theme="clab-gallery"][data-page="2"] #stage .item-copy.is-inline-info .broadcast-item-note{font-size:calc(28 * var(--clab-unit) * var(--layout-font-scale,1))!important;padding:calc(4 * var(--clab-unit)) calc(14 * var(--clab-unit)) calc(8 * var(--clab-unit));font-weight:500}
 body[data-broadcast-theme="clab-gallery"][data-page="2"] #stage .broadcast-item-note>span{padding:.16em calc(14 * var(--clab-unit))}
+/* The night-airport preset can be selected independently of the C-LAB preset.
+   Both need light plates against the same navy camera background. */
+body[data-broadcast-theme="departure-blue"]{
+ --clab-unit:min(.052083333vw,.092592593vh);
+ --departure-panel:#d7dfe5;--departure-inset:#cbd4dc;--departure-raised:#becdd6;
+ --departure-ink:#17212c;--departure-muted:#394956;--departure-rule:#92a4b1;--departure-accent:#324958;
+ --caption-identity:#d7dfe5;--caption-detail:#becdd6;--caption-note:#cbd4dc;--caption-ink:#17212c;--caption-muted:#394956;--caption-line:#92a4b1;
+}
+body[data-broadcast-theme="departure-blue"][data-page] #stage :is(.host-card,.item-progress,.price-card,.ticker,.simple-ranking,.live-bid-row,.standby-note,.sold-notice,.studio-plate,.item-copy.is-inline-info .item-inline-main .item-inline-identity,.national-item-detail>.item-inline-traits){background:linear-gradient(112deg,#d3dae0,#e4e9ed 42%,#cbd4dc)!important;box-shadow:inset 0 1px 0 #fff,0 3px 10px #0005!important}
+body[data-broadcast-theme="departure-blue"][data-page] #stage :is(.host-name,.host-role,.item-progress strong,.price b,.price span,.live-bid-name,.live-bid-amount,.summary-name,.summary-amount,.summary-rank,.summary-empty,.ticker-text,.studio-title>strong,.studio-title>span,.studio-date strong,.studio-date span,.board-head h1,.item-inline-identity h1,.vendor-tag,.item-inline-pill,.broadcast-item-note>span,.sold-notice strong,.sold-notice span){color:var(--departure-ink)!important;text-shadow:none!important}
+body[data-broadcast-theme="departure-blue"][data-page] #stage :is(.host-role,.vendor-tag,.studio-date span,.studio-title>span){color:var(--departure-muted)!important}
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .broadcast-item-note>span{background:var(--departure-inset)!important;box-shadow:0 0 0 1px var(--departure-rule)}
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .live-bid-row[data-rank="1"]{background:var(--departure-raised)!important}

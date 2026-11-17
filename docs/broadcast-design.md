@@ -2,6 +2,8 @@
 
 ## C-LAB silver plates and embedded-browser sizing — 2026-11-17
 
+- Latest production reread shows `clab-1117` now selects `departure-blue`. Silver plates and the unzoomed host fitter therefore cover both C-LAB and night-airport presets. The airport general fitter defers host cards to the shared nameplate fitter; the remaining airport fit logic is unchanged. This preserves the user's current theme selection. Both presets passed 48 combined render cases; the final server suite passed 2,069/2,069.
+
 - The current `clab-gallery` overlay uses silver-gray metal plates over the dark navy chroma background: surface range `#cbd4dc`–`#e4e9ed`, main ink `#17212c`, secondary ink `#394956`. Leader/detail surfaces are slightly darker silver. Native text remains live; camera canvas stays transparent. This supersedes the former dark gunmetal panel colors for this theme.
 - `broadcast-clab-compat.css` loads after the theme sheets. P1 names and P2 information use self-hosted Gmarket Sans, with explicit viewport-scaled font sizes and padding. 1080p P2 sizes and configured fontScale are preserved. At 800×600 the former fixed 53.2px note size exceeded the canvas; it now scales with the source resolution.
 - P1 host content no longer depends on CSS zoom applied to a flex child. Names and roles form two block rows, wrap without ellipses, and use measured glyph bounds to fit the allocated plate after rendering, font load and viewport changes. Saved placements and auction data are unchanged. Arbitrarily small boxes still cannot guarantee legibility.

@@ -2,7 +2,7 @@
  'use strict';
  let scheduled=false;
  function fitHosts(stage){
-  if(!stage||document.body.dataset.broadcastTheme!=='clab-gallery')return;
+  if(!stage||!['clab-gallery','departure-blue'].includes(document.body.dataset.broadcastTheme))return;
   for(const panel of stage.querySelectorAll('.host-card')){
    const content=panel.querySelector('strong');if(!content||!panel.clientWidth)continue;
    panel.style.setProperty('--clab-host-fit','1');
