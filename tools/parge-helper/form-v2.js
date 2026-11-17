@@ -1,5 +1,6 @@
 // November booking UI. DOM-only: never reads React state, credentials or payment data.
 (function(root){'use strict';
+ const ORIGIN='하이딩 플레이스 (대구 동구)';
  const clean=v=>String(v||'').replace(/\s+/g,' ').trim(),digits=v=>String(v||'').replace(/\D/g,'');
  const all=(s,q)=>[...s.querySelectorAll(q)],buttons=s=>all(s,'button');
  const one=(rows,label)=>{if(rows.length!==1)throw Error('파르게 입력란을 확인해 주세요: '+label);return rows[0];};
@@ -13,7 +14,8 @@
  function noCart(){if(buttons(document).some(b=>/^확인\s*\(\d+\)$/.test(clean(b.textContent))||clean(b.textContent)==='← 배송 추가하기'))throw Error('기존 장바구니가 있어요. 먼저 예약 내역을 확인해 주세요.');}
  function selectedDate(c,date){const [y,m,d]=date.split('-').map(Number);return clean(c.textContent).includes(`선택됨: ${y}년 ${m}월 ${d}일`);}
  async function choose(scope,kind,shop,h){
-  h.click(button(scope,kind+' 매장 선택'));
+  const trigger=kind==='출발'?one(buttons(scope).filter(b=>clean(b.textContent)==='출발 매장 선택'||clean(b.textContent).startsWith('출발 변경 · ')),'출발 매장'):button(scope,kind+' 매장 선택');
+  h.click(trigger);
   const dialog=await h.until(()=>all(document,'[role="dialog"]').find(d=>clean(d.querySelector('h3')?.textContent)===kind+' 매장'));
   await h.fill(one(all(dialog,'input[placeholder="매장명 검색"]'),'매장명 검색'),shop);
   const matches=()=>buttons(dialog).filter(b=>clean(b.textContent)===shop);
@@ -27,10 +29,10 @@
   if(document.querySelector('[role="dialog"]'))throw Error('파르게 팝업을 닫고 다시 실행해 주세요.');
   draftEmpty();noCart();
   const current=buttons(document).filter(b=>clean(b.textContent).startsWith('출발 변경 · '));
-  if(current.length){if(current.length!==1||clean(current[0].textContent)!=='출발 변경 · 크레오 대구본점')throw Error('출발 매장이 달라요. 크레오 대구본점을 확인해 주세요.');}
-  else await choose(document,'출발','크레오 대구본점',h);
+  if(current.length>1)throw Error('출발 매장을 확인해 주세요.');
+  if(!current.length||clean(current[0].textContent)!=='출발 변경 · '+ORIGIN)await choose(document,'출발',ORIGIN,h);
   await h.until(()=>cards()[0]?.textContent.includes('년'));
-  if(!buttons(document).some(b=>clean(b.textContent)==='출발 변경 · 크레오 대구본점'))throw Error('출발 매장을 확인하지 못했어요.');
+  if(!buttons(document).some(b=>clean(b.textContent)==='출발 변경 · '+ORIGIN))throw Error('하이딩 플레이스 출발을 확인하지 못했어요.');
   draftEmpty();return cards()[0];
  }
  async function resolveDate(options,h){
@@ -41,6 +43,7 @@
   return {date,layout:'202611',label:options?.specialPickup?'신청용 일요일 · 특별 수거 도착일은 별도 안내':'일요일 맡김 · 목요일 도착'};
  }
  async function run(plan,h){
+  if(plan.origin!==ORIGIN)throw Error('이전 출발 매장의 접수 자료예요. CREO에서 하이딩 플레이스 기준으로 다시 준비해 주세요.');
   const c=await prepare(h);
   if(new Date(plan.date+'T00:00:00Z').getUTCDay()!==0)throw Error('새 파르게 화면은 일요일 맡김만 자동 입력해요. 특별 수거는 날짜 확인이 필요해요.');
   const orderer=one(all(document,'.v2-panel').filter(p=>all(p,'input[aria-readonly="true"]').length===2),'주문자');
@@ -66,7 +69,7 @@
   const cart=one(all(document,'.v2-panel').filter(p=>all(p,'.v2-kicker').some(k=>clean(k.textContent)==='장바구니')),'장바구니');
   const rows=buttons(cart).filter(b=>clean(b.textContent)==='삭제').map(b=>b.parentElement);
   if(rows.length!==plan.groups.length)throw Error('장바구니 건수를 직접 확인해 주세요.');
-  const remaining=rows.slice();for(const g of plan.groups){const match=remaining.findIndex(r=>clean(r.querySelector('b')?.textContent)==='크레오 대구본점 → '+g.shop&&all(r,'div').some(d=>new RegExp('^'+g.quantity+'마리\\s*·').test(clean(d.textContent))));if(match<0)throw Error('장바구니 도착지·마릿수를 확인해 주세요.');remaining.splice(match,1);}
+  const remaining=rows.slice();for(const g of plan.groups){const match=remaining.findIndex(r=>clean(r.querySelector('b')?.textContent)===ORIGIN+' → '+g.shop&&all(r,'div').some(d=>new RegExp('^'+g.quantity+'마리\\s*·').test(clean(d.textContent))));if(match<0)throw Error('장바구니 출발지·도착지·마릿수를 확인해 주세요.');remaining.splice(match,1);}
   // New provider cart hides recipient and sale price. Do not claim a full cart audit.
   h.report('입력·장바구니 건수 확인 완료 · 새 파르게 장바구니는 수령인·분양가를 표시하지 않아요. 확인 후 직접 예약해 주세요.');
   return {attempted:true,cartVerified:false,formVerified:true,cartSummaryVerified:true,count:plan.groups.length};

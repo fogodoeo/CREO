@@ -42,6 +42,14 @@ test('uses collection after auction, not the customer drop-off day', () => {
     assert.ok(sunday.arrivalDate > sunday.dispatchDate);
     assert.equal(estimate('parge',{config:{...config,auctionDate:'2026-09-20'}}).dispatchDate,'2026-09-21');
 });
+
+test('Hiding origin retains national Monday special Thursday arrival without changing ordinary channels',()=>{
+ const source=parge(),name='하이딩 플레이스 (대구 동구)';source.partners[0].name=name;source.schedules[0].partnerName=name;
+ const cfg={...config,pargeOrigin:name,auctionDate:'2026-09-21'};
+ const special=estimate('parge',{source,config:cfg,nationalMondaySpecial:true});
+ assert.equal(special.dispatchDate,'2026-09-22');assert.equal(special.arrivalDate,'2026-09-24');
+ assert.equal(estimate('parge',{source,config:cfg,nationalMondaySpecial:false}).dispatchDate,'2026-09-28');
+});
 test('Dodosi starts from the next collection and applies route transit and holidays', () => {
     assert.deepEqual(estimate('dodosi'),{status:'estimated',dispatchDate:'2026-09-20',arrivalDate:'2026-09-22',checkedAt});
     assert.equal(estimate('dodosi',{destination:{region:'경상B',shop:'양산 물금 - 도착점'}}).reason,'holiday_or_route');

@@ -105,7 +105,7 @@ function estimate({ config: rawConfig, carrier, destination, source, submittedAt
     }
     if (!collectDays?.length || !arrivalDays?.length) return review('schedule_unavailable', source);
     const override = config[carrier + 'DispatchDate'];
-    const special = carrier === 'parge' && nationalMondaySpecial && weekday(config.auctionDate) === 1 && compact(config.pargeOrigin) === compact('크레오 대구본점');
+    const special = carrier === 'parge' && nationalMondaySpecial && weekday(config.auctionDate) === 1 && ['크레오 대구본점','하이딩 플레이스 (대구 동구)'].some(name=>compact(config.pargeOrigin)===compact(name));
     let dispatchDate = override || (special ? add(config.auctionDate, 1) : nextDay(config.auctionDate, collectDays, { weeks: origin.collectWeeks || [], shop: origin }));
     if (!dispatchDate || dispatchDate <= config.auctionDate || inVacation(dispatchDate, origin)) return review('dispatch', source);
     // An explicit operator dispatch date can reflect a provider-confirmed special run.

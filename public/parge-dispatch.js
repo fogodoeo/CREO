@@ -70,10 +70,10 @@
   $('error').textContent='';const chosen=groups.filter(g=>selected.has(g.key));
   if(!chosen.length)throw Error('접수할 배송 건을 선택해 주세요.');
   if(chosen.some(g=>!g.paid)&&!confirm('결제 미확인 건이 포함돼 있어요. 계속할까요?'))return;
-  const ready=await helper('ping');if(!ready.automaticDate||ready.bookingRevision!=='202611'||(shippingPolicy.specialPickup&&!ready.specialSunday))throw Error('파르게 화면이 바뀌었어요. 아래에서 입력 도구 1.5.1을 내려받아 기존 폴더에 덮어쓴 뒤 확장 프로그램을 새로고침해 주세요.');
+  const ready=await helper('ping');if(!ready.automaticDate||ready.bookingRevision!=='202611'||ready.origin!==Core.ORIGIN||(shippingPolicy.specialPickup&&!ready.specialSunday))throw Error('파르게 화면이 바뀌었어요. 아래에서 입력 도구 1.5.2을 내려받아 기존 폴더에 덮어쓴 뒤 확장 프로그램을 새로고침해 주세요.');
   if((dispatchSender.name!=='크레오 대구본점'&&!ready.customSender)||(dispatchSender.phone!=='01050029163'&&!ready.customSenderPhone))throw Error('보내는 분 변경을 지원하는 입력 도구가 필요해요. 아래에서 최신 도구를 내려받아 교체하고 확장 프로그램을 새로고침해 주세요.');
   $('handover-date').textContent='파르게에서 가능한 날짜 확인 중…';
-  const resolved=await helper('resolve-date',shippingPolicy);
+  const resolved=await helper('resolve-date',{...shippingPolicy,origin:Core.ORIGIN});
   const plan=Core.manifest(chosen,{channelId,date:resolved.date,senderName:dispatchSender.name,senderPhone:dispatchSender.phone});
   $('handover-date').textContent=resolved.date+' · '+(resolved.label||'가장 가까운 가능일');
   const {record}=await post({action:'prepare',requestId:crypto.randomUUID(),plan});await load();

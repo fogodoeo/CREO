@@ -41,6 +41,6 @@ function payload(partners,table,Rates){
   data[group].push({shop:p.name,cost,day:'목요일'});count++;
  }
  if(count<50)throw Error('Incomplete renewal partners');
- return {updated:new Date().toISOString(),source:'parge-renewal-public',origin:'크레오 대구본점',data};
+ return {updated:new Date().toISOString(),source:'parge-renewal-public',origin:'하이딩 플레이스 (대구 동구)',data};
 }
 module.exports={zones,zone,delayed,extract,payload};

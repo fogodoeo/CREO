@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),{webcrypto}=require('node:crypto'),{parseHTML}=require('linkedom');
 const Core=require('../public/parge-dispatch-core');
-function plan(senderName,senderPhone){return Core.manifest([{name:'가상 수령인',phone:'01011112222',shop:'가상 매장',quantity:2,price:350000,items:[{id:'a',price:100000},{id:'b',price:250000}]}],{channelId:'national-cre',date:'2099-10-24',senderName,senderPhone});}
+function plan(senderName,senderPhone){return Core.manifest([{name:'가상 수령인',phone:'01011112222',shop:'가상 매장',quantity:2,price:350000,items:[{id:'a',price:100000},{id:'b',price:250000}]}],{channelId:'national-cre',date:'2099-10-24',origin:'크레오 대구본점',senderName,senderPhone});}
 function fixture(options={}){
  const {document,HTMLInputElement,Event}=parseHTML('<html><body><button>로그아웃</button><main></main></body></html>'),root={},history={},state={clicked:0,captured:[]};
  const main=document.querySelector('main'),button=(parent,label,fn,aria='')=>{const b=document.createElement('button');b.textContent=label;if(aria)b.setAttribute('aria-label',aria);b.onclick=fn;parent.append(b);return b;};
