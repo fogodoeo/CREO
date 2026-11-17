@@ -1,6 +1,7 @@
 'use strict';
 const Core = require('./delivery-schedule-core');
 const Rates = require('./shipping-rate-refresh');
+const Renewal = require('./parge-renewal');
 const clean = value => String(value ?? '').replace(/&nbsp;|&#160;/g, ' ').replace(/&amp;/g, '&')
     .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16))).replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
     .replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -37,7 +38,7 @@ function createSourceReader(fetchImpl = globalThis.fetch) {
         const partnersResult = await get.json('https://parge.co.kr/api/partners');
         const scheduleResult = await get.json('https://parge.co.kr/api/delivery-schedules');
         const guide = clean((await get.text('https://parge.co.kr/guide')).replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '').replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ''));
-        const partners = (partnersResult.partners || []).filter(p => p.isActive !== false).map(p => ({ name: clean(p.name), region: clean(p.region) }));
+        const partners = (partnersResult.partners || []).filter(p => p.isActive !== false).map(p => ({ name: clean(p.name), region: Rates.groupForHub(Rates.partnerHub(p)), address: clean(p.address) }));
         const schedules = (scheduleResult.schedules || []).filter(r => r.isActive).map(r => ({
             region: clean(r.region), partnerName: clean(r.partnerName), collectDayLabel: clean(r.collectDayLabel), deliveryDayLabel: clean(r.deliveryDayLabel)
         }));
@@ -46,7 +47,9 @@ function createSourceReader(fetchImpl = globalThis.fetch) {
         // Keep checking every weekday/route pairing; unknown schedules fail closed.
         const weeklyTable = /월요일 화요일 수요일 목요일 금요일 토요일 일요일 수거 \(수도권\/경상권\) 충청\/구미\/대구 배송 경상권 배송 수도권 배송 강원 배송 제주 배송 \(토 에어·당일 도착\) 전라도\/진주\/논산 배송/;
         const weeklyCards = /월 수거 수도권\/경상권 화 충청\/구미\/대구 배송 수 경상권 배송 목 수도권 배송 금 강원 배송 토 제주 배송 토 에어\s*·\s*당일 도착 일 전라도\/진주\/논산 배송/;
-        if (!weeklyTable.test(guide) && !weeklyCards.test(guide)) throw new Error('PARGE weekly route changed');
+        const renewal = /일요일 맡김 → 월요일 수거 → 목요일 도착/.test(guide) && /월요일 맡김 → 화요일 수거 → 목요일 도착/.test(guide) && /제주도 배송은 운영하지 않습니다/.test(guide);
+        if (!renewal && !weeklyTable.test(guide) && !weeklyCards.test(guide)) throw new Error('PARGE weekly route changed');
+        if (renewal && (schedules.length !== 9 || schedules.some(s => s.deliveryDayLabel !== '목요일'))) throw new Error('PARGE renewal schedule changed');
         const booking = await get.text('https://parge.co.kr/booking');
         const paths = [...new Set([...booking.matchAll(/\/_next\/static\/chunks\/[^"']+\.js/g)].map(m => m[0]))];
         if (!paths.length || paths.length > 30 || paths.some(p => !/^\/_next\/static\/chunks\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_.-]+\.js$/.test(p))) throw new Error('PARGE rate source changed');
@@ -54,11 +57,12 @@ function createSourceReader(fetchImpl = globalThis.fetch) {
         let matrix;
         for (const path of paths) {
             const chunk = await get.text('https://parge.co.kr' + path);
-            try { matrix = Rates.extractMatrix([chunk]); break; } catch { /* Continue to the next public bundle. */ }
+            try { matrix = renewal ? Renewal.extract([chunk]) : Rates.extractMatrix([chunk]); break; } catch { /* Continue to the next public bundle. */ }
         }
         if (!matrix) throw new Error('PARGE rate matrix unavailable');
-        const ratePayload = Rates.buildPargePayload(partnersResult, matrix);
+        const ratePayload = renewal ? Renewal.payload(partnersResult.partners, matrix, Rates) : Rates.buildPargePayload(partnersResult, matrix);
         if (Object.values(ratePayload.data).flat().some(p => !Number.isSafeInteger(p.cost) || p.cost <= 0)) throw new Error('PARGE price is invalid');
+        if (renewal) return { ratePayload, timetable:'national-thursday-202611', partners:partners.filter(p=>!Renewal.zone(p)?.includes('제주')&&Renewal.zone(p)), schedules:partners.filter(p=>Renewal.zone(p)).map(p=>({partnerName:p.name,pickupDayLabel:Renewal.delayed(p)?'월요일':'일요일',collectDayLabel:Renewal.delayed(p)?'화요일':'월요일',deliveryDayLabel:'목요일'})), regionDays:{capital:[4],chungcheong:[4],jeolla:[4],gyeongsang:[4],gangwon:[4]} };
         return { ratePayload, partners, schedules, regionDays: { capital: [4], chungcheong: [2], jeolla: [0], gyeongsang: [3], gangwon: [5] },
             jejuSaturdayFrom: guide.includes('토 에어') && guide.includes('당일 도착') ? '2026-09-19' : '' };
     }

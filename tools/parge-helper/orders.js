@@ -4,6 +4,8 @@
   try{
    if(location.origin!=='https://parge.co.kr'||location.pathname!=='/booking')throw Error('파르게 배송신청 완료 화면을 열어 주세요.');
    const visible=el=>Boolean(el.getClientRects().length);
+   const renewed=[...document.querySelectorAll('h2')].find(el=>visible(el)&&el.textContent.trim()==='예약이 접수되었습니다.');
+   if(renewed){const orders=[...renewed.parentElement.querySelectorAll('li')].filter(visible).map(el=>({orderNumber:el.querySelector('b')?.textContent.trim(),handoverLabel:el.querySelector('div')?.textContent.trim()}));if(!orders.length||orders.length>100||orders.some(o=>!/^\w[\w-]{3,79}$/.test(o.orderNumber||''))||new Set(orders.map(o=>o.orderNumber)).size!==orders.length)throw Error('주문번호 목록을 확인해 주세요.');return {orders,requiresRecipientMatch:true};}
    if(![...document.querySelectorAll('h1,h2,h3')].some(el=>visible(el)&&el.textContent.trim()==='배송 신청이 완료되었습니다!'))throw Error('주문번호가 표시된 배송신청 완료 화면에서 불러와 주세요.');
    const heading=[...document.querySelectorAll('p')].find(el=>visible(el)&&el.textContent.trim()==='맡김일 안내');
    if(!heading)throw Error('주문번호 목록을 읽지 못했어요. 번호를 직접 확인해 입력해 주세요.');

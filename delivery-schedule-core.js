@@ -81,11 +81,12 @@ function estimate({ config: rawConfig, carrier, destination, source, submittedAt
         collectDays = weekdays(originOverride?.collectDayLabel || originDefault?.collectDayLabel);
         const targetOverride = unique(source.schedules, r => compact(r.partnerName) === compact(target.name));
         arrivalDays = targetOverride?.deliveryDayLabel ? weekdays(targetOverride.deliveryDayLabel) : source.regionDays?.[region(target.region)] || [];
-        if (!targetOverride?.deliveryDayLabel) {
+        if (!targetOverride?.deliveryDayLabel && source.timetable !== 'national-thursday-202611') {
             if (/대구|구미|평택/.test(target.name)) arrivalDays = [2];
             else if (/진주|논산/.test(target.name)) arrivalDays = [0];
         }
         if (region(origin.region) === 'jeju' || region(target.region) === 'jeju') {
+            if (source.timetable === 'national-thursday-202611') return review('jeju_schedule', source);
             if (!source.jejuSaturdayFrom) return review('jeju_schedule', source);
             if (region(target.region) === 'jeju') arrivalDays = [6];
             // Jeju's collection and flight can be on the same Saturday.

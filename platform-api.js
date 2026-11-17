@@ -6270,7 +6270,11 @@ function createPlatformApi({
 
             if (segments.length === 3 && segments[2] === 'parge-dispatch') {
                 if (!await requireAdmin(req,res)) return true;
-                if (method === 'GET') replyJson(res,200,{records:await pargeDispatch.list(channelId),sender:await pargeDispatch.sender(channelId),combinedCandidates:channelId==='national-cre-20261118'?(await pargeDelay.rows()).map(s=>({phone:s.recipientPhone,name:s.recipientName,shop:s.pargeShop})):[]});
+                if (method === 'GET') {
+                    const scheduleCore=require('./delivery-schedule-core'),cfg=scheduleCore.channelConfig(channel);
+                    const specialPickup=/^national-cre(?:-\d{8})?$/.test(channelId)&&!!cfg?.auctionDate&&scheduleCore.weekday(cfg.auctionDate)===1;
+                    replyJson(res,200,{records:await pargeDispatch.list(channelId),sender:await pargeDispatch.sender(channelId),shippingPolicy:{specialPickup,auctionDate:cfg?.auctionDate||'',handoverDay:0,arrivalDay:4},combinedCandidates:channelId==='national-cre-20261118'?(await pargeDelay.rows()).map(s=>({phone:s.recipientPhone,name:s.recipientName,shop:s.pargeShop})):[]});
+                }
                 else if (method === 'POST') replyJson(res,200,{record:await pargeDispatch.command(channelId,await readJson(req))});
                 else replyJson(res,405,{error:'Method not allowed'});
                 return true;

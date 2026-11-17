@@ -218,4 +218,4 @@ async function refreshShippingRate(company, { force = false } = {}) {
     inflight.set(company, task); return task;
 }
 
-module.exports = { PROVIDERS, refreshShippingRate, extractMatrix, buildPargePayload, requiredValuesWithPrice, parseDodosiDestination };
+module.exports = { PROVIDERS, refreshShippingRate, extractMatrix, buildPargePayload, partnerHub, groupForHub, requiredValuesWithPrice, parseDodosiDestination };
