@@ -33,7 +33,7 @@
  function change(slot,value){
   const next={x:clamp(value.x,0,96),y:clamp(value.y,0,96),width:clamp(value.width,4,100),height:clamp(value.height,4,100),fontScale:clamp(value.fontScale,.5,2.5),opacity:clamp(value.opacity??100,0,100),visible:value.visible!==false};
   if(typeof value.autoWidth==='boolean')next.autoWidth=value.autoWidth;
-  if(textLayout.rightAnchored(theme(),slot)||value.rightEdge!==undefined)next.rightEdge=textLayout.rightEdge(value);
+  if(textLayout.rightAnchored(theme(),slot)||value.rightEdge!==undefined)next.rightEdge=textLayout.rightEdge(value.rightEdge!==undefined?value:(box(slot)||value),theme());
   model.change(slot,next);paint(slot,next);
   const peer=slot==='p1-ticker'?'p2-ticker':slot==='p2-ticker'?'p1-ticker':'';
   if(peer&&model.values()[peer])model.change(peer,{...model.values()[peer],fontScale:next.fontScale});
@@ -45,7 +45,7 @@
   for(const name of ['x','y','width','height'])$(name).disabled=!value||isFrame(selected);
   const rightAnchored=textLayout.rightAnchored(theme(),selected);
   $('x-label').textContent=rightAnchored?'오른쪽 기준':'가로 X';$('x').min=rightAnchored?'4':'0';$('x').max=rightAnchored?'120':'96';$('right-anchor-note').hidden=!rightAnchored;
-  if(value&&rightAnchored)$('x').value=textLayout.rightEdge(value).toFixed(1);
+  if(value&&rightAnchored)$('x').value=textLayout.rightEdge(value,theme()).toFixed(1);
   $('font').disabled=!value||selected==='p2-parents'||isFrame(selected);$('font').value=value?.fontScale||1;$('font-value').textContent=Math.round((value?.fontScale||1)*100)+'%';
   $('font-number').disabled=$('font').disabled;if(document.activeElement!==$('font-number'))$('font-number').value=Math.round((value?.fontScale||1)*100);
   const canFit=textLayout.supports(theme(),selected),autoWidth=textLayout.automatic(theme(),selected,value);

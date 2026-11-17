@@ -39,7 +39,7 @@ test('national caption and board color pairs meet text contrast requirements',()
  for(const [fg,bg] of pairs){const a=luminance(fg),b=luminance(bg),ratio=(Math.max(a,b)+.05)/(Math.min(a,b)+.05);assert.ok(ratio>=4.5,JSON.stringify({fg,bg,ratio}));}
 });
 function renderer(names,extras={}){
- const ctx=vm.createContext({esc,money:n=>Number(n).toLocaleString('ko-KR'),CreoAuctionContract:require('../public/auction-contract'),CreoBroadcastItemNotes:require('../public/broadcast-item-notes'),...extras});
+ const ctx=vm.createContext({esc,money:n=>Number(n).toLocaleString('ko-KR'),CreoBroadcastTextLayout:require('../public/broadcast-text-layout'),CreoAuctionContract:require('../public/auction-contract'),CreoBroadcastItemNotes:require('../public/broadcast-item-notes'),...extras});
  for(const name of names){const start=html.indexOf('function '+name+'('),end=html.indexOf('\nfunction ',start+1);assert.ok(start>=0);vm.runInContext(html.slice(start,end).split('\nwindow.addEventListener')[0],ctx);}return ctx;
 }
 test('national item ribbon preserves escaped identity, traits and notes and keeps the base layout intact',()=>{

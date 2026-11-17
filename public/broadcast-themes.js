@@ -7,14 +7,15 @@
   Object.freeze({id:'national-stage',name:'전국크레자랑',description:'흰색 이름칸 · 번호 원 · 청록·자주 방송 자막',frame:''}),
   Object.freeze({id:'recessive-special',name:'열성모프 특집',description:'아이보리 · 차콜 · 세이지 포인트',frame:''}),
   Object.freeze({id:'jjun-boutique',name:'쭌이네 모노크롬',description:'화이트 명판 · 블랙 캐릭터 · 실버 엣지',frame:''}),
-  Object.freeze({id:'clab-gallery',name:'씨랩 메탈',description:'건메탈 플레이트 · 실버 엣지 · 스틸 포인트',frame:''})
+  Object.freeze({id:'clab-gallery',name:'씨랩 메탈',description:'건메탈 플레이트 · 실버 엣지 · 스틸 포인트',frame:''}),
+  Object.freeze({id:'departure-blue',name:'과천 · 딥네이비 옥션',description:'은실 자수 명판 · 음각 타이포 · 갤러리 경매',frame:''})
  ]);
  function resolve(id){return presets.find(p=>p.id===id)||presets[0]}
  function apply(doc,id){const theme=resolve(id);if(doc.body)doc.body.dataset.broadcastTheme=theme.id;return theme.id}
  // Always mounted so changing themes can reveal/hide the frame without remounting media.
  function frame(channel){const name=String(channel?.shortName||channel?.name||'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));return '<div class="broadcast-console" aria-hidden="true"><div class="console-shell"></div><div class="screen-bezel"></div><div class="console-stripes"><i></i><i></i><i></i><i></i></div><i class="console-power"></i><i class="console-dpad"></i><div class="console-buttons"><i></i><i></i></div><div class="console-speaker"><i></i><i></i><i></i><i></i><i></i></div></div>'+`<div class="recessive-brand"><span>${name}</span><strong>열성모프 특집</strong></div>`+studioFrame(channel)}
  function studioFrame(channel){
-  if(!['jjun-boutique','clab-gallery'].includes(channel?.broadcastTheme))return '';
+  if(!['jjun-boutique','clab-gallery','departure-blue'].includes(channel?.broadcastTheme))return '';
   const esc=value=>String(value||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const date=String(channel.shippingDefaults?.deliverySchedule?.auctionDate||'');
   // The event (auction) date, never a dispatch date. A valid YYYY-MM-DD shows as MM.DD plus its weekday; anything else is shown as entered.

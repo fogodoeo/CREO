@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <filter id="intaglio" x="-8%" y="-12%" width="116%" height="124%" color-interpolation-filters="sRGB">
+    <feOffset in="SourceAlpha" dy="1.4" result="down"/>
+    <feGaussianBlur in="down" stdDeviation="0.5" result="softDown"/>
+    <feComposite in="SourceAlpha" in2="softDown" operator="out" result="upperInnerEdge"/>
+    <feFlood flood-color="#01040b" flood-opacity="0.95" result="dark"/>
+    <feComposite in="dark" in2="upperInnerEdge" operator="in" result="recessShadow"/>
+    <feOffset in="SourceAlpha" dy="-0.8" result="up"/>
+    <feComposite in="SourceAlpha" in2="up" operator="out" result="lowerInnerEdge"/>
+    <feFlood flood-color="#efede3" flood-opacity="0.58" result="light"/>
+    <feComposite in="light" in2="lowerInnerEdge" operator="in" result="recessLight"/>
+    <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="recessShadow"/><feMergeNode in="recessLight"/></feMerge>
+  </filter>
+</svg>

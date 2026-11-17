@@ -6,12 +6,13 @@
 })(typeof window==='object'?window:globalThis,function(){
  'use strict';
  const slots=new Set(['p2-info','p2-progress','p2-bidders','p2-price','p2-sold']);
- const supports=(theme,slot)=>theme==='national-stage'&&slots.has(slot);
+ const separatedInfo=theme=>['national-stage','clab-gallery','departure-blue'].includes(theme);
+ const supports=(theme,slot)=>(theme==='national-stage'&&slots.has(slot))||(separatedInfo(theme)&&slot==='p2-info');
  const automatic=(theme,slot,value)=>supports(theme,slot)&&value?.autoWidth!==false;
- const rightAnchored=(theme,slot)=>theme==='national-stage'&&slot==='p2-info';
- const rightEdge=value=>Number.isFinite(Number(value?.rightEdge))&&value?.rightEdge!==null?Math.max(4,Math.min(120,Number(value.rightEdge))):98;
- function move(theme,slot,value,dx,dy){return {...value,...(rightAnchored(theme,slot)?{rightEdge:rightEdge(value)+dx}:{x:value.x+dx}),y:value.y+dy};}
- function resize(theme,slot,value,dx,dy){return {...value,width:value.width+(rightAnchored(theme,slot)?-dx:dx),height:value.height+dy};}
+ const rightAnchored=(theme,slot)=>separatedInfo(theme)&&slot==='p2-info';
+ const rightEdge=(value,theme='national-stage')=>Number.isFinite(Number(value?.rightEdge))&&value?.rightEdge!==null?Math.max(4,Math.min(120,Number(value.rightEdge))):theme!=='national-stage'&&Number.isFinite(value?.x)&&Number.isFinite(value?.width)?Math.max(4,Math.min(120,value.x+value.width)):98;
+ function move(theme,slot,value,dx,dy){return {...value,...(rightAnchored(theme,slot)?{rightEdge:rightEdge(value,theme)+dx}:{x:value.x+dx}),y:value.y+dy};}
+ function resize(theme,slot,value,dx,dy){const anchored=rightAnchored(theme,slot);return {...value,...(anchored?{rightEdge:rightEdge(value,theme)}:{}),width:value.width+(anchored?-dx:dx),height:value.height+dy};}
  let infoElement=null,infoObserver=null;
  function fitInfoRows(element){
   // Notes must never make the sex, weight or hatch date smaller.
@@ -50,8 +51,8 @@
   if(!supports(theme,slot)){delete element.dataset.textAutoWidth;element.style?.removeProperty('--text-anchor-y');element.style?.removeProperty('--text-anchor-right');return;}
   element.dataset.textAutoWidth=automatic(theme,slot,value)?'1':'0';
   const y=Number(value?.y);element.style?.setProperty('--text-anchor-y',`${Number.isFinite(y)?Math.max(0,Math.min(96,y)):0}vh`);
-  if(rightAnchored(theme,slot))element.style?.setProperty('--text-anchor-right',`${rightEdge(value)}%`);
+  if(rightAnchored(theme,slot))element.style?.setProperty('--text-anchor-right',`${rightEdge(value,theme)}%`);
   if(slot==='p2-info')watchInfo(element);
  }
- return Object.freeze({supports,automatic,rightAnchored,rightEdge,move,resize,apply,fitInfoRows});
+ return Object.freeze({supports,separatedInfo,automatic,rightAnchored,rightEdge,move,resize,apply,fitInfoRows});
 });

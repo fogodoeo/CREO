@@ -1,0 +1,59 @@
+/* Generated nine-slice stitching + native live typography. No baked-in auction data. */
+@font-face{font-family:'Gmarket Sans';src:url('assets/gallery-auction/GmarketSansMedium.woff2') format('woff2');font-weight:400 600;font-style:normal;font-display:swap}
+@font-face{font-family:'Gmarket Sans';src:url('assets/gallery-auction/GmarketSansBold.woff2') format('woff2');font-weight:601 900;font-style:normal;font-display:swap}
+body[data-broadcast-theme="departure-blue"] #stage,
+body[data-broadcast-theme="departure-blue"] #stage *{
+ font-family:'Gmarket Sans','Pretendard Variable',sans-serif!important;
+ font-synthesis:none;
+}
+body[data-broadcast-theme="departure-blue"]{
+ --departure-panel:#0b1526;--departure-inset:#081121;--departure-raised:#101d31;
+ --departure-ink:#d0cdc3;--departure-muted:#bdbbb3;--departure-rule:#817f78;--departure-accent:#c6c0ae;
+ --caption-identity:#0b1526;--caption-detail:#0b1526;--caption-note:#0b1526;
+ --caption-ink:#d0cdc3;--caption-muted:#bdbbb3;--caption-line:#817f78;--caption-radius:0px;
+ --auction-weave:url('assets/gallery-auction/navy-weave.webp');
+ --auction-stitch:url('assets/gallery-auction/embroidered-frame.png');
+ --auction-intaglio:0 .5px 0 #d6d7cf30;
+ --broadcast-radius:0px;
+}
+body[data-broadcast-theme="departure-blue"][data-page] #stage :is(
+ .host-card,.item-progress,.price-card,.ticker,.simple-ranking,.live-bid-row,.standby-note,.sold-notice,.studio-plate,
+ .item-copy.is-inline-info .item-inline-main .item-inline-identity,.national-item-detail>.item-inline-traits){
+ background:var(--auction-weave) repeat var(--departure-panel)!important;
+ background-size:256px 256px!important;
+ border:1px solid #a9a89e!important;border-radius:0!important;
+ border-image:var(--auction-stitch) 88 / 22px / 0 stretch!important;
+ box-shadow:inset 0 2px 5px #0008,0 5px 12px #0005!important;
+ color:var(--departure-ink)!important;
+}
+body[data-broadcast-theme="departure-blue"][data-page] #stage :is(.host-name,.host-role,.item-progress strong,.price b,.price span,.live-bid-name,.live-bid-amount,.summary-name,.summary-amount,.summary-rank,.summary-empty,.ticker-text,.studio-title>strong,.studio-title>span,.studio-date strong,.studio-date span,.board-head h1,.item-inline-identity h1,.vendor-tag,.item-inline-pill,.broadcast-item-note>span,.sold-notice strong,.sold-notice span){
+ text-shadow:var(--auction-intaglio)!important;
+ filter:url('assets/gallery-auction/engraved-text.svg#intaglio');
+ -webkit-font-smoothing:antialiased;
+}
+body[data-broadcast-theme="departure-blue"] #stage :is(.studio-title>strong,.studio-date strong,.item-inline-identity h1,.live-bid-amount,.summary-amount){
+ color:#d2cfc4!important;
+}
+body[data-broadcast-theme="departure-blue"] #stage .host-role{color:var(--departure-muted)!important}
+body[data-broadcast-theme="departure-blue"] #stage .host-role::before{color:#807f78!important}
+body[data-broadcast-theme="departure-blue"] #stage .live-bid-row{padding:14px 26px!important}
+body[data-broadcast-theme="departure-blue"][data-page] #stage .live-bid-row[data-rank="1"]{background-image:linear-gradient(#9daab010,#9daab010),var(--auction-weave)!important;border-left-width:1px!important}
+body[data-broadcast-theme="departure-blue"] #stage .live-bid-name{font-weight:600!important}
+body[data-broadcast-theme="departure-blue"] #stage .live-bid-amount{font-family:Georgia,'Batang',serif;font-weight:600!important;letter-spacing:-.02em}
+body[data-broadcast-theme="departure-blue"] #stage .ticker-text{color:var(--departure-ink)!important;font-weight:550!important}
+body[data-broadcast-theme="departure-blue"] #stage .summary-row{border-color:#74746a70!important}
+body[data-broadcast-theme="departure-blue"] #stage .board-head{border-color:#74746a!important}
+body[data-broadcast-theme="departure-blue"] #stage .studio-plate{padding:24px 30px}
+body[data-broadcast-theme="departure-blue"] #stage .studio-title>span{letter-spacing:.03em}
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .item-copy.is-inline-info .item-inline-identity{padding:14px 24px}
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .national-item-detail>.item-inline-traits{padding:12px 24px;gap:8px 0}
+/* Fragmented notes retain fitted surfaces; a slim stitched rule survives wrapping. */
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .broadcast-item-note>span{
+ background:var(--auction-weave) repeat #0b1526!important;
+ border:1px solid #a19f92;box-shadow:inset 0 0 0 2px #0b1526,inset 0 0 0 3px #73746c;
+ padding:.2em 14px;color:var(--departure-ink)!important;
+}
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .item-copy.is-inline-info .broadcast-item-note{font-weight:600;line-height:1.7!important}
+@media(max-width:800px){
+ body[data-broadcast-theme="departure-blue"]{--auction-intaglio:0 -1px 0 #000,0 .5px 0 #ffffff30}
+}

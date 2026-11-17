@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const notes=require('../public/broadcast-item-notes'),contract=require('../public/auction-contract');
+const notes=require('../public/broadcast-item-notes'),contract=require('../public/auction-contract'),textLayout=require('../public/broadcast-text-layout');
 
 test('pricing notes use explicit won/manwon units, clear zero values and preserve original notes',()=>{
  const item={name:'A11',startPrice:50000,note:'SPT 아잔틱 · PCR',attributes:{checklist:'memo:부모 확인'}};
@@ -58,7 +58,7 @@ test('P2 content sizing overrides saved height and separates the note from the i
 });
 test('P2 notes can be hidden in both layouts without removing identity or traits; undefined keeps existing visibility',()=>{
  const source=fs.readFileSync(require.resolve('../public/auction-live.html'),'utf8');let inline=true;
- const c=vm.createContext({CreoBroadcastItemNotes:notes,CreoAuctionContract:contract,esc:String,money:String,
+ const c=vm.createContext({CreoBroadcastTextLayout:textLayout,CreoBroadcastItemNotes:notes,CreoAuctionContract:contract,esc:String,money:String,
   CreoBroadcastStandby:require('../public/broadcast-standby'),channelId:'alpha',editorMode:false,
   CreoBroadcastProfiles:{resolve:()=>({settings:{page2InfoLayout:inline?'inline-traits':'standard'}})},
   vendorLogo:()=>'',pageTwoProgress:()=>'',pageTwoBidders:()=>'',pageTwoParents:()=>'',banner:()=>'',showBanner:()=>false,pageTicker:()=>''});
@@ -84,7 +84,7 @@ test('embedded P2 settings submit the note toggle without submitting auction sta
 
 test('P2 pricing follows live settings, item changes and note visibility in both layouts',()=>{
  const source=fs.readFileSync(require.resolve('../public/auction-live.html'),'utf8');let inline=true;
- const c=vm.createContext({CreoBroadcastItemNotes:notes,CreoAuctionContract:contract,esc:String,money:String,
+ const c=vm.createContext({CreoBroadcastTextLayout:textLayout,CreoBroadcastItemNotes:notes,CreoAuctionContract:contract,esc:String,money:String,
   CreoBroadcastStandby:require('../public/broadcast-standby'),channelId:'alpha',editorMode:false,
   CreoBroadcastProfiles:{resolve:()=>({settings:{page2InfoLayout:inline?'inline-traits':'standard'}})},
   vendorLogo:()=>'',pageTwoProgress:()=>'',pageTwoBidders:()=>'',pageTwoParents:()=>'',banner:()=>'',showBanner:()=>false,pageTicker:()=>''});
