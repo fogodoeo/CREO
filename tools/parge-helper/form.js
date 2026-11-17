@@ -1,4 +1,4 @@
-(function(root){'use strict';if(root.CreoPargeForm?.version==='1.5.0')return;
+(function(root){'use strict';if(root.CreoPargeForm?.version==='1.5.1')return;
  const clean=v=>String(v||'').replace(/\s+/g,' ').trim();let running=false;
  const all=(scope,selector)=>[...scope.querySelectorAll(selector)],buttons=scope=>all(scope,'button');
  function button(scope,label){const rows=buttons(scope).filter(b=>clean(b.textContent)===label||b.getAttribute('aria-label')===label);if(rows.length!==1)throw Error('파르게 화면이 달라졌어요: '+label);return rows[0];}
@@ -89,5 +89,5 @@
   for(const g of plan.groups){const matches=added.filter(row=>row.includes('크레오 대구본점')&&row.includes('보내는분: '+plan.senderName+' |')&&row.includes(g.shop)&&row.includes('받는분: '+g.name)&&row.includes(`크레스티드게코 ${String(g.quantity).padStart(2,'0')}마리`)&&row.includes(`분양 ${g.price}원`));if(matches.length!==1)throw Error('장바구니 보내는 분·마릿수·분양가가 맞지 않아요. 직접 확인해 주세요.');}
   report('장바구니 내역 확인 완료 · 새로고침하면 사라질 수 있어요. 최종 확인 후 결제해 주세요.');return {attempted:true,cartVerified:true,count:plan.groups.length};
  }catch(e){const message=e.message+(attempted?' 장바구니 반영 여부를 먼저 확인해 주세요.':'');report(message,true);return {error:message};}finally{running=false;}}
- root.CreoPargeForm={version:'1.5.0',run,resolveDate};
+ root.CreoPargeForm={version:'1.5.1',run,resolveDate};
 })(window);

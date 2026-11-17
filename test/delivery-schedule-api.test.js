@@ -5,6 +5,7 @@ const {createPlatformApi}=require('../platform-api');
 const {normalizeChannel}=require('../platform-core');
 const {createDeliveryScheduleService,KEY}=require('../delivery-schedule-service');
 const now=Date.parse('2026-09-18T00:00:00Z');
+const PargeDispatchCore=require('../public/parge-dispatch-core');
 async function fixture(t){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'creo-schedule-test-'));let repo,service,api;
  function start(){repo=new SQLitePlatformRepository({dbPath:path.join(dir,'test.sqlite'),startWorker:false,adminSecret:'test'});service=createDeliveryScheduleService({repository:repo,now:()=>now,reader:{async parge(){throw Error('No external requests in test')}},logger:{warn(){}}});api=createPlatformApi({repository:repo,deliverySchedules:service,adminSessionSecret:'schedule-test',logger:{warn(){},error(){}}})}start();
@@ -22,6 +23,31 @@ async function fixture(t){
  const vendor=(await call('POST','channels/alpha/vendor-checkout-link',{vendorId:'v1'},true)).json().code;
  return{call,code,vendor,get repo(){return repo},get service(){return service},async restart(){await service.stop();repo.close();start()}};
 }
+test('special Monday Sunday booking never replaces the earlier Thursday buyer ETA or booking notice',async t=>{
+ const f=await fixture(t),id='national-cre-20991019',route=`channels/${id}/parge-dispatch`;
+ const catalog=await f.repo.getCatalog();
+ await f.repo.saveCatalog([...catalog.channels,normalizeChannel({id,name:'격리 월요일 회차',status:'active',nationalRound:{parentId:'national-cre',date:'2099-10-19'},shippingDefaults:{enabledCarriers:['parge'],pickupLocations:['현장 수령']}})]);
+ const saved=JSON.parse((await f.repo.getRowsByKeys([KEY]))[0].value),source=saved.sources.parge;
+ source.timetable='national-thursday-202611';source.regionDays.gangwon=[4];source.partners.push({name:'크레오 대구본점',region:'경상권'});source.schedules.push({partnerName:'크레오 대구본점',collectDayLabel:'월요일'});
+ await f.repo.upsertRows([{key:KEY,value:JSON.stringify(saved)}]);await f.restart();
+ await f.repo.upsertRecord(id,'vendor',{id:'v1',name:'격리 업체',phone:'01000000001',bankName:'가상은행',bankAccount:'000',bankHolder:'가상',paymentMethods:['bank_transfer']});
+ await f.repo.upsertRecord(id,'item',{id:'special',vendorId:'v1',name:'A01',status:'sold',soldPrice:100000,winnerName:'격리 구매자',winnerPhone:'01000000002',attributes:{broadcastDate:'2099-10-19'}});
+ await f.repo.upsertRecord(id,'shipment',{id:'s-special',itemId:'special',vendorId:'v1',recipientPhone:'01000000002',recipientName:'격리 구매자',method:'delivery',carrier:'파르게',destinationType:'parge',pargeRegion:'강원도',pargeShop:'수령점',paymentMethod:'bank_transfer',paymentStatus:'paid',cost:40000,buyerSubmittedAt:'2099-10-19T13:00:00Z'});
+ const buyerCode=(await f.call('POST',`channels/${id}/buyer-shipping-link`,{itemId:'special'},true)).json().code;
+ const w={items:await f.repo.listRecords(id,'item'),shipments:await f.repo.listRecords(id,'shipment')};
+ const plan=PargeDispatchCore.manifest(PargeDispatchCore.build(w,{channelId:id}).groups,{channelId:id,date:'2099-10-25'});
+ const prepared=await f.call('POST',route,{action:'prepare',requestId:'special-sunday-isolated-01',plan},true);assert.equal(prepared.status,200,prepared.body);
+ const record=prepared.json().record;
+ const booked=await f.call('POST',route,{action:'confirm-reservation',id:record.id,expectedUpdatedAt:record.updatedAt,confirmed:true,deliveries:plan.groups.map(g=>({itemIds:g.items.map(i=>i.id)}))},true);assert.equal(booked.status,200,booked.body);
+ const verify=async()=>{
+  const history=(await f.call('GET',route,null,true)).json();assert.equal(history.shippingPolicy.specialPickup,true);assert.equal(history.records[0].plan.date,'2099-10-25');
+  const buyer=(await f.call('GET','buyer-shipping?code='+buyerCode)).json();assert.equal(buyer.deliverySchedule.dispatchDate,'2099-10-20');assert.equal(buyer.deliverySchedule.arrivalDate,'2099-10-22');
+  const preview=await f.call('POST',route,{action:'preview-notices',id:record.id},true);assert.equal(preview.status,200,preview.body);assert.equal(preview.json().record.preview[0].variables.수령예정일,'2099-10-22');
+ };
+ await verify();await f.restart();await verify();
+ assert.deepEqual(await f.repo.listRecords(id,'shipment'),w.shipments);assert.deepEqual(await f.repo.listRecords(id,'notification'),[]);
+});
+
 test('buyer, vendor and organizer share estimates; reads never mutate payment, fees or notifications',async t=>{
  const f=await fixture(t);
  const before={shipments:await f.repo.listRecords('alpha','shipment'),items:await f.repo.listRecords('alpha','item'),notifications:await f.repo.listRecords('alpha','notification')};

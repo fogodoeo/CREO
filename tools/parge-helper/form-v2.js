@@ -35,10 +35,10 @@
  }
  async function resolveDate(options,h){
   const c=await prepare(h);
-  if(options?.specialPickup)throw Error('월요일 방송은 특별 수거 대상이에요. 다음 일요일로 자동 접수하지 않습니다. 파르게와 특별 수거 예약일을 확인해 주세요.');
   if(!clean(c.textContent).includes('일요일만 선택 가능'))throw Error('일요일 맡김 일정이 아니에요. 파르게 일정을 확인해 주세요.');
   const date=await h.earliestDate(c);if(new Date(date+'T00:00:00Z').getUTCDay()!==0)throw Error('일요일 맡김일을 확인하지 못했어요.');
-  return {date,layout:'202611',label:'일요일 맡김 · 목요일 도착'};
+  // Booking-only Sunday is deliberately separate from the buyer's special-run ETA.
+  return {date,layout:'202611',label:options?.specialPickup?'신청용 일요일 · 특별 수거 도착일은 별도 안내':'일요일 맡김 · 목요일 도착'};
  }
  async function run(plan,h){
   const c=await prepare(h);
