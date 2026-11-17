@@ -11,7 +11,8 @@ const css=[...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].map(m=>m[1]).join('\
  const out=path.resolve(root,'../Desktop/씨랩/11월17일용/송출/검수');fs.mkdirSync(out,{recursive:true});const results=[];
  try{
  const page=await browser.newPage();
- for(const theme of ['national-stage','clab-gallery','departure-blue'])for(const width of [1920,1280,676])for(const fontScale of [1,1.9])for(const auto of ['1','0'])for(const motion of ['no-preference','reduce']){
+ // Airport now has its own real-font, full-scene verifier: verify-airport-layout.cjs.
+ for(const theme of ['national-stage','clab-gallery'])for(const width of [1920,1280,676])for(const fontScale of [1,1.9])for(const auto of ['1','0'])for(const motion of ['no-preference','reduce']){
   await page.setViewport({width,height:Math.round(width*9/16)});await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:motion}]);
   for(const [kind,note] of [['short','암'],['long','부모 확인 완료 · 릴리화이트 형질 확인 · 먹이 반응 좋음 · 입찰 전에 사진과 설명을 꼭 확인해 주세요'],['unbroken','가나다라마바사아자차카타파하'.repeat(4)],['empty','']]){
    const info=ctx.pageTwoInlineInfo({name:'A01',note,attributes:{checklist:'gender:F|weight:28|birth:2026-04-02'}},'<span class="vendor-tag">가상출품업체</span>',true,true);

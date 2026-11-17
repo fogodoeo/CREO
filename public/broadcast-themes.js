@@ -8,7 +8,7 @@
   Object.freeze({id:'recessive-special',name:'열성모프 특집',description:'아이보리 · 차콜 · 세이지 포인트',frame:''}),
   Object.freeze({id:'jjun-boutique',name:'쭌이네 모노크롬',description:'화이트 명판 · 블랙 캐릭터 · 실버 엣지',frame:''}),
   Object.freeze({id:'clab-gallery',name:'씨랩 메탈',description:'건메탈 플레이트 · 실버 엣지 · 스틸 포인트',frame:''}),
-  Object.freeze({id:'departure-blue',name:'과천 · 딥네이비 옥션',description:'은실 자수 명판 · 음각 타이포 · 갤러리 경매',frame:''})
+  Object.freeze({id:'departure-blue',name:'과천 · 야간공항',description:'네이비 안내 패널 · 은은한 조명선 · 지마켓 산스',frame:''})
  ]);
  function resolve(id){return presets.find(p=>p.id===id)||presets[0]}
  function apply(doc,id){const theme=resolve(id);if(doc.body)doc.body.dataset.broadcastTheme=theme.id;return theme.id}

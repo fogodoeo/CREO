@@ -1,0 +1,59 @@
+/* Night terminal: shared navy surfaces, warm guide light, live Gmarket typography. */
+body[data-broadcast-theme="departure-blue"] #stage :is(.layer.enter,.sold-flash){animation:none!important}
+body[data-broadcast-theme="departure-blue"]{--departure-panel:#0b1d31f5;--departure-inset:#071626f5;--departure-raised:#102b43;--departure-ink:#eef4f9;--departure-muted:#bdcddd;--departure-rule:#4a667c;--departure-accent:#dec69c;--caption-identity:var(--departure-panel);--caption-detail:#11273cf5;--caption-note:var(--departure-inset);--caption-ink:#eef4f9;--caption-muted:#bdcddd;--caption-line:#4a667c;--caption-radius:5px;--airport-unit:1px;--airport-fit:1}
+body[data-broadcast-theme="departure-blue"][data-page] #stage :is(.host-card,.item-progress,.price-card,.ticker,.simple-ranking,.live-bid-row,.standby-note,.sold-notice,.studio-plate,.item-copy.is-inline-info .item-inline-main .item-inline-identity,.national-item-detail>.item-inline-traits){background:linear-gradient(120deg,#172f4440,transparent 65%),var(--departure-panel)!important;border:1px solid var(--departure-rule)!important;border-image:none!important;border-radius:5px!important;box-shadow:inset 0 1px 0 #c1d5e716,0 5px 15px #0003!important;color:var(--departure-ink)!important;backdrop-filter:none!important}
+body[data-broadcast-theme="departure-blue"][data-page] #stage :is(.host-name,.host-role,.item-progress strong,.price b,.price span,.live-bid-name,.live-bid-amount,.summary-name,.summary-amount,.summary-rank,.summary-empty,.ticker-text,.studio-title>strong,.studio-title>span,.studio-date strong,.studio-date span,.board-head h1,.item-inline-identity h1,.vendor-tag,.item-inline-pill,.broadcast-item-note>span,.sold-notice strong,.sold-notice span){filter:none!important;text-shadow:0 1px 1px #0005!important;letter-spacing:-.025em;line-height:1.4;color:var(--departure-ink)!important}
+body[data-broadcast-theme="departure-blue"] #stage [data-airport-fit]>*{zoom:1!important}
+body[data-broadcast-theme="departure-blue"][data-page] #stage :is(.host-card,.studio-plate,.simple-ranking,.ticker){border-top:2px solid #c5b08c!important}
+body[data-broadcast-theme="departure-blue"] #stage .studio-masthead{max-width:38%;top:4%;left:4%}
+body[data-broadcast-theme="departure-blue"] #stage .studio-plate{gap:calc(24 * var(--airport-unit));padding:calc(18 * var(--airport-unit)) calc(24 * var(--airport-unit));min-width:0;max-width:100%}
+body[data-broadcast-theme="departure-blue"] #stage .studio-title>strong{font-size:calc(34 * var(--airport-unit) * var(--airport-fit));font-weight:700;overflow-wrap:anywhere}
+body[data-broadcast-theme="departure-blue"] #stage .studio-title>span{font-size:calc(18 * var(--airport-unit) * var(--airport-fit));letter-spacing:0;overflow-wrap:anywhere}
+body[data-broadcast-theme="departure-blue"] #stage .studio-date{padding-inline-start:calc(22 * var(--airport-unit))}
+body[data-broadcast-theme="departure-blue"] #stage .studio-date strong{font-size:calc(30 * var(--airport-unit) * var(--airport-fit))}
+body[data-broadcast-theme="departure-blue"] #stage .studio-date span{font-size:calc(17 * var(--airport-unit) * var(--airport-fit))}
+body[data-broadcast-theme="departure-blue"] #stage .host-card{display:flex;align-items:center;padding:calc(16 * var(--airport-unit)) calc(28 * var(--airport-unit))!important}
+body[data-broadcast-theme="departure-blue"] #stage .host-card>strong{display:flex;align-items:center;flex-wrap:wrap;gap:calc(18 * var(--airport-unit));width:100%;white-space:normal;overflow:visible}
+body[data-broadcast-theme="departure-blue"] #stage .host-name{font-size:calc(46 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit))!important;font-weight:700!important;overflow:visible;white-space:normal;overflow-wrap:anywhere;text-overflow:clip}
+body[data-broadcast-theme="departure-blue"] #stage .host-role{font-size:calc(30 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit))!important;overflow:visible;white-space:normal;overflow-wrap:anywhere}
+body[data-broadcast-theme="departure-blue"] #stage .host-role::before{content:'';width:1px;align-self:stretch;background:#587185;margin-inline-end:calc(18 * var(--airport-unit))}
+body[data-broadcast-theme="departure-blue"] #stage .item-progress{display:grid;place-items:center;padding:calc(12 * var(--airport-unit))!important}
+body[data-broadcast-theme="departure-blue"] #stage .item-progress strong{font-size:calc(58 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit))!important;font-variant-numeric:tabular-nums}
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .item-copy.is-inline-info .item-inline-identity{padding:calc(14 * var(--airport-unit)) calc(22 * var(--airport-unit));gap:calc(20 * var(--airport-unit));flex-wrap:wrap;justify-content:flex-end;overflow:visible}
+/* Keep the upper centre free for the wall logo, including long vendor names. */
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .item-copy.is-inline-info[data-text-auto-width]{max-width:min(38%,calc(var(--text-anchor-right,98%) - 2%))!important}
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .item-inline-identity h1{font-size:calc(44 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit))!important;font-weight:700!important;margin:0;line-height:1.4}
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .item-inline-identity .vendor-tag{font-size:calc(28 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit))!important;white-space:normal;overflow-wrap:anywhere;line-height:1.4}
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .national-item-detail>.item-inline-traits{padding:calc(10 * var(--airport-unit)) calc(22 * var(--airport-unit));gap:calc(6 * var(--airport-unit)) 0;background:#11273cf5!important}
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .item-inline-pill{font-size:calc(27 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit))!important;line-height:1.4}
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .item-copy.is-inline-info .broadcast-item-note{font-size:calc(25 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit))!important;line-height:1.7!important;padding:calc(5 * var(--airport-unit)) calc(14 * var(--airport-unit));color:#e5edf5!important}
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .broadcast-item-note>span{background:#071626f5!important;border:0;border-radius:3px;box-shadow:0 0 0 1px #3b566d;padding:.18em .5em}
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .live-bidders{gap:calc(10 * var(--airport-unit));overflow:visible}
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .live-bid-row{grid-template-columns:minmax(0,1fr) minmax(0,.8fr);padding:calc(18 * var(--airport-unit)) calc(24 * var(--airport-unit))!important;gap:calc(18 * var(--airport-unit));font-size:calc(46 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit));line-height:1.4}
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .live-bid-row[data-rank="1"]{background:linear-gradient(110deg,#163650,#10273c)!important;border-left:3px solid #8ebdd6!important}
+body[data-broadcast-theme="departure-blue"][data-page="2"] #stage .live-bid-row :is(.live-bid-name,.live-bid-amount){white-space:normal!important;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.4;font-weight:500!important}
+body[data-broadcast-theme="departure-blue"][data-page] #stage :is(.live-bid-amount,.summary-amount){color:#e6cfaa!important;font-variant-numeric:tabular-nums}
+body[data-broadcast-theme="departure-blue"] #stage .live-bid-amount{border-inline-start:1px solid #4a667c;padding-inline-start:calc(16 * var(--airport-unit))}
+body[data-broadcast-theme="departure-blue"][data-page] #stage .ticker{padding:calc(12 * var(--airport-unit)) calc(30 * var(--airport-unit))!important;min-height:0;display:flex;align-items:center}
+body[data-broadcast-theme="departure-blue"][data-page] #stage .ticker-text{font-size:calc(46 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit))!important;padding:0!important;white-space:normal!important;overflow-wrap:anywhere;line-height:1.4;overflow:visible;text-align:center;width:100%;font-weight:500!important}
+body[data-broadcast-theme="departure-blue"] #stage .simple-ranking{padding:calc(26 * var(--airport-unit));gap:calc(16 * var(--airport-unit))}
+body[data-broadcast-theme="departure-blue"] #stage .board-head{padding:0 0 calc(14 * var(--airport-unit));border-color:#4a667c!important}
+body[data-broadcast-theme="departure-blue"] #stage .board-head h1{font-size:calc(36 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit));line-height:1.4;overflow-wrap:anywhere}
+body[data-broadcast-theme="departure-blue"] #stage .summary-row{grid-template-columns:calc(34 * var(--airport-unit)) minmax(0,1fr) minmax(0,1fr);gap:calc(16 * var(--airport-unit));padding:calc(14 * var(--airport-unit)) 0;border-color:#30485e!important;min-width:0}
+body[data-broadcast-theme="departure-blue"] #stage :is(.summary-name,.summary-amount,.summary-rank){font-size:calc(34 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit))!important;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;min-width:0;font-weight:500!important;line-height:1.4}
+body[data-broadcast-theme="departure-blue"] #stage .summary-amount small{font-size:.55em}
+body[data-broadcast-theme="departure-blue"] #stage .summary-amount{justify-self:end;text-align:right;width:100%}
+body[data-broadcast-theme="departure-blue"][data-page] #stage .live-bid-row.live-bid-row[data-rank="1"]{border-left:3px solid #8ebdd6!important}
+body[data-broadcast-theme="departure-blue"][data-page] #stage .host-card.host-card.host-card.host-card,
+body[data-broadcast-theme="departure-blue"][data-page] #stage .ticker.ticker.ticker.ticker,
+body[data-broadcast-theme="departure-blue"][data-page] #stage .studio-plate.studio-plate.studio-plate.studio-plate{border-top:2px solid #c5b08c!important}
+body[data-broadcast-theme="departure-blue"] #stage .summary-empty{font-size:calc(30 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit))}
+body[data-broadcast-theme="departure-blue"] #stage .price-card{min-width:0;padding:calc(16 * var(--airport-unit)) calc(24 * var(--airport-unit))!important}
+body[data-broadcast-theme="departure-blue"] #stage .price{margin:0}
+body[data-broadcast-theme="departure-blue"] #stage .price b{font-size:calc(54 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit));overflow-wrap:anywhere}
+body[data-broadcast-theme="departure-blue"] #stage .price span{font-size:calc(22 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit))}
+body[data-broadcast-theme="departure-blue"] #stage .price small{font-size:.45em}
+body[data-broadcast-theme="departure-blue"] #stage .sold-notice{padding:calc(24 * var(--airport-unit));min-width:0;max-width:80%;overflow-wrap:anywhere}
+body[data-broadcast-theme="departure-blue"] #stage .sold-notice strong{font-size:calc(56 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit))}
+body[data-broadcast-theme="departure-blue"] #stage .sold-notice :is(span,small){font-size:calc(26 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit))}
+body[data-broadcast-theme="departure-blue"] #stage .standby-note{font-size:calc(28 * var(--airport-unit) * var(--layout-font-scale,1) * var(--airport-fit));white-space:normal;overflow-wrap:anywhere}
