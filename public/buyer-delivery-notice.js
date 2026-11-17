@@ -13,14 +13,14 @@
    const title=add(host,'h2',notice.title);if(host===dialog)title.id='delivery-notice-title';
    add(host,'p',notice.description);
    if(notice.schedule){const schedule=document.createElement('div');schedule.innerHTML=global.CreoDeliverySchedule.html(notice.schedule);host.append(schedule);}
-   add(host,'p',notice.combined);
+   if(notice.combined)add(host,'p',notice.combined);
   }
   dialog.addEventListener('close',()=>{if(returnFocus?.isConnected)returnFocus.focus();});
   dialog.addEventListener('cancel',event=>{if(saving)event.preventDefault();});
   function update(data) {
    const notice=data.deliveryNotice;
    banner.replaceChildren();banner.hidden=!notice&&!data.combinedShipping;
-   if(notice){add(banner,'h2',notice.title);add(banner,'p','11/18(수) 방송분과 함께 배송됩니다. 수요일 추가 낙찰분은 합배송해 드립니다.');}
+   if(notice){add(banner,'h2',notice.title);add(banner,'p',notice.description);}
    else if(data.combinedShipping){add(banner,'h2',data.combinedShipping.label);add(banner,'p',data.combinedShipping.review?'수령인·수령지를 확인한 뒤 합배송을 처리합니다.':'월요일과 같은 수령 지점을 선택하면 기본 배송비가 중복 청구되지 않습니다.');}
    current=notice;
    if(!notice){if(dialog.open)dialog.close();return;}

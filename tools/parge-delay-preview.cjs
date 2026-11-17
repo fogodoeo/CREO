@@ -11,6 +11,7 @@ const {createDeliveryScheduleService,KEY}=require('../delivery-schedule-service'
  await repo.upsertRecord(from,'item',{id:'a',vendorId:'v',name:'A01',status:'sold',soldPrice:100000,winnerName:'가상구매자',winnerPhone:'01000000002'});
  await repo.upsertRecord(from,'shipment',{id:'s',itemId:'a',vendorId:'v',recipientName:'가상구매자',recipientPhone:'01000000002',destinationType:'parge',destinationId:'parge',method:'delivery',carrier:'파르게',pargeRegion:'강원도',pargeShop:'테스트 거점',address:'강원도 테스트 거점',paymentMethod:'bank_transfer',paymentStatus:'pending',cost:40000,buyerSubmittedAt:'2026-11-16T14:00:00Z'});
  const service=createDeliveryScheduleService({repository:repo,now:()=>date,logger:{warn(){}}});
+ await repo.upsertRecord(from,'notification',{id:'old-sent',eventKey:'studio-move-20261116-v1:fixture',templateKey:'buyer_parge_schedule_changed',recipientPhone:'01000000002',recipientRole:'buyer',transport:'sms',status:'sent',itemIds:['a']});
  const api=createPlatformApi({repository:repo,deliverySchedules:service,bookingNow:()=>date,adminSessionSecret:'fixture'});
  const server=http.createServer(async(req,res)=>{const url=new URL(req.url,'http://localhost');if(await api.handle(req,res,url))return;const filename=path.join(__dirname,'../public',url.pathname);try{const content=fs.readFileSync(filename);res.setHeader('Content-Type',filename.endsWith('.html')?'text/html; charset=utf-8':filename.endsWith('.js')?'text/javascript; charset=utf-8':filename.endsWith('.css')?'text/css; charset=utf-8':'application/octet-stream');res.end(content);}catch{res.writeHead(404);res.end();}});
  await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.0.1:'+server.address().port;
@@ -25,5 +26,5 @@ const {createDeliveryScheduleService,KEY}=require('../delivery-schedule-service'
   await page.setViewport({width:390,height:844});await page.screenshot({path:path.join(out,'acknowledged-390.png'),fullPage:true});
   const persistent=await page.$eval('.buyer-delivery-notice',el=>!el.hidden);if(!persistent)throw Error('Persistent notice missing');
   console.log(JSON.stringify({out,errors,persistent,acknowledged:true}));if(errors.length)throw Error(errors.join('\n'));
- }finally{await browser.close();server.close();await service.stop();repo.close();fs.rmSync(dir,{recursive:true,force:true});}
+ }finally{await browser.close();server.closeAllConnections();server.close();await service.stop();repo.close();fs.rmSync(dir,{recursive:true,force:true});}
 })().catch(e=>{console.error(e);process.exitCode=1});

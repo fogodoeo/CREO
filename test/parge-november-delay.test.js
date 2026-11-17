@@ -24,45 +24,33 @@ async function fixture(t){
  const code=(await call('POST',`channels/${Delay.FROM}/buyer-shipping-link`,{itemId:'a'},true)).json().code;
  return {repo,call,code,service,notifications,sent,setClock:n=>clock=n};
 }
-test('Monday follows Wednesday per-shop schedule; unrelated round remains independent',async t=>{
- const f=await fixture(t),catalog=await f.repo.getCatalog(),selection={destinationType:'parge',pargeRegion:'강원도',pargeShop:'테스트 거점'};
- const a=await f.service.estimate(catalog.channels[0],selection),b=await f.service.estimate(catalog.channels[1],selection);
- assert.deepEqual(a,b);assert.equal(a.dispatchDate,'2026-11-20');assert.equal(a.arrivalDate,'2026-11-22');
- assert.equal((await f.service.estimate(catalog.channels[2],selection)).dispatchDate,'2026-11-24');
- const response=await f.call('GET','buyer-shipping?code='+f.code);assert.equal(response.status,200,response.body);
- assert.equal(response.json().deliveryNotice.acknowledged,false);assert.equal(response.json().totals.shippingAmount,47000);
+
+test('restored Monday route and no cross-round bundling or obsolete notice',async t=>{
+ const f=await fixture(t),cat=await f.repo.getCatalog(),selection={destinationType:'parge',pargeRegion:'강원도',pargeShop:'테스트 거점'};
+ const a=await f.service.estimate(cat.channels[0],selection),b=await f.service.estimate(cat.channels[1],selection);
+ assert.equal(a.dispatchDate,'2026-11-17');assert.equal(b.dispatchDate,'2026-11-20');
  const before=await f.repo.listRecords(Delay.FROM,'shipment');
+ const data=(await f.call('GET','buyer-shipping?code='+f.code)).json();assert.equal(data.deliveryNotice,null);assert.equal(data.totals.shippingAmount,47000);
+ const code=(await f.call('POST',`channels/${Delay.TO}/buyer-shipping-link`,{itemId:'a'},true)).json().code;
+ assert.equal((await f.call('GET','buyer-shipping?code='+code)).json().combinedShipping,null);
+ assert.deepEqual(await f.repo.listRecords(Delay.FROM,'shipment'),before);
+ assert.equal((await f.call('POST',`channels/${Delay.FROM}/parge-delay-notice`,{confirmed:true},true)).status,409);
+});
+test('correction only targets old sent recipients, deduplicates and acknowledges independently',async t=>{
+ const f=await fixture(t),old=await f.notifications.enqueue(Delay.FROM,{eventKey:Delay.ID+':fixture',templateKey:Delay.TEMPLATE,transport:'sms',recipientRole:'buyer',recipientPhone:'01000000002',itemIds:['a','b'],fallbackText:'old'});
+ await f.repo.upsertRecord(Delay.FROM,'notification',{...old.record,status:'sent'});
+ const route=`channels/${Delay.FROM}/parge-pickup-correction`;
+ assert.equal((await f.call('POST',route,{confirmed:true})).status,401);
+ const preview=(await f.call('GET',route,null,true)).json();assert.equal(preview.entries.length,1);assert.match(preview.entries[0].message,/이번 주중/);
+ const responses=await Promise.all([f.call('POST',route,{confirmed:true},true),f.call('POST',route,{confirmed:true},true)]);responses.forEach(r=>assert.equal(r.status,200,r.body));
+ const records=await f.repo.listRecords(Delay.FROM,'notification');assert.equal(records.length,2);
+ const service=Delay.create({repository:f.repo,channelKey});
+ await assert.rejects(service.assertCurrent(Delay.FROM,old.record),e=>e.code==='BUYER_LINK_INACTIVE');
+ const correction=records.find(n=>n.eventKey.startsWith(Delay.CORRECTION_ID));await service.assertCurrent(Delay.FROM,correction);
+ await assert.rejects(service.assertCurrent(Delay.TO,correction));
+ f.notifications.beforeSend=(c,n)=>service.assertCurrent(c,n);
+ await f.notifications.flushChannel(Delay.FROM);await f.notifications.flushChannel(Delay.FROM);assert.equal(f.sent.length,1);assert.match(f.sent[0].fallbackText,/정정 안내/);
+ const p=(await f.call('GET','buyer-shipping?code='+f.code)).json();assert.equal(p.deliveryNotice.id,Delay.CORRECTION_ID);assert.equal(p.deliveryNotice.acknowledged,false);assert.equal(p.deliverySchedule.dispatchDate,'2026-11-17');
  assert.equal((await f.call('POST','buyer-shipping/delivery-notice-ack',{code:f.code})).status,200);
  assert.equal((await f.call('GET','buyer-shipping?code='+f.code)).json().deliveryNotice.acknowledged,true);
- assert.deepEqual(await f.repo.listRecords(Delay.FROM,'shipment'),before);
- for(const s of before)await f.repo.upsertRecord(Delay.FROM,'shipment',{...s,destinationType:'pickup',destinationId:'pickup-1',method:'pickup'});
- assert.equal((await f.call('GET','buyer-shipping?code='+f.code)).json().deliveryNotice,null);
- assert.equal((await f.call('POST','buyer-shipping/delivery-notice-ack',{code:f.code})).status,409);
-});
-test('SMS deduplicates people and repeated concurrent requests; no send before 09:00 KST',async t=>{
- const f=await fixture(t),route=`channels/${Delay.FROM}/parge-delay-notice`;
- assert.equal((await f.call('POST',route,{confirmed:true})).status,401);
- const preview=await f.call('GET',route,null,true);assert.equal(preview.status,200,preview.body);assert.equal(preview.json().entries.length,1);assert.equal(preview.json().entries[0].itemCount,2);
- const res=await Promise.all([f.call('POST',route,{confirmed:true},true),f.call('POST',route,{confirmed:true},true)]);res.forEach(r=>assert.equal(r.status,200,r.body));
- const records=await f.repo.listRecords(Delay.FROM,'notification');assert.equal(records.length,1);assert.equal(records[0].nextAttemptAt,'2026-11-17T00:00:00.000Z');
- await f.notifications.flushChannel(Delay.FROM);assert.equal(f.sent.length,0);
- f.setClock(Date.parse('2026-11-17T00:00:01Z'));await f.notifications.flushChannel(Delay.FROM);await f.notifications.flushChannel(Delay.FROM);assert.equal(f.sent.length,1);
- const service=Delay.create({repository:f.repo,channelKey,workspace:async()=>({items:[],shipments:[]})});
- await assert.rejects(service.assertCurrent(Delay.FROM,records[0]),e=>e.code==='BUYER_LINK_INACTIVE');
-});
-test('Wednesday matching buyer receives cross-round shipping quote; mismatch keeps base fee',async t=>{
- const f=await fixture(t),code=(await f.call('POST',`channels/${Delay.TO}/buyer-shipping-link`,{itemId:'a'},true)).json().code;
- const r=await f.call('GET','buyer-shipping?code='+code);assert.equal(r.status,200,r.body);const data=r.json();assert.equal(data.deliveryNotice,null);assert.equal(data.combinedShipping.eligible,true);
- const selection={destinationType:'parge',pargeRegion:'강원도',pargeShop:'테스트 거점'},channel={combinedShipping:data.combinedShipping},rates=[{region:'강원도',shops:[{name:'테스트 거점',baseCost:40000}]}];
- assert.equal(Rules.allocateShipping(data.items,selection,channel,rates).total,14000);
- assert.equal(Rules.allocateShipping(data.items,selection,{combinedShipping:{...data.combinedShipping,eligible:false}},rates).total,47000);
- const saved=await f.call('POST','buyer-shipping',{code,expectedVersion:data.editVersion,requestId:'combined-test-1',destinationId:'parge',pargeRegion:'강원도',pargeShop:'테스트 거점',payments:[{vendorKey:'v',method:'bank_transfer'}]});assert.equal(saved.status,200,saved.body);
- assert.equal(saved.json().totals.shippingAmount,14000);
- assert.equal((await f.call('GET','buyer-shipping?code='+code)).json().totals.shippingAmount,14000);
-});
-test('campaign uses LMS and morning timing is explicit',async()=>{
- assert.equal(Delay.sendAfter(Date.parse('2026-11-16T23:59:59Z')),'2026-11-17T00:00:00.000Z');
- assert.equal(Delay.sendAfter(Date.parse('2026-11-17T01:00:00Z')),'2026-11-17T01:00:00.000Z');
- let form;const provider=new AligoNotificationProvider({fetchImpl:async(_u,o)=>{form=new URLSearchParams(o.body);return {ok:true,status:200,json:async()=>({result_code:1,msg_id:'fake'})};}});
- await provider.sendSms({templateKey:Delay.TEMPLATE,recipientPhone:'01000000002',fallbackText:Delay.description+'\n'+Delay.combined});assert.equal(form.get('msg_type'),'LMS');
 });

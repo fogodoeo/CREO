@@ -128,6 +128,8 @@
 - 같은 운송사의 새 일정이 기존 일정과 겹쳐 시작하는 날은 이름을 표시한다. 일정 계산과 날짜별 접근성 설명, 상세 일정의 도착일 표시는 유지한다.
 # Financial round entry priority (2026-10-27)
 
+2026-11-17 배송 정정: 파르게 재협의로 11/16 회차는 원래 11/17 출발 기준을 복구했다. 수요일 합배송 예외와 기존 지연 캠페인의 재발송을 차단한다. 기존 지연 문자 발송 대상에게만 별도 식별자의 정정 안내를 표시하여 이전 확인 여부와 독립적으로 확인할 수 있게 한다. 배너 문구는 하드코딩하지 않고 해당 안내의 설명을 사용한다. 정정 문자는 기존 발송 대상별 한 번만 발송하며 발송 이력은 보존한다.
+
 - Generic vendor settlement links open outstanding work first, then reported payments awaiting confirmation, then completed rounds. Within a state, the newest broadcast comes first. The company home target and combined round selector use the same ordering.
 - Buyer checkout lists prioritize unpaid rounds over reported/paid rounds within the link's authorized scope. A sale-specific link stays with its original sale; a view preference never expands access.
 - Automatic vendor selection runs once on initial entry. Explicit date/archive URLs, manual selections, drafts and in-flight work retain their context. Failed catalogue or switch requests expose the existing retry control.

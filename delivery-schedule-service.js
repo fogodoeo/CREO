@@ -113,12 +113,7 @@ function createDeliveryScheduleService({ repository, notificationService = null,
     }
     function isEnabled(channel) { return Boolean(Core.channelConfig(channel)?.enabled); }
     async function effectiveConfig(channel, carrier) {
-        if (channel.id === 'national-cre-20261116' && carrier === 'parge') {
-            const target = (await repository.getCatalog()).channels.find(c => c.id === 'national-cre-20261118');
-            // Match the Wednesday route, including any operator dispatch override.
-            if (target) return Core.channelConfig(target);
-            return Core.normalizeConfig({...Core.channelConfig(channel), auctionDate:'2026-11-18', pargeDispatchDate:''});
-        }
+        // Nov 16 pickup was restored by the carrier. Use each auction's own schedule.
         return Core.channelConfig(channel);
     }
     async function estimate(channel, selection, submittedAt = '') {

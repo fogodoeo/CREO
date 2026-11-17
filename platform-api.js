@@ -4735,15 +4735,15 @@ function createPlatformApi({
                 return true;
             }
 
-            if (segments.length === 3 && segments[2] === 'parge-delay-notice' && ['GET','POST'].includes(method)) {
+            if (segments.length === 3 && ['parge-delay-notice','parge-pickup-correction'].includes(segments[2]) && ['GET','POST'].includes(method)) {
                 if(!await requireAdmin(req,res))return true;
                 if(channelId!=='national-cre-20261116')throw buyerInputError('11월 16일 파르게 전용 안내입니다.',422);
                 if(method==='GET'){
-                    const plan=await pargeDelay.preview();
+                    const plan=await (segments[2]==='parge-pickup-correction'?pargeDelay.correctionPreview():pargeDelay.preview());
                     replyJson(res,200,{...plan,entries:plan.entries.map(({name,phone,itemIds,message})=>({name,phoneLast4:phone.slice(-4),itemCount:itemIds.length,message}))});
                 }else{
                     const body=await readJson(req);if(body.confirmed!==true)throw buyerInputError('발송 내용을 확인해 주세요.',422);
-                    replyJson(res,200,await withMutationLock('channel:'+channelId,()=>pargeDelay.enqueue()));
+                    replyJson(res,200,await withMutationLock('channel:'+channelId,()=>segments[2]==='parge-pickup-correction'?pargeDelay.correctionEnqueue():pargeDelay.enqueue()));
                 }return true;
             }
             if (segments.length === 3 && segments[2] === 'closing-tools' && ['GET','POST'].includes(method)) {
