@@ -80,15 +80,16 @@
   function regionsForm(){
     open('업체 지역 관리',`<p class="booking-muted">업체를 선택해 방송 지역을 변경하세요.</p><form id="region-form" class="booking-region-form"><label for="region-vendor">업체<select id="region-vendor" required></select></label><label for="region-choice">지역<select id="region-choice" required><option value="">지역 선택</option>${state.regions.map((name,i)=>`<option value="${i}">${esc(name)}</option>`).join('')}</select></label><button class="booking-primary" type="submit">지역 저장</button></form><div id="region-directory"></div>`,'<button class="booking-secondary" id="dialog-back" type="button">닫기</button>');
     renderRegionDirectory();
+    if(state.mode==='regional-cycle-v1')$('region-choice').insertAdjacentHTML('beforeend','<option value="-1">참여 제외 (업체·거래 기록 유지)</option>');
     $('region-vendor').onchange=()=>{const v=state.vendors.find(v=>v.id===$('region-vendor').value);$('region-choice').value=v?.region??'';};
     $('region-directory').onclick=e=>{const button=e.target.closest('[data-region-vendor]');if(!button)return;$('region-vendor').value=button.dataset.regionVendor;$('region-vendor').onchange();$('region-choice').focus();};
     const status=document.createElement('p');status.id='region-save-status';status.setAttribute('role','status');$('region-form').after(status);
-    $('region-form').onsubmit=async e=>{e.preventDefault();const vendorId=$('region-vendor').value,choice=$('region-choice').value;if(!vendorId||choice==='')return;const region=Number(choice);status.textContent='';if(await save({type:'region',expectedVersion:state.version,vendorId,region})){renderRegionDirectory(vendorId);status.textContent=`${state.vendors.find(v=>v.id===vendorId)?.name||'업체'} · ${state.regions[region]} 저장했습니다.`;}};
+    $('region-form').onsubmit=async e=>{e.preventDefault();const vendorId=$('region-vendor').value,choice=$('region-choice').value;if(!vendorId||choice==='')return;const region=Number(choice);status.textContent='';if(await save({type:'region',expectedVersion:state.version,vendorId,region})){renderRegionDirectory(vendorId);status.textContent=`${state.vendors.find(v=>v.id===vendorId)?.name||'업체'} · ${region===-1?'참여 제외':state.regions[region]} 저장했습니다.`;}};
   }
   function renderRegionDirectory(selected=''){
     const sorted=[...state.vendors].sort((a,b)=>a.name.localeCompare(b.name,'ko',{numeric:true}));
     const active=sorted.filter(v=>v.active!==false),inactive=sorted.filter(v=>v.active===false);
-    const groups=[{name:'지역 미등록',vendors:active.filter(v=>!Number.isInteger(v.region)||!state.regions[v.region])},...state.regions.map((name,i)=>({name,vendors:active.filter(v=>v.region===i)}))];
+    const groups=[{name:'지역 미등록',vendors:active.filter(v=>v.region!==-1&&(!Number.isInteger(v.region)||!state.regions[v.region]))},...state.regions.map((name,i)=>({name,vendors:active.filter(v=>v.region===i)})),{name:'참여 제외',vendors:active.filter(v=>v.region===-1)}];
     const option=v=>`<option value="${esc(v.id)}">${esc(v.name)}</option>`;
     $('region-vendor').innerHTML='<option value="">업체 선택</option>'+[...groups,{name:'사용 중지',vendors:inactive}].filter(g=>g.vendors.length).map(g=>`<optgroup label="${esc(g.name)} · ${g.vendors.length}곳">${g.vendors.map(option).join('')}</optgroup>`).join('');
     $('region-vendor').value=selected;

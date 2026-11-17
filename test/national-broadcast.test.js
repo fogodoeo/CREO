@@ -16,11 +16,19 @@ async function fixture(t,name='서울 테스트',region='서울'){
 test('five-region rotation has a fixed first broadcast and covers month/year boundaries',()=>{
  assert.deepEqual(REGIONS,['서울·인천','경기','전라·충청','대구·경북','부산·울산·경남']);
  assert.equal(regionAt('2026-10-12'),null);assert.equal(regionAt('2026-10-14'),0);assert.equal(regionAt('2026-10-19'),1);assert.equal(regionAt('2026-10-26'),3);assert.equal(regionAt('2026-11-02'),0);assert.equal(regionAt('2026-02-30'),null);
- assert.equal(regionAt('2027-01-04'),3);assert.equal(regionAt('9999-12-29'),4);
+ assert.equal(regionAt('2027-01-04'),1);assert.equal(regionAt('9999-12-29'),2);
 });
 const firstCycle=['2026-10-14','2026-10-19','2026-10-21','2026-10-26','2026-10-28'];
 const novemberCycle=['2026-11-09','2026-11-11','2026-11-16','2026-11-18','2026-11-23'];
-const announcedDates=[...firstCycle,...novemberCycle];
+const season3Cycle=['2026-11-25','2026-11-30','2026-12-02','2026-12-07','2026-12-09'];
+const announcedDates=[...firstCycle,...novemberCycle,...season3Cycle];
+
+test('season 3 restarts in Seoul on November 25 without changing earlier seasons',()=>{
+ assert.deepEqual(firstCycle.map(regionAt),[0,1,2,3,4]);
+ assert.deepEqual(novemberCycle.map(regionAt),[0,1,2,3,4]);
+ assert.deepEqual(season3Cycle.map(regionAt),[0,1,2,3,4]);
+ assert.equal(regionAt('2026-12-14'),0);
+});
 test('national region directory retains inactive vendor with explicit status',async t=>{
  const f=await fixture(t);
  const vendor=await f.repository.getRecord('national-cre','vendor',f.vendorId);
@@ -183,7 +191,7 @@ test('announced dates include both cycles, and each region can still reserve its
   const f=await fixture(t,'첫 순회 테스트',region);f.advance(12*86400000);
   const view=(await f.get()).json();
   assert.deepEqual(view.dates.map(d=>d.date),announcedDates);
-  assert.deepEqual(view.dates.map(d=>d.regionName),[...REGIONS,...REGIONS]);
+  assert.deepEqual(view.dates.map(d=>d.regionName),[...REGIONS,...REGIONS,...REGIONS]);
   const own=view.dates[index];assert.equal(own.maxQuantityAvailable,4);
   const body={type:'reserve',date:own.date,quantity:4,requestId:randomUUID()};
   const reserved=await f.command(body);assert.equal(reserved.status,200,reserved.body);

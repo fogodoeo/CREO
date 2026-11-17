@@ -9,7 +9,10 @@ const REGIONS=['서울·인천','경기','전라·충청','대구·경북','부�
 const START='2026-10-14',MODE='regional-cycle-v1',ENTRY_COUNT=4,KEY=channelKey('national-cre','setting','national-broadcasts');
 // Each announced cycle is explicit; unannounced weeks remain closed.
 const NOVEMBER_DATES=Object.freeze(['2026-11-09','2026-11-11','2026-11-16','2026-11-18','2026-11-23']);
-const APPLICATION_DATES=Object.freeze([START,'2026-10-19','2026-10-21','2026-10-26','2026-10-28',...NOVEMBER_DATES]);
+const SEASON3_START='2026-11-25';
+const SEASON3_DATES=Object.freeze([SEASON3_START,'2026-11-30','2026-12-02','2026-12-07','2026-12-09']);
+const EXCLUDED_REGION='참여 제외';
+const APPLICATION_DATES=Object.freeze([START,'2026-10-19','2026-10-21','2026-10-26','2026-10-28',...NOVEMBER_DATES,...SEASON3_DATES]);
 const fail=(message,status=409)=>Object.assign(Error(message),{status});
 const uuid=()=>crypto.randomUUID();
 const validCapacity=value=>value===null||(Number.isSafeInteger(value)&&value>=4);
@@ -19,7 +22,7 @@ function entryProgress(r,entries,entryLimit=r.entryIds.length){
  return {entries:slots,completed,entryLimit,excessSubmitted,registrationComplete:Tasks.broadcastRegistrationComplete({entries:slots.slice(0,entryLimit),completed,entryLimit,excessSubmitted})};
 }
 function regionIndex(name){return ['서울','인천','서울+인천'].includes(name)?0:REGIONS.indexOf(name);}
-function regionForVendor(v){const region=regionIndex(v?.broadcastRegion);if(region>=0)return region;return [0,0,1,1,2,2,3,4][v?.bookingRegion]??null;}
+function regionForVendor(v){if(v?.broadcastRegion===EXCLUDED_REGION)return -1;const region=regionIndex(v?.broadcastRegion);if(region>=0)return region;return [0,0,1,1,2,2,3,4][v?.bookingRegion]??null;}
 function regionEntryPolicy(state,region,vendors){
  const ids=new Set(vendors.filter(v=>v.id&&v.active!==false&&!v.deletedAt&&(state.regions?.[v.id]??regionForVendor(v))===region).map(v=>v.id));
  return {regionVendorCount:ids.size,vendorEntryLimit:ENTRY_COUNT};
@@ -29,7 +32,8 @@ function regionAt(date){
  if(!scheduled(date))return null;
  const announcedRegion=NOVEMBER_DATES.indexOf(date);
  if(announcedRegion>=0)return announcedRegion;
- const days=Math.round((Date.parse(date+'T00:00:00Z')-Date.parse(START+'T00:00:00Z'))/86400000);
+ const anchor=date>=SEASON3_START?SEASON3_START:START;
+ const days=Math.round((Date.parse(date+'T00:00:00Z')-Date.parse(anchor+'T00:00:00Z'))/86400000);
  return (Math.floor(days/7)*2+(days%7>=5?1:0))%5;
 }
 function createNationalBroadcast(repository,{now=Date.now,entries,notificationService,contextForVendor,withParticipation}={}){
@@ -51,11 +55,12 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
  function policySession(state,date,vendors){return {...session(state,date),...regionEntryPolicy(state,regionAt(date),vendors)};}
  function limitFor(state,r,vendors){return Legacy.start(r.date)<=now()?r.entryIds.length:Math.min(r.entryIds.length,regionEntryPolicy(state,r.region,vendors).vendorEntryLimit);}
  function limitMessage(){return '전국크레자랑은 모든 업체가 4마리씩 출품합니다. 새로고침 후 확인해 주세요.';}
- function panelLimit(state,date,vendor){return state.panels?.[date]?.[vendor.id]??((state.regions[vendor.id]??regionForVendor(vendor))===regionAt(date)?100:0);}
+ function panelLimit(state,date,vendor){if((state.regions[vendor.id]??regionForVendor(vendor))===-1)return 0;return state.panels?.[date]?.[vendor.id]??((state.regions[vendor.id]??regionForVendor(vendor))===regionAt(date)?100:0);}
  function availability(state,date,region,vendorId,vendors){
   if(!scheduled(date))return {date,maxQuantityAvailable:0,reason:'방송일을 선택해 주세요.'};
   const s=policySession(state,date,vendors),block=reason=>({...s,maxQuantityAvailable:0,reason});
   if(!APPLICATION_DATES.includes(date))return block('아직 신청을 받지 않는 방송이에요.');
+  if(region===-1)return block('방송 참여에서 제외된 업체입니다. 운영자에게 문의해 주세요.');
   if(!Number.isInteger(region))return block('업체 지역을 먼저 등록해 주세요.');
   if(region!==s.region)return block(s.regionName+' 방송이에요.');
   if(!['draft','active'].includes(state.channelStatus||'active'))return block('종료된 채널이에요.');
@@ -152,7 +157,7 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
   }else if(['session','defaults','region'].includes(type)){
    if(input.expectedVersion!==state.version)throw fail('설정이 변경됐어요. 새로고침 후 다시 저장해 주세요.');
    if(type==='region'){
-    if(!Number.isInteger(input.region)||input.region<0||input.region>4||!context.vendors.some(v=>v.id===input.vendorId))throw fail('업체와 지역을 확인해 주세요.',422);
+    if(!Number.isInteger(input.region)||input.region< -1||input.region>4||!context.vendors.some(v=>v.id===input.vendorId))throw fail('업체와 지역을 확인해 주세요.',422);
     if(state.reservations.some(r=>r.vendorId===input.vendorId&&r.status==='confirmed'&&Legacy.start(r.date)>now()&&r.region!==input.region))throw fail('기존 방송 신청이 있어 지역을 변경할 수 없어요.');
     state.regions[input.vendorId]=input.region;
    }else if(type==='defaults'){
@@ -218,4 +223,4 @@ function createBookingRouter(repository,options){
  for(const method of ['read','summary','vendorView','operatorView','command','resolveLink','assertNotification'])router[method]=async(first,...rest)=>(await cycle.active(first.channel||first)?cycle:old)[method](first,...rest);
  return router;
 }
-module.exports={REGIONS,START,MODE,APPLICATION_DATES,regionAt,regionIndex,regionForVendor,regionEntryPolicy,createNationalBroadcast,createBookingRouter};
+module.exports={REGIONS,START,MODE,SEASON3_START,SEASON3_DATES,EXCLUDED_REGION,APPLICATION_DATES,regionAt,regionIndex,regionForVendor,regionEntryPolicy,createNationalBroadcast,createBookingRouter};
