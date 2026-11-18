@@ -25,10 +25,10 @@ test('list identifies the morph and parents without notes; detail retains comple
 });
 test('missing parent information stays visible and does not make optional parent photos a submission requirement',async()=>{
  const s=await page({parents:false});s.open();assert.match(s.$('entry-information').textContent,/부개체이름 미등록사진 미등록/);assert.match(s.$('entry-information').textContent,/모개체이름 미등록사진 미등록/);
- assert.equal(s.$('allocation-fields').open,false);assert.match(s.$('allocation-summary').textContent,/1부 A01 · 1번째 · 시작가 0원/);await s.submit();assert.equal(s.calls.length,1);assert.equal(s.calls[0].body.broadcastDate,'2026-10-21');assert.equal(s.calls[0].body.lot,'1부 A01');assert.equal(s.$('review-dialog').open,false);
+ assert.equal(s.$('allocation-fields').open,true);assert.equal(s.$('lot-code').value,'');await s.submit();assert.equal(s.calls.length,0);assert.equal(s.document.activeElement.id,'lot-code');s.input('lot-code','A01');await s.submit();assert.equal(s.calls.length,1);assert.equal(s.calls[0].body.broadcastDate,'2026-10-21');assert.equal(s.calls[0].body.lot,'A01');assert.equal(s.$('review-dialog').open,false);
 });
 test('invalid hidden settings expand and focus the exact field; summary follows corrected values',async()=>{
- const s=await page();s.open();s.input('lot-order','0');await s.submit();assert.equal(s.$('allocation-fields').open,true);assert.equal(s.document.activeElement.id,'lot-order');assert.equal(s.$('lot-order').getAttribute('aria-invalid'),'true');assert.equal(s.calls.length,0);
+ const s=await page();s.open();s.input('lot-code','A01');s.input('lot-order','0');await s.submit();assert.equal(s.$('allocation-fields').open,true);assert.equal(s.document.activeElement.id,'lot-order');assert.equal(s.$('lot-order').getAttribute('aria-invalid'),'true');assert.equal(s.calls.length,0);
  s.input('lot-order','5');s.input('lot-price','10000');assert.match(s.$('allocation-summary').textContent,/5번째 · 시작가 10,000원/);assert.equal(s.$('review-target').textContent,s.$('allocation-summary').textContent);await s.submit();assert.equal(s.calls[0].body.order,5);assert.equal(s.calls[0].body.startPrice,10000);
 });
 test('failed approval preserves input and request identity, focuses recovery, and retry sends the same command once',async()=>{
@@ -41,7 +41,7 @@ test('CLAB review retains its own channel, group and code; change requests send 
 });
 test('returning from a change request focuses the visible settings summary rather than a collapsed input',async()=>{
  const s=await page();s.open();s.$('change-review-mode').onclick();assert.equal(s.$('review-target').hidden,true);assert.equal(s.document.activeElement.id,'review-reason');
- s.$('change-review-mode').onclick();assert.equal(s.$('allocation-fields').open,false);assert.equal(s.$('review-target').hidden,false);assert.equal(s.document.activeElement,s.$('allocation-fields').querySelector('summary'));
+ s.$('change-review-mode').onclick();assert.equal(s.$('allocation-fields').open,true);assert.equal(s.$('review-target').hidden,false);assert.equal(s.document.activeElement,s.$('allocation-fields').querySelector('summary'));
 });
 test('draft details remain read-only and an approved entry change keeps its existing identity and price',async()=>{
  const draft=await page({status:'draft'});draft.open();assert.equal(draft.$('review-actions').hidden,true);assert.equal(draft.$('review-form').hidden,true);assert.match(draft.$('entry-information').textContent,/릴리화이트/);

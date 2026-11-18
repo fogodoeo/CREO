@@ -14,13 +14,13 @@ test('new round approval reuses numbers without changing archived sales',async t
  const f=await fixture(t);
  const old=await f.repo.upsertRecord('alpha','item',{id:'previous',name:'1부 A01',lotNumber:1,status:'sold',soldPrice:30000,auctionArchiveId:'arc-old',attributes:{displayNumber:'1부 A01'}});
  const result=await f.approve([f.entries[0]]);assert.equal(result.count,1);
- const current=(await f.items()).find(i=>i.id!==old.id);assert.equal(current.name,'1부 A01');assert.equal(current.lotNumber,1);
+ const current=(await f.items()).find(i=>i.id!==old.id);assert.equal(current.name,'A01');assert.equal(current.lotNumber,1);
  assert.deepEqual(await f.repo.getRecord('alpha','item',old.id),old);
 });
 test('checked entries alone become numbered auction items, with atomic replay across restart',async t=>{
  const f=await fixture(t),requestId=randomUUID(),selected=[f.entries[0],f.entries[3],f.entries[5]];
  const results=await Promise.all([f.approve(selected,'1부',requestId),f.approve(selected,'1부',requestId)]);assert.deepEqual(results.map(r=>r.duplicate).sort(),[false,true]);
- let items=(await f.items()).sort((a,b)=>a.lotNumber-b.lotNumber);assert.equal(items.length,3);assert.deepEqual(items.map(i=>i.name),['1부 A01','1부 A02','1부 A03']);assert.ok(items.every(i=>i.status==='waiting'&&i.note.startsWith('비고')));
+ let items=(await f.items()).sort((a,b)=>a.lotNumber-b.lotNumber);assert.equal(items.length,3);assert.deepEqual(items.map(i=>i.name),['A01','A02','A03']);assert.ok(items.every(i=>i.status==='waiting'&&i.note.startsWith('비고')));
  assert.equal((await f.service.read(f.contexts[0])).entries.filter(e=>e.status==='submitted').length,2);
  f.restart();assert.equal((await f.approve(selected,'1부',requestId)).duplicate,true);assert.equal((await f.items()).length,3);
  await assert.rejects(f.approve(selected,'2부',requestId),e=>e.status===409);
@@ -60,11 +60,11 @@ test('real SQLite write failure rolls all vendors and items back; retry can reco
 });
 test('vendor round robin shuffles vendors and keeps identities, per-vendor order and other parts',async t=>{
  const f=await fixture(t);await f.approve(f.entries.slice(0,5));await f.approve(f.entries.slice(5),'2부');
- const before=await f.items(),targets=before.filter(i=>i.name.startsWith('1부')),request={type:'arrange',requestId:randomUUID(),part:'1부',items:targets.map(i=>({id:i.id,updatedAt:i.updatedAt}))};
+ const before=await f.items(),targets=before.filter(i=>i.name.startsWith('A')),request={type:'arrange',requestId:randomUUID(),part:'1부',items:targets.map(i=>({id:i.id,updatedAt:i.updatedAt}))};
  const result=await f.service.batch(f.channel,[],request,{random:()=>0});assert.equal(result.count,5);
  const after=(await f.items()).sort((a,b)=>a.lotNumber-b.lotNumber);assert.deepEqual(after.slice(0,5).map(i=>i.vendorId),['B','A','B','A','A']);
  for(const item of after)assert.equal(item.name,before.find(i=>i.id===item.id).name);
- assert.deepEqual(after.find(i=>i.name.startsWith('2부')),before.find(i=>i.name.startsWith('2부')));
+ assert.deepEqual(after.find(i=>i.name.startsWith('B')),before.find(i=>i.name.startsWith('B')));
  f.restart();assert.equal((await f.service.batch(f.channel,[],request,{random:()=>.99})).duplicate,true);assert.deepEqual((await f.items()).sort((a,b)=>a.lotNumber-b.lotNumber),after);
 });
 test('arrangement rejects stale lists, changed items and auction progress without writing',async t=>{
@@ -77,13 +77,13 @@ test('arrangement rejects stale lists, changed items and auction progress withou
 });
 test('numbering is independent per part and never resets a previously assigned code',async t=>{
  const f=await fixture(t);await f.approve(f.entries.slice(0,2),'1부');await f.approve(f.entries.slice(2,4),'2부');await f.approve(f.entries.slice(4),'이벤');
- assert.deepEqual((await f.items()).sort((a,b)=>a.lotNumber-b.lotNumber).map(i=>i.name),['1부 A01','1부 A02','2부 B01','2부 B02','이벤 E01','이벤 E02']);
+ assert.deepEqual((await f.items()).sort((a,b)=>a.lotNumber-b.lotNumber).map(i=>i.name),['A01','A02','B01','B02','E01','E02']);
 });
 test('a late first-part entry is inserted before later parts without renumbering identities',async t=>{
  const f=await fixture(t);await f.approve(f.entries.slice(0,2),'2부');await f.approve(f.entries.slice(2,3),'이벤');
  const before=await f.items();await f.approve(f.entries.slice(3,5),'1부');
  const after=(await f.items()).sort((a,b)=>a.lotNumber-b.lotNumber);
- assert.deepEqual(after.map(i=>i.name),['1부 A01','1부 A02','2부 B01','2부 B02','이벤 E01']);
+ assert.deepEqual(after.map(i=>i.name),['A01','A02','B01','B02','E01']);
  for(const item of before)assert.equal(after.find(i=>i.id===item.id).name,item.name);
  assert.equal(new Set(after.map(i=>i.lotNumber)).size,5);
 });
@@ -100,7 +100,7 @@ test('failed insertion rolls back shifted orders and can retry once after restar
  f.repo.upsertRows=rows=>write([...rows,{key:{invalid:true},value:'rollback'}]);
  await assert.rejects(f.approve(f.entries.slice(3,5),'1부',requestId));assert.deepEqual(await f.items(),before);
  f.restart();await f.approve(f.entries.slice(3,5),'1부',requestId);await f.approve(f.entries.slice(3,5),'1부',requestId);
- assert.deepEqual((await f.items()).sort((a,b)=>a.lotNumber-b.lotNumber).map(i=>i.name),['1부 A01','1부 A02','2부 B01','2부 B02']);
+ assert.deepEqual((await f.items()).sort((a,b)=>a.lotNumber-b.lotNumber).map(i=>i.name),['A01','A02','B01','B02']);
 });
 test('arrangement version always advances even when the previous timestamp is ahead of the clock',async t=>{
  const f=await fixture(t);await f.approve();

@@ -172,8 +172,8 @@ test('mixed bulk approval keeps ordinary A numbers and assigns consecutive E num
  const body={type:'approve-many',part:'1부',requestId:randomUUID(),entries:entries.map(e=>({id:e.id,vendorId:f.vendorId,expectedVersion:e.version}))};
  const result=await f.call(f.client,'POST','/api/platform/channels/national-cre/entries/batch',body,f.admin);assert.equal(result.status,200,result.body);
  const items=await f.repository.listRecords('national-cre','item');
- assert.deepEqual(items.filter(i=>i.attributes.auctionKind==='event').map(i=>i.attributes.displayNumber).sort(),['이벤 E01','이벤 E02']);
- assert.equal(items.find(i=>i.attributes.auctionKind!=='event').attributes.displayNumber,'1부 A01');
+ assert.deepEqual(items.filter(i=>i.attributes.auctionKind==='event').map(i=>i.attributes.displayNumber).sort(),['E01','E02']);
+ assert.equal(items.find(i=>i.attributes.auctionKind!=='event').attributes.displayNumber,'A01');
  f.restart();assert.equal((await f.call(f.client,'POST','/api/platform/channels/national-cre/entries/batch',body,f.admin)).status,200);assert.equal((await f.repository.listRecords('national-cre','item')).length,3);
 });
 test('past broadcast entries are read-only while committed single and batch retries survive the date boundary and restart',async t=>{

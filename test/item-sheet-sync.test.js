@@ -158,7 +158,7 @@ test('approval migrates the existing sheet row to the real auction item and neve
     const f=pendingFixture();await f.connect();await f.sync();
     const entry=f.read().entries[0],context={channel:f.channel,vendor:(await f.workspace('alpha')).vendors[0],profile:{id:f.ownerId,members:[{channelId:'alpha',vendorId:'v'}]},catalog:await f.repository.getCatalog()};
     await f.entries.command(context,{type:'approve',id:entry.id,expectedVersion:entry.version,lot:'1부 A01',order:1,startPrice:300000,requestId:'approve-from-web-0001'},{operator:true});
-    await f.sync();assert.equal((await f.items()).length,1);assert.equal(f.grid.filter(r=>r.values[0]).length,1);assert.equal(f.grid[0].values[0],'1부 A01');assert.equal(f.grid[0].values[7],'30');assert.equal(f.grid[0].status,'연결됨');
+    await f.sync();assert.equal((await f.items()).length,1);assert.equal(f.grid.filter(r=>r.values[0]).length,1);assert.equal(f.grid[0].values[0],'A01');assert.equal(f.grid[0].values[7],'30');assert.equal(f.grid[0].status,'연결됨');
     f.grid[0].values[6]='편성 뒤 수정';await f.sync();assert.equal((await f.items())[0].note,'편성 뒤 수정');
     const item=(await f.items())[0];f.putRecord('item',{...item,status:'sold',soldPrice:500000});f.grid[0].values[6]='종료 뒤 수정';await f.sync();assert.equal((await f.items())[0].note,'편성 뒤 수정');assert.match(f.grid[0].status,/수정할 수 없어요/);
 });

@@ -6142,7 +6142,7 @@ function createPlatformApi({
                     const firstCatalog=await loadCatalog(),first=firstCatalog.channels.find(c=>c.id===channelId);
                     if(!first)throw buyerInputError('경매를 다시 선택해 주세요.',404);
                     const scope=await EntryAuctionScope.resolve(repository,firstCatalog,first,body.broadcastDate);
-                    const assignment=segments[3]==='batch'||['approve','renumber'].includes(body.type);
+                    const assignment=segments[3]==='batch'||['approve','renumber','unassign'].includes(body.type);
                     const target=assignment?EntryAuctionScope.assignmentChannel(scope):first;
                     const work=async()=>{
                         const currentCatalog=await loadCatalog(),fresh=currentCatalog.channels.find(c=>c.id===channelId);

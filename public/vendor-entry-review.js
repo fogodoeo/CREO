@@ -84,7 +84,7 @@
     $('print-entry-labels').disabled=busy||loading||!count;
     $('arrange-vendors').disabled=busy||loading||!canAssign()||targets.length<2||!scoped;
     $('select-all').disabled=busy||loading||!visible.length;
-    $('batch-hint').textContent=status==='approved'?(!scoped?'방송일을 선택하고 새로고침해 주세요.':`${part} 전체 ${targets.length}마리 · 식별 번호 유지`):'선택한 개체만 이 방송일에 등록돼요.';
+    $('batch-hint').textContent=status==='approved'?(!scoped?'방송일을 선택하고 새로고침해 주세요.':`${part} 전체 ${targets.length}마리 · 경매 번호 유지`):'직접 지정은 상세에서 · 일괄 배정은 선택한 접두사로 자동 번호를 매겨요.';
     $('prepare-round').disabled=busy||loading;
   }
   function render(){
@@ -165,7 +165,7 @@
     $('lot-team-label').hidden=groups.length>0;$('lot-group-label').hidden=!groups.length;
     $('lot-group').innerHTML='<option value="">팀 없음</option>'+groups.map(group=>`<option value="${esc(group.id)}">${esc(group.name)}</option>`).join('');
     $('lot-group').value=existing?.groupId??row.group.vendor.groupId??'';
-    $('allocation-fields').open=false;summarizeAllocation();
+    $('allocation-fields').open=true;summarizeAllocation();
     $('review-form').querySelectorAll('[aria-invalid]').forEach(el=>el.removeAttribute('aria-invalid'));
     if(row.entry.status==='changes_requested'){
       const reason=document.createElement('p');reason.className='entry-note';reason.textContent=row.entry.reason||'';$('entry-information').append(reason);
@@ -203,8 +203,8 @@
     event.preventDefault();if(busy||!selected||selected.entry.status!=='submitted')return;
     if(reviewMode==='approve'&&!canAssign())return;
     error('review-error','');
-    const lot=$('lot-code').value.trim().toUpperCase(),order=Number($('lot-order').value),startPrice=Number($('lot-price').value),reason=$('review-reason').value.trim();
-    const checks=reviewMode==='approve'?[['lot-code',Numbering.valid(lot),'식별 번호를 입력해 주세요. 예: 1부 A01'],['lot-order',Number.isInteger(order)&&order>0&&order<=10000,'진행 순서는 1~10,000 사이로 입력해 주세요.'],['lot-price',$('lot-price').value!==''&&Number.isSafeInteger(startPrice)&&startPrice>=0,'시작가를 0원 이상으로 입력해 주세요.']]:[['review-reason',Boolean(reason),'수정할 내용을 입력해 주세요.']];
+    const lot=Numbering.normalize($('lot-code').value),order=Number($('lot-order').value),startPrice=Number($('lot-price').value),reason=$('review-reason').value.trim();
+    const checks=reviewMode==='approve'?[['lot-code',Numbering.valid(lot),'경매 번호를 직접 입력해 주세요. 예: A01'],['lot-order',Number.isInteger(order)&&order>0&&order<=10000,'진행 순서는 1~10,000 사이로 입력해 주세요.'],['lot-price',$('lot-price').value!==''&&Number.isSafeInteger(startPrice)&&startPrice>=0,'시작가를 0원 이상으로 입력해 주세요.']]:[['review-reason',Boolean(reason),'수정할 내용을 입력해 주세요.']];
     const invalid=checks.find(([,valid])=>!valid);if(invalid){if(reviewMode==='approve')$('allocation-fields').open=true;$(invalid[0]).setAttribute('aria-invalid','true');error('review-error',invalid[2]);$(invalid[0]).focus();return;}
     const team=(data.channel.groups||[]).length?{groupId:$('lot-group').value,teamName:''}:{groupId:'',teamName:$('lot-team').value.trim()};
     const command={vendorId:selected.group.vendor.id,type:reviewMode,id:selected.entry.id,expectedVersion:selected.entry.version,...(broadcastDate?{broadcastDate}:{}),...(reviewMode==='approve'?{lot,order,startPrice,...team}:{reason})};

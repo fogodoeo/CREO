@@ -11,13 +11,43 @@ async function setup(t,prepared=true){
  const body={type:'approve-many',broadcastDate:DATE,part:'1부',entries,requestId:randomUUID()};
  return {...f,profile,key,doc,entries,body,approve:b=>f.request('POST',base+'/batch',b||body),read:date=>f.request('GET',base+'?broadcastDate='+(date||DATE))};
 }
+
+test('unassign clears only the chosen waiting lot; preserves photos, edits and identity across replay and restart',async t=>{
+ const f=await setup(t);await f.approve();
+ const e=(await f.doc()).entries[0],before=await f.repository.getRecord(TARGET,'item',e.itemId);
+ const edited=await f.repository.upsertRecord(TARGET,'item',{...before,note:'운영자 수정',photoUrl:'https://example.test/new.webp',attributes:{...before.attributes,entry_traits:{sex:'unknown',hatchDate:'2025-04-12'},parentPhotoOverrides:['sire'],parents:[{role:'sire',name:'아칸'}]}});
+ const body={type:'unassign',vendorId:f.vendorId,id:e.id,expectedVersion:e.version,expectedUpdatedAt:edited.updatedAt,broadcastDate:DATE,requestId:randomUUID()};
+ assert.equal((await f.request('POST',base+'/review',{...body,broadcastDate:'2026-10-26'})).status,409);
+ const results=await Promise.all([f.request('POST',base+'/review',body),f.request('POST',base+'/review',body)]);
+ assert.deepEqual(results.map(r=>r.status),[200,200]);assert.equal(results.filter(r=>r.json().duplicate).length,1);
+ f.restart();assert.equal((await f.request('POST',base+'/review',body)).json().duplicate,true);
+ const item=await f.repository.getRecord(TARGET,'item',e.itemId),entry=(await f.doc()).entries.find(x=>x.id===e.id);
+ assert.deepEqual(item,{...edited,name:e.code,updatedAt:item.updatedAt,attributes:{...edited.attributes,displayNumber:''}});
+ assert.equal(entry.lot,'');assert.equal(entry.itemId,e.itemId);assert.deepEqual(entry.approved,e.approved);assert.equal(entry.status,'approved');assert.equal(entry.version,e.version+1);
+ assert.equal((await f.repository.listRecords(TARGET,'item')).length,4);assert.deepEqual(await f.repository.listRecords(ROOT,'item'),[]);
+ assert.equal((await f.request('POST',base+'/review',{...body,requestId:randomUUID()})).status,409);
+ const assigned=await f.request('POST',base+'/review',{...body,type:'renumber',expectedVersion:entry.version,expectedUpdatedAt:item.updatedAt,lot:'B01',order:item.lotNumber,startPrice:0,requestId:randomUUID()});
+ assert.equal(assigned.status,200);assert.equal((await f.repository.getRecord(TARGET,'item',e.itemId)).name,'B01');
+});
+
+test('unassign refuses progressed lots and rolls back entry and item together on a failed write',async t=>{
+ const f=await setup(t);await f.approve();const e=(await f.doc()).entries[0],before=await f.repository.getRecord(TARGET,'item',e.itemId),state=await f.doc();
+ const request=item=>({type:'unassign',vendorId:f.vendorId,id:e.id,expectedVersion:e.version,expectedUpdatedAt:item.updatedAt,broadcastDate:DATE,requestId:randomUUID()});
+ for(const patch of [{status:'live'},{status:'sold',soldPrice:10000},{attributes:{...before.attributes,bid_log:[{amount:10000}]}}]){
+  const changed=await f.repository.upsertRecord(TARGET,'item',{...before,...patch});assert.equal((await f.request('POST',base+'/review',request(changed))).status,409);assert.deepEqual(await f.doc(),state);
+ }
+ const restored=await f.repository.upsertRecord(TARGET,'item',before),write=f.repository.upsertRows.bind(f.repository),body=request(restored);
+ f.repository.upsertRows=rows=>write(rows.some(r=>r.key.startsWith('creo_v2::'+TARGET+'::item::'))?[...rows,{key:{invalid:true},value:'fail transaction'}]:rows);
+ assert.equal((await f.request('POST',base+'/review',body)).status,500);assert.deepEqual(await f.doc(),state);assert.deepEqual(await f.repository.getRecord(TARGET,'item',e.itemId),restored);
+ f.repository.upsertRows=write;assert.equal((await f.request('POST',base+'/review',body)).status,200);
+});
 test('date approval goes directly to that round; canonical submission, old money and active broadcast stay intact across replay/restart',async t=>{
  const f=await setup(t),active=await f.repository.getActiveChannel();
  const old=await f.repository.upsertRecord(ROOT,'item',{id:'old',name:'1부 A01',lotNumber:1,status:'sold',soldPrice:100000,vendorId:f.vendorId,attributes:{broadcastDate:'2026-10-19'}});
  const shipment=await f.repository.upsertRecord(ROOT,'shipment',{id:'old-delivery',itemId:'old',paymentStatus:'bank_transfer_reported',cost:7000});
  const before=(await f.read()).json();assert.equal(before.auctionTarget.channelId,TARGET);assert.equal(before.auctionTarget.writable,true);assert.deepEqual(before.allocation,[]);
  const results=await Promise.all([f.approve(),f.approve()]);assert.deepEqual(results.map(r=>r.status),[200,200]);assert.equal(results.filter(r=>r.json().duplicate).length,1);
- const items=await f.repository.listRecords(TARGET,'item');assert.equal(items.length,4);assert.deepEqual(items.sort((a,b)=>a.lotNumber-b.lotNumber).map(i=>i.name),['1부 A01','1부 A02','1부 A03','1부 A04']);
+ const items=await f.repository.listRecords(TARGET,'item');assert.equal(items.length,4);assert.deepEqual(items.sort((a,b)=>a.lotNumber-b.lotNumber).map(i=>i.name),['A01','A02','A03','A04']);
  assert.ok((await f.doc()).entries.every(e=>e.channelId===ROOT&&e.auctionChannelId===TARGET&&e.status==='approved'));
  assert.deepEqual(await f.repository.listRecords(ROOT,'item'),[old]);assert.deepEqual(await f.repository.getRecord(ROOT,'shipment',shipment.id),shipment);assert.equal(await f.repository.getActiveChannel(),active);
  assert.equal((await f.booking()).json().reservations[0].entries.filter(e=>e.status==='approved').length,4);
@@ -74,7 +104,7 @@ test('legacy imported copies resolve read-only and renumber in place without rec
  await f.prepare();const rootBefore=await f.repository.listRecords(ROOT,'item'),ownerBefore=await f.doc(),copy=(await f.repository.listRecords(TARGET,'item'))[0];
  const read=(await f.read()).json();assert.equal(read.groups.find(g=>g.vendor.id===f.vendorId).entries.find(i=>i.id===e.id).itemId,copy.id);assert.deepEqual(await f.doc(),ownerBefore);
  const changed=await f.request('POST',base+'/review',{...e,type:'renumber',expectedVersion:ownerBefore.entries[0].version,expectedUpdatedAt:copy.updatedAt,lot:'1부 A09',order:9,startPrice:0,broadcastDate:DATE,requestId:randomUUID()});assert.equal(changed.status,200,changed.body);
- assert.equal((await f.repository.listRecords(TARGET,'item')).length,1);assert.equal((await f.repository.getRecord(TARGET,'item',copy.id)).name,'1부 A09');assert.deepEqual(await f.repository.listRecords(ROOT,'item'),rootBefore);
+ assert.equal((await f.repository.listRecords(TARGET,'item')).length,1);assert.equal((await f.repository.getRecord(TARGET,'item',copy.id)).name,'A09');assert.deepEqual(await f.repository.listRecords(ROOT,'item'),rootBefore);
  assert.equal((await f.doc()).entries[0].auctionChannelId,TARGET);assert.equal((await f.doc()).entries[0].itemId,copy.id);
 });
 

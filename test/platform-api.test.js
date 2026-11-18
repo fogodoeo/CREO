@@ -1076,7 +1076,7 @@ test('batch approval API requires operator access and serializes numbering acros
     const results=await Promise.all(batches.map((body,index)=>call(index?otherApi:api,'POST',route,body)));
     assert.ok(results.every(result=>result.status===200),results.map(r=>r.body).join('\n'));
     const items=await repository.listRecords('alpha','item');assert.equal(items.length,4);
-    assert.deepEqual(items.map(i=>i.name).sort(),['1부 A01','1부 A02','1부 A03','1부 A04']);
+    assert.deepEqual(items.map(i=>i.name).sort(),['A01','A02','A03','A04']);
     assert.equal(new Set(items.map(i=>i.lotNumber)).size,4);
     assert.equal((await call(otherApi,'POST',route,batches[0])).json().duplicate,true);
     const state=(await call(api,'GET','/api/platform/channels/alpha/entries')).json();

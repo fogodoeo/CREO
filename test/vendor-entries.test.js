@@ -42,8 +42,8 @@ test('operator renumber keeps entry and auction identity aligned, preserves fact
     const restarted=createVendorEntries(repository);
     assert.equal((await restarted.command(context,request,{operator:true})).duplicate,true);
     const after=(await restarted.read(context)).entries[0],item=(await repository.listRecords('alpha','item'))[0];
-    assert.equal(after.lot,'2부 B14');assert.equal(after.version,3);assert.deepEqual(after.approved,before.approved);
-    assert.deepEqual(item,{...old,name:'2부 B14',lotNumber:29,attributes:{...old.attributes,displayNumber:'2부 B14'},updatedAt:item.updatedAt});
+    assert.equal(after.lot,'B14');assert.equal(after.version,3);assert.deepEqual(after.approved,before.approved);
+    assert.deepEqual(item,{...old,name:'B14',lotNumber:29,attributes:{...old.attributes,displayNumber:'B14'},updatedAt:item.updatedAt});
     assert.ok(item.updatedAt>old.updatedAt);assert.deepEqual(await repository.listRecords('beta','item'),[]);
     await assert.rejects(restarted.command(context,{...request,requestId:randomUUID()},{operator:true}));
 });
