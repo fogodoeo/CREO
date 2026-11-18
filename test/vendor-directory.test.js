@@ -12,7 +12,10 @@ test('national region overrides stay scoped to cycle mode and channel without ch
  for(let i=0;i<2;i++)assert.equal((await createVendorDirectory(r).find('national-cre','v')).broadcastRegion,'경기');
  assert.equal((await d.find('other',other.vendorId)).broadcastRegion,undefined);
  assert.deepEqual(r.records,records);assert.deepEqual(r.rows,rows);
- for(const invalid of [-1,5,'1',null]){
+ await r.upsertRecord('national-cre','setting',{id:'national-broadcasts',regions:{v:-1}});
+ assert.equal((await d.find('national-cre','v')).broadcastRegion,'참여 제외');
+ assert.equal((await d.find('other',other.vendorId)).broadcastRegion,undefined);
+ for(const invalid of [-2,5,'1',null]){
   await r.upsertRecord('national-cre','setting',{id:'national-broadcasts',regions:{v:invalid}});
   assert.equal((await d.find('national-cre','v')).broadcastRegion,'서울');
  }

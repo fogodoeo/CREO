@@ -13,6 +13,61 @@ async function fixture(t){
 }
 const registration=(more={})=>({name:'가상 경북 신규 업체',region:'대구·경북',phone:'01000000001',requestId:'new-vendor-participation-001',...more});
 
+test('participation exclusion preserves company login and history, releases unused rounds, and can be reversed',async t=>{
+ const f=await regionalVendor(t),profile=await f.directory.profileFor(ROOT,f.vendorId);
+ await f.repository.upsertRecord(ROOT,'item',{id:'past',vendorId:f.vendorId,status:'sold',soldPrice:12345,attributes:{broadcastDate:'2026-10-19'}});
+ const before=await f.repository.getRecord(ROOT,'item','past'),body=await f.regionBody(-1);
+ const responses=await Promise.all([f.region(body),f.region(body)]);
+ assert.ok(responses.every(r=>r.status===200),responses.map(r=>r.body).join('\n'));
+ assert.equal(responses.filter(r=>r.json().duplicate).length,1);
+ assert.equal((await f.directory.find(ROOT,f.vendorId)).broadcastRegion,'참여 제외');
+ assert.notEqual((await f.directory.find(ROOT,f.vendorId)).active,false);
+ assert.equal((await f.directory.find(TARGET,f.vendorId)).active,false);
+ assert.equal((await f.directory.profileFor(ROOT,f.vendorId)).id,profile.id);
+ f.restart();assert.equal((await f.region(body)).json().duplicate,true);
+ const token=(await f.post(f.owner,'select',{id:f.vendorId})).json().token;
+ const view=await f.call(f.owner,'GET','/api/platform/vendor-bookings?'+new URLSearchParams({token,event:ROOT}));
+ assert.equal(view.status,200,view.body);assert.ok(view.json().dates.every(d=>d.maxQuantityAvailable===0&&d.panelLimit===0));
+ assert.equal((await f.prepare()).status,200);assert.equal((await f.directory.find(TARGET,f.vendorId)).active,false);
+ assert.equal((await f.region(await f.regionBody(3))).status,200);
+ assert.equal((await f.directory.find(TARGET,f.vendorId)).active,true);
+ assert.deepEqual(await f.repository.getRecord(ROOT,'item','past'),before);
+});
+
+test('failed exclusion is atomic and an existing future booking cannot be silently removed',async t=>{
+ const f=await regionalVendor(t),body=await f.regionBody(-1),before=await f.directory.read();
+ const cas=f.repository.compareAndSwapRows.bind(f.repository);f.repository.compareAndSwapRows=async()=>false;
+ assert.equal((await f.region(body)).status,409);f.repository.compareAndSwapRows=cas;
+ assert.deepEqual(await f.directory.read(),before);assert.equal((await f.directory.find(TARGET,f.vendorId)).active,true);
+ const token=(await f.post(f.owner,'select',{id:f.vendorId})).json().token;
+ const reserved=await f.call(f.owner,'POST','/api/platform/vendor-bookings',{token,event:ROOT,type:'reserve',date:DATE,quantity:4,requestId:randomUUID()});
+ assert.equal(reserved.status,200,reserved.body);
+ assert.equal((await f.region(await f.regionBody(-1))).status,409);
+ assert.equal((await f.directory.find(ROOT,f.vendorId)).broadcastRegion,'대구·경북');
+});
+
+test('season 3 Seoul registration opens and round repair releases wrong regional assignments without deleting history',async t=>{
+ const f=await fixture(t),date='2026-11-25',target=ROOT+'-20261125';
+ f.advance(21*86400000); // November 13: within the two-week booking window.
+ const owner=await f.login('01000000001'),created=await f.post(owner,'register',registration({region:'서울'}));
+ assert.equal(created.status,200,created.body);const id=created.json().id;
+ const token=(await f.post(owner,'select',{id})).json().token;
+ const booked=await f.call(owner,'POST','/api/platform/vendor-bookings',{token,event:ROOT,type:'reserve',date,quantity:4,requestId:randomUUID()});
+ assert.equal(booked.status,200,booked.body);assert.equal(booked.json().reservations[0].region,0);
+ const root=(await f.repository.getCatalog()).channels[0];
+ await f.repository.saveCatalog([root,normalizeChannel({...root,id:target,status:'draft',name:'전국크레자랑 · 11/25 전라·충청',nationalRound:{parentId:ROOT,date}})]);
+ await f.repository.upsertRecord(target,'vendor',{id:'wrong-region',name:'기존 전라 업체',active:true});
+ await f.repository.upsertRecord(target,'broadcast',{id:'state',mode:'standby',notice:'전국크레자랑 · 전라·충청 편'});
+ const prepare=()=>f.request('POST','/national-rounds',{action:'prepare',date});
+ const result=await prepare();assert.equal(result.status,200,result.body);
+ assert.equal((await f.directory.find(target,'wrong-region')).active,false);
+ assert.equal((await f.directory.find(target,id)).broadcastRegion,'서울·인천');
+ assert.equal((await f.repository.getCatalog()).channels.find(c=>c.id===target).name,'전국크레자랑 · 11/25 서울·인천');
+ assert.equal((await f.repository.getRecord(target,'broadcast','state')).notice,'전국크레자랑 · 서울·인천 편');
+ f.restart();assert.equal((await prepare()).json().duplicate,true);
+ assert.equal((await f.directory.profileFor(target,id)).id,(await f.directory.profileFor(ROOT,id)).id);
+});
+
 test('new company joins an already prepared regional show on registration, with one identity across duplicate and restart',async t=>{
  const f=await fixture(t);assert.equal((await f.prepare()).status,200);const owner=await f.login('01000000001');
  const [first,again]=await Promise.all([f.post(owner,'register',registration()),f.post(owner,'register',registration())]);
@@ -117,7 +172,7 @@ test('regional assignment moves only unused future participation, preserving his
  assert.equal((await f.directory.find(TARGET,f.vendorId)).active,false);assert.equal((await f.directory.find(south,f.vendorId)).active,true);
  assert.equal((await f.directory.profileFor(south,f.vendorId)).id,profile.id);
  const summary=(await f.request('GET','/operator-vendors')).json().vendors.find(v=>v.id===profile.id);
- assert.deepEqual(summary.broadcasts.map(b=>b.date),['2026-10-19','2026-10-28','2026-11-23']);
+ assert.deepEqual(summary.broadcasts.map(b=>b.date),['2026-10-19','2026-10-28','2026-11-23','2026-12-09']);
  f.restart();assert.equal((await f.region(body)).json().duplicate,true);
  const back=await f.region(await f.regionBody(3));assert.equal(back.status,200,back.body);
  assert.equal((await f.directory.find(TARGET,f.vendorId)).active,true);assert.equal((await f.directory.find(south,f.vendorId)).active,false);

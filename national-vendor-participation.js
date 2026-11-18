@@ -64,7 +64,7 @@ function createNationalVendorParticipation({repository,directory,now=Date.now,to
   const catalog=await repository.getCatalog(),ids=catalog.channels.filter(c=>c.nationalRound?.parentId===ROOT).map(c=>c.id).sort();
   const run=index=>index<ids.length?lock('channel:'+ids[index],()=>run(index+1)):transaction(async stage=>{
    const vendor=await directory.find(ROOT,vendorId);
-   return commit(await stage({...vendor,broadcastRegion:National.REGIONS[region]},{reconcile:true}));
+   return commit(await stage({...vendor,broadcastRegion:region===-1?National.EXCLUDED_REGION:National.REGIONS[region]},{reconcile:true}));
   });
   return run(0);
  }

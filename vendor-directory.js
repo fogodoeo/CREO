@@ -52,7 +52,7 @@ function createVendorDirectory(repository) {
         const regions=cycle[0]?.mode===National.MODE?cycle[1]?.regions||{}:{};
         return records.map(record=>{
             const region=regions[record.id];
-            const local=Number.isInteger(region)&&region>=0&&region<National.REGIONS.length
+            const local=region===-1?{...record,broadcastRegion:National.EXCLUDED_REGION}:Number.isInteger(region)&&region>=0&&region<National.REGIONS.length
                 ?{...record,broadcastRegion:National.REGIONS[region],bookingRegion:[0,3,4,6,7][region]}:record;
             return hydrate(local,directory.profiles.find(p=>member(p,channelId,record.id)));
         });

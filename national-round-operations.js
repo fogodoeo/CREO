@@ -124,6 +124,20 @@ function createNationalRoundOperations({repository,directory,lock,touch,now=Date
      const copy=copyItem(item,target,date,++lot);copy.createdAt=stamp;copy.updatedAt=stamp;rows.push(row('item',copy));usedVendors.add(vendor.id);
      rows.push({key:channelKey(ROOT,'item',item.id),value:JSON.stringify({...item,attributes:{...item.attributes,roundTargetChannelId:targetId},updatedAt:stamp})});
     }
+    const originalTarget=target;
+    // Reconcile an unstarted future round after a season calendar correction.
+    // Keep shared identities and historical rows; release only unused assignments.
+    if(date>=National.SEASON3_START&&date>=new Date(now()+9*3600000).toISOString().slice(0,10)){
+     for(const vendor of await repository.listRecords(targetId,'vendor')){
+      if(vendor.active!==false&&!usedVendors.has(vendor.id))rows.push(row('vendor',{...vendor,active:false,nationalAssignmentReleasedAt:stamp,updatedAt:stamp}));
+     }
+     const regionName=National.REGIONS[region];
+     for(const previous of National.REGIONS.filter(r=>r!==regionName)){
+      if(target.name===`전국크레자랑 · ${date.slice(5).replace('-','/')} ${previous}`)target={...target,name:`전국크레자랑 · ${date.slice(5).replace('-','/')} ${regionName}`,shortName:`${date.slice(5)} ${regionName}`};
+      if(target.broadcastDefaults?.page3Title===`${previous}편`)target={...target,broadcastDefaults:{...target.broadcastDefaults,page3Title:`${regionName}편`}};
+     }
+     if(targetState&&National.REGIONS.some(r=>r!==regionName&&targetState.notice===`전국크레자랑 · ${r} 편`))rows.push(row('broadcast',{...targetState,notice:`전국크레자랑 · ${regionName} 편`,page3Title:`${regionName} 편 방송 결과`,updatedAt:stamp}));
+    }
     let directoryChanged=false;
     for(const id of usedVendors){
      const vendor=sourceVendors.find(v=>v.id===id),profile=directory.enrollInDocument(dir,ROOT,vendor,stamp);
@@ -132,9 +146,11 @@ function createNationalRoundOperations({repository,directory,lock,touch,now=Date
      if(targetOwner&&targetOwner.id!==profile.id)throw fail('대상 회차의 업체 소유 정보가 다릅니다. 연결을 확인해 주세요.');
      if(profile&&!profile.members.some(m=>m.channelId===targetId)){profile.members.push({channelId:targetId,vendorId:id});profile.revision++;directoryChanged=true;}
      else if(profile&&!profile.members.some(m=>m.channelId===targetId&&m.vendorId===id))throw fail('업체 연결 정보가 다릅니다.');
-     if(!await repository.getRecord(targetId,'vendor',id))rows.push(row('vendor',{...vendor,id,channelId:targetId}));
+     const existingVendor=await repository.getRecord(targetId,'vendor',id);
+     if(!existingVendor)rows.push(row('vendor',{...vendor,id,channelId:targetId}));
+     else if(existingVendor.active===false&&existingVendor.nationalAssignmentReleasedAt){const restored={...existingVendor,active:true,updatedAt:stamp};delete restored.nationalAssignmentReleasedAt;rows.push(row('vendor',restored));}
     }
-    if(!rows.length&&!directoryChanged)return {channelId:targetId,duplicate:true,imported:0};
+    if(!rows.length&&!directoryChanged&&target===originalTarget)return {channelId:targetId,duplicate:true,imported:0};
     rows.push({key:directoryKey,value:JSON.stringify(dir)});
    }
    const channels=catalog.channels.some(c=>c.id===targetId)?catalog.channels.map(c=>c.id===targetId?target:c):[...catalog.channels,target];
