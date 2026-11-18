@@ -2,8 +2,8 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),{parseHTML}=require('linkedom');
 const html=fs.readFileSync(require.resolve('../public/platform-layout-editor.html'),'utf8'),script=fs.readFileSync(require.resolve('../public/studio-layout-editor.js'),'utf8');
 const placements={x:10,y:20,width:30,height:10,fontScale:1,opacity:100,visible:true};
-function setup(){
- const {document,window}=parseHTML(html),preview=parseHTML('<html><head></head><body data-broadcast-theme="national"><div data-layout-slot="p1-host-1"></div></body></html>').document,messages=[],writes=[];
+function setup({page=1,slot='p1-host-1',theme='national',initial=placements}={}){
+ const {document,window}=parseHTML(html),preview=parseHTML(`<html><head></head><body data-broadcast-theme="${theme}"><div data-layout-slot="${slot}"></div></body></html>`).document,messages=[],writes=[];
  let failure=false,hold=null;
  const frame=document.getElementById('frame'),settings=document.getElementById('settings-frame');frame.contentDocument=preview;frame.contentWindow={};settings.contentWindow={postMessage:data=>messages.push(JSON.parse(JSON.stringify(data)))};
  Object.defineProperties(preview.documentElement,{clientWidth:{value:1920},clientHeight:{value:1080}});
@@ -11,9 +11,9 @@ function setup(){
  for(const id of ['slot','p2-scene'])Object.defineProperty(document.getElementById(id),'value',{writable:true,value:id==='slot'?'':'item'});
  Object.defineProperties(document.getElementById('canvas-surface'),{clientWidth:{value:640},clientHeight:{value:360}});
  window.frameElement=null;window.parent={postMessage:data=>messages.push(JSON.parse(JSON.stringify(data)))};
- vm.runInNewContext(script,{document,window,location:{search:'?channel=national-cre&page=1',origin:'http://test.invalid'},URLSearchParams,Option:function(text,value){const option=document.createElement('option');option.textContent=text;option.value=value;return option},requestAnimationFrame:f=>f(),setTimeout:()=>1,clearTimeout(){},matchMedia:()=>({matches:false}),ResizeObserver:class{observe(){}},CreoLayoutDraft:require('../public/studio-layout-draft'),CreoBroadcastTextLayout:require('../public/broadcast-text-layout'),CreoPlatform:{api:async(path,options)=>{const body=JSON.parse(options.body);writes.push([path,body]);if(hold)await hold;if(failure)throw Object.assign(Error('연결 끊김'),{status:503});return {state:{layoutPlacements:body.layoutPlacements}}}}});
+ vm.runInNewContext(script,{document,window,location:{search:`?channel=national-cre&page=${page}`,origin:'http://test.invalid'},URLSearchParams,Option:function(text,value){const option=document.createElement('option');option.textContent=text;option.value=value;return option},requestAnimationFrame:f=>f(),setTimeout:()=>1,clearTimeout(){},matchMedia:()=>({matches:false}),ResizeObserver:class{observe(){}},CreoLayoutDraft:require('../public/studio-layout-draft'),CreoBroadcastTextLayout:require('../public/broadcast-text-layout'),CreoPlatform:{api:async(path,options)=>{const body=JSON.parse(options.body);writes.push([path,body]);if(hold)await hold;if(failure)throw Object.assign(Error('연결 끊김'),{status:503});return {state:{layoutPlacements:body.layoutPlacements}}}}});
  const message=(source,data,origin='http://test.invalid')=>window.dispatchEvent(Object.assign(new window.Event('message'),{origin,source,data}));
- const ready=(values={'p1-host-1':placements})=>message(frame.contentWindow,{type:'creo-layout-ready',page:1,placements:values});ready();
+ const ready=(values={[slot]:initial})=>message(frame.contentWindow,{type:'creo-layout-ready',page,placements:values});ready();
  return {document,window,messages,writes,ready,change(x){const field=document.getElementById('x');field.value=String(x);field.oninput()},settingsMessage(data,origin){message(settings.contentWindow,data,origin)},settingsSaved(){message(settings.contentWindow,{type:'creo-broadcast-settings-saved',page:1})},fail(value=true){failure=value},hold(value){hold=value}};
 }
 test('saving content refreshes the preview without publishing an unsaved placement or reset',()=>{
@@ -42,6 +42,21 @@ test('successful save reloads the preview snapshot so timed captions cannot repl
  assert.equal(f.document.getElementById('x').value,'25.0');
  f.ready({'p1-host-1':{...placements,x:25}});
  assert.equal(f.document.getElementById('x').value,'25.0');assert.equal(f.messages.at(-1).dirty,false);
+});
+
+test('P2 numeric size edits unlock automatic sizing and retain measured other dimension and right anchor',async()=>{
+ for(const dimension of ['width','height']){
+  const f=setup({page:2,slot:'p2-info',theme:'national-stage',initial:{...placements,width:70,height:40,rightEdge:95,autoWidth:true}});
+  const field=f.document.getElementById(dimension);
+  assert.equal(field.disabled,false);assert.equal(f.document.getElementById('auto-width').checked,true);
+  field.value='25';field.oninput();
+  assert.equal(f.document.getElementById('auto-width').checked,false);
+  await f.document.getElementById('save').onclick();
+  const saved=f.writes[0][1].layoutPlacements['p2-info'];
+  assert.equal(saved.autoWidth,false);assert.equal(saved[dimension],25);assert.equal(saved.rightEdge,95);
+  assert.equal(saved[dimension==='width'?'height':'width'],dimension==='width'?10:30);
+  f.ready({'p2-info':saved});assert.equal(f.document.getElementById(dimension).value,'25.0');
+ }
 });
 test('settings drafts join layout navigation protection with channel/source/page validation and relay authentication',()=>{
  const f=setup(),draft={type:'creo-settings-draft',channelId:'national-cre',page:1,dirty:true,saving:false};

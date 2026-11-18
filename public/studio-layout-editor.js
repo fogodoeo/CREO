@@ -18,6 +18,7 @@
  function toast(message){$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2400);}
  function currentBox(element){const rect=element.getBoundingClientRect(),view=doc().documentElement;return {x:rect.left/view.clientWidth*100,y:rect.top/view.clientHeight*100,width:rect.width/view.clientWidth*100,height:rect.height/view.clientHeight*100,...(textLayout.rightAnchored(theme(),element.dataset.layoutSlot)?{rightEdge:rect.right/view.clientWidth*100}:{}),fontScale:Number(element.style.getPropertyValue('--layout-font-scale'))||1,opacity:100,visible:true};}
  function box(slot=selected){return model.values()[slot]||(target(slot)?currentBox(target(slot)):null);}
+ function manualBox(){const value=box();if(!textLayout.automatic(theme(),selected,value))return value;const actual=currentBox(target());return {...value,width:actual.width,height:actual.height,...(target().classList.contains('is-lower-caption')?{y:actual.y}:{}),autoWidth:false};}
  function paint(slot,value){
   const element=target(slot);if(!element)return;
   textLayout.apply(element,theme(),slot,value);
@@ -41,7 +42,7 @@
  }
  function syncFields(){
   const value=box();for(const id of fields)$(id).disabled=!value;
-  for(const name of ['x','y','width','height'])$(name).value=value?value[name].toFixed(1):'';
+  for(const name of ['x','y','width','height'])if(document.activeElement!==$(name))$(name).value=value?value[name].toFixed(1):'';
   for(const name of ['x','y','width','height'])$(name).disabled=!value||isFrame(selected);
   const rightAnchored=textLayout.rightAnchored(theme(),selected);
   $('x-label').textContent=rightAnchored?'오른쪽 기준':'가로 X';$('x').min=rightAnchored?'4':'0';$('x').max=rightAnchored?'120':'96';$('right-anchor-note').hidden=!rightAnchored;
@@ -50,7 +51,8 @@
   $('font-number').disabled=$('font').disabled;if(document.activeElement!==$('font-number'))$('font-number').value=Math.round((value?.fontScale||1)*100);
   const canFit=textLayout.supports(theme(),selected),autoWidth=textLayout.automatic(theme(),selected,value);
   $('auto-width-field').hidden=!canFit;$('auto-width').disabled=!value||!canFit;$('auto-width').checked=autoWidth;
-  if(autoWidth){$('width').disabled=true;$('height').disabled=true;const rect=target()?.getBoundingClientRect(),view=doc()?.documentElement;if(rect&&view){$('width').value=(rect.width/view.clientWidth*100).toFixed(1);$('height').value=(rect.height/view.clientHeight*100).toFixed(1);}}
+  $('manual-size-note').hidden=!canFit;
+  if(autoWidth){const rect=target()?.getBoundingClientRect(),view=doc()?.documentElement;if(rect&&view){if(document.activeElement!==$('width'))$('width').value=(rect.width/view.clientWidth*100).toFixed(1);if(document.activeElement!==$('height'))$('height').value=(rect.height/view.clientHeight*100).toFixed(1);}}
   $('font-label').textContent=selected.endsWith('-ticker')?'글자 크기 · P1/P2 공용':'글자 크기';
   const displayOpacity=usesTransparency(selected)?100-(value?.opacity??100):(value?.opacity??100);
   $('opacity-label').textContent=usesTransparency(selected)?'투명도':'불투명도';$('opacity').value=displayOpacity;$('opacity-value').textContent=Math.round(displayOpacity)+'%';$('visible').checked=value?.visible!==false;
@@ -100,7 +102,7 @@
   if(event.source===settingsFrame.contentWindow&&event.data?.type==='creo-broadcast-settings-saved'){loadPreview();toast(model.dirty()?'문구 설정 반영됨 · 배치 수정은 아직 저장 전이에요':'문구·표시 설정을 반영했어요');}
  });
  $('slot').onchange=()=>select($('slot').value);
- for(const name of ['x','y','width','height','opacity'])$(name).oninput=()=>{if(box()&&$(name).value!=='')change(selected,{...box(),[name==='x'&&textLayout.rightAnchored(theme(),selected)?'rightEdge':name]:name==='opacity'&&usesTransparency(selected)?100-Number($(name).value):$(name).value})};
+ for(const name of ['x','y','width','height','opacity'])$(name).oninput=()=>{if(box()&&$(name).value!=='')change(selected,{...(['width','height'].includes(name)?manualBox():box()),[name==='x'&&textLayout.rightAnchored(theme(),selected)?'rightEdge':name]:name==='opacity'&&usesTransparency(selected)?100-Number($(name).value):$(name).value})};
  $('font').oninput=()=>box()&&change(selected,{...box(),fontScale:$('font').value});$('visible').onchange=()=>box()&&change(selected,{...box(),visible:$('visible').checked});
  $('font-number').oninput=()=>{const value=Number($('font-number').value);if(box()&&value>=50&&value<=250)change(selected,{...box(),fontScale:value/100});};
  $('font-number').onchange=()=>{if(box())change(selected,{...box(),fontScale:clamp($('font-number').value,50,250)/100});$('font-number').value=Math.round((box()?.fontScale||1)*100);};

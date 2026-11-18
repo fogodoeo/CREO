@@ -199,6 +199,11 @@ body[data-broadcast-theme="national-stage"][data-page="2"] #stage .live-bidders[
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .live-bidders[data-text-auto-width] .live-bid-amount{padding:.22em .5em;font-size:inherit!important}
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .live-bidders[data-text-auto-width] .live-bid-row.is-empty{grid-template-columns:1fr}
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .live-bidders[data-text-auto-width] .is-empty .live-bid-name{padding:.22em .6em;text-align:center}
+
+/* Explicit sizing must override automatic content dimensions, including bid rows. */
+body[data-broadcast-theme="national-stage"][data-page="2"] #stage [data-layout-slot][data-text-auto-width="0"][data-layout-custom="1"]{
+ width:var(--layout-width)!important;height:var(--layout-height)!important;min-width:0!important;min-height:0!important;
+}
 body[data-broadcast-theme="national-stage"][data-page="2"] #stage .live-bidders[data-text-auto-width] .is-empty .live-bid-name::after{display:none}
 
 body[data-broadcast-theme="national-stage"] #stage .ticker{border:2px solid var(--national-rim)!important;border-radius:999px!important;background:var(--national-ribbon)!important;box-shadow:0 4px 0 #3f568d!important;overflow:hidden}

@@ -1,5 +1,11 @@
 # November studio designs
 
+## Layout editing — 2026-11-18
+
+- Automatic text fitting no longer disables width/height inputs. Editing either dimension captures the current rendered size and switches that slot to manual sizing, preserving its anchor and font size. The short hint explains this beside the controls.
+- Manual P2 text boxes honor both saved dimensions; automatic captions keep their compact, right-aligned row surfaces and transparent unused space. Text size remains a separate control.
+- Successful layout saves reload the preview snapshot so timed caption/banner renders cannot restore the pre-save placement. Failed saves retain the draft.
+
 ## Current C·LAB revision — 2026-11-04: metal plates
 
 The existing `clab-gallery` ID now displays as **씨랩 메탈**, preserving saved channel selection. This supersedes all porcelain/sage C·LAB descriptions below. Jjunine remains unchanged.
