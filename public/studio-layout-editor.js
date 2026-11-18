@@ -85,7 +85,7 @@
  async function save(showToast=true){
   if(saving)return false;if(!model.dirty())return true;
   const snapshot=model.snapshot();saving=true;$('save-error').hidden=true;status();
-  try{const result=await CreoPlatform.api(`channels/${encodeURIComponent(channelId)}/broadcast-state`,{method:'PUT',body:JSON.stringify({layoutPlacements:snapshot.values})});model.saved(result.state?.layoutPlacements,snapshot);if(showToast)toast('송출 배치를 저장했어요');return true;}
+  try{const result=await CreoPlatform.api(`channels/${encodeURIComponent(channelId)}/broadcast-state`,{method:'PUT',body:JSON.stringify({layoutPlacements:snapshot.values})});model.saved(result.state?.layoutPlacements,snapshot);loadPreview();if(showToast)toast('송출 배치를 저장했어요');return true;}
   catch(error){if(error.status===401)window.parent.postMessage({type:'creo-admin-required'},location.origin);$('save-error').textContent=(error.message||'저장하지 못했어요.')+' 변경사항은 유지돼요. 배치 저장을 다시 눌러 주세요.';$('save-error').hidden=false;$('save-error').focus();return false;}
   finally{saving=false;status();}
  }

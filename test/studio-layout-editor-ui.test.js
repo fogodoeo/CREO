@@ -30,6 +30,19 @@ test('standalone dirty layout guards browser navigation; the explicit studio hos
  const f=setup();f.change(25);const event=new f.window.Event('beforeunload',{cancelable:true});f.window.dispatchEvent(event);assert.equal(event.defaultPrevented,true);
  f.window.frameElement={dataset:{layoutDraftHost:'1'}};const hosted=new f.window.Event('beforeunload',{cancelable:true});f.window.dispatchEvent(hosted);assert.equal(hosted.defaultPrevented,false);
 });
+
+test('successful save reloads the preview snapshot so timed captions cannot replay old placements',async()=>{
+ const f=setup(),frame=f.document.getElementById('frame');let reloads=0;
+ Object.defineProperty(frame,'src',{set(){reloads++},configurable:true});
+ f.change(25);f.fail();await f.document.getElementById('save').onclick();assert.equal(reloads,0);
+ f.fail(false);await f.document.getElementById('save').onclick();assert.equal(reloads,1);
+ assert.equal(f.document.getElementById('save').disabled,true);
+ assert.equal(f.document.getElementById('save-status').textContent,'불러오는 중…');
+ f.ready({'p1-host-1':{...placements,x:25}});
+ assert.equal(f.document.getElementById('x').value,'25.0');
+ f.ready({'p1-host-1':{...placements,x:25}});
+ assert.equal(f.document.getElementById('x').value,'25.0');assert.equal(f.messages.at(-1).dirty,false);
+});
 test('settings drafts join layout navigation protection with channel/source/page validation and relay authentication',()=>{
  const f=setup(),draft={type:'creo-settings-draft',channelId:'national-cre',page:1,dirty:true,saving:false};
  f.settingsMessage({...draft,channelId:'other'});f.settingsMessage({...draft,page:2});f.settingsMessage(draft,'https://foreign.invalid');assert.equal(f.messages.at(-1).dirty,false);
