@@ -26,6 +26,62 @@ async function fixture(t){
  const confirm=(role='operator',extra={})=>role==='operator'?call('POST','channels/alpha/buyer-shipping-payment',{itemId:'first',requestId:'confirm-initial',...extra},true):call('POST','vendor-checkout/confirm-payment',{code:vendor.code,buyerId:buyer.id,requestId:'confirm-initial',...extra});
  return {call,confirm,selection,link,vendor,buyer,sent,get repository(){return repository},get service(){return service},setReady(value){ready=value},restart(){repository.close();start()},notices:async()=> (await repository.listRecords('alpha','notification')).filter(n=>n.templateKey==='buyer_payment_confirmed')};
 }
+async function secondVendor(f,method='bank_transfer'){
+ await f.repository.upsertRecord('alpha','vendor',{id:'other',name:'다른 업체',bankName:'가상은행',bankAccount:'123',bankHolder:'다른 업체'});
+ await f.repository.upsertRecord('alpha','item',{id:'other-item',name:'B01',status:'sold',soldPrice:70000,winnerName:'가상 구매자',winnerPhone:'01000000002',vendorId:'other',vendorName:'다른 업체'});
+ const save=await f.call('POST','buyer-shipping',{...f.selection,payments:[...f.selection.payments,{vendorKey:'other',method}],requestId:'save-other-vendor'});assert.equal(save.status,200,save.body);
+ const link=(await f.call('POST','channels/alpha/vendor-checkout-link',{vendorId:'other'},true)).json();
+ return {link,buyer:(await f.call('GET','vendor-checkout?code='+link.code)).json().buyers[0],data:save.json()};
+}
+test('another vendor can report and confirm from an open payment screen while the first remains unconfirmed',async t=>{
+ const f=await fixture(t),other=await secondVendor(f);
+ const firstVersion=other.data.vendors.find(v=>v.key==='vendor').payment.editVersion;
+ const otherVersion=other.data.vendors.find(v=>v.key==='other').payment.editVersion;
+ const report=(vendorKey,expectedVersion,requestId)=>f.call('POST','buyer-shipping/report-payment',{code:f.link.code,vendorKey,expectedVersion,requestId});
+ assert.equal((await report('vendor',firstVersion,'report-first-vendor')).status,200);
+ f.restart();
+ const otherReport=await report('other',otherVersion,'report-other-vendor');assert.equal(otherReport.status,200,otherReport.body);
+ const snapshot=(await f.call('GET','vendor-checkout?code='+other.link.code)).json().buyers[0];
+ // An additional win and activity at A do not invalidate B's confirmation.
+ await f.repository.upsertRecord('alpha','item',{id:'later',name:'A03',status:'sold',soldPrice:10000,winnerName:'가상 구매자',winnerPhone:'01000000002',vendorId:'vendor'});
+ const response=await f.call('POST','vendor-checkout/confirm-payment',{code:other.link.code,buyerId:snapshot.id,expectedVersion:snapshot.payment.editVersion,requestId:'confirm-other-vendor'});
+ assert.equal(response.status,200,response.body);
+ const shipments=await f.repository.listRecords('alpha','shipment');
+ assert.equal(shipments.find(s=>s.itemId==='other-item').paymentStatus,'paid');
+ assert.ok(shipments.filter(s=>['first','second'].includes(s.itemId)).every(s=>s.paymentStatus==='bank_transfer_reported'));
+ assert.equal((await f.notices()).length,1);
+});
+test('both vendors can independently confirm concurrently using versions captured before either confirmation',async t=>{
+ const f=await fixture(t),other=await secondVendor(f);
+ const first=(await f.call('GET','vendor-checkout?code='+f.vendor.code)).json().buyers[0];
+ const responses=await Promise.all([
+  f.confirm('vendor',{expectedVersion:first.payment.editVersion}),
+  f.call('POST','vendor-checkout/confirm-payment',{code:other.link.code,buyerId:other.buyer.id,expectedVersion:other.buyer.payment.editVersion,requestId:'confirm-second-vendor'})
+ ]);
+ for(const response of responses)assert.equal(response.status,200,response.body);
+ assert.ok((await f.repository.listRecords('alpha','shipment')).every(s=>s.paymentStatus==='paid'));
+ assert.equal((await f.notices()).length,2);
+});
+test('a pending vendor does not block another vendor card guide or card payment report',async t=>{
+ const f=await fixture(t),other=await secondVendor(f,'card');
+ const pending=await f.call('POST','buyer-shipping/report-payment',{code:f.link.code,vendorKey:'vendor',requestId:'report-first-bank'});assert.equal(pending.status,200,pending.body);
+ const guide=await f.call('POST','vendor-checkout/card-link',{code:other.link.code,buyerId:other.buyer.id,expectedVersion:other.buyer.payment.editVersion,expectedAmount:70000,cardPaymentUrl:'https://pay.example.test/isolated',requestId:'other-card-guide'});
+ assert.equal(guide.status,200,guide.body);
+ const data=(await f.call('GET','buyer-shipping?code='+f.link.code)).json();
+ assert.equal((await f.confirm()).status,200);
+ const report=await f.call('POST','buyer-shipping/report-payment',{code:f.link.code,vendorKey:'other',expectedVersion:data.vendors.find(v=>v.key==='other').payment.editVersion,requestId:'report-other-card'});
+ assert.equal(report.status,200,report.body);
+ assert.equal(report.json().vendors.find(v=>v.key==='other').payment.status,'card_payment_reported');
+});
+test('a vendor scoped version still rejects changed own amount, destination, or another vendor version',async t=>{
+ for(const mutation of ['amount','destination','wrong-vendor']){
+  const f=await fixture(t),other=await secondVendor(f),version=other.buyer.payment.editVersion;
+  if(mutation==='amount'){const item=await f.repository.getRecord('alpha','item','other-item');await f.repository.upsertRecord('alpha','item',{...item,soldPrice:80000});}
+  if(mutation==='destination'){const shipment=(await f.repository.listRecords('alpha','shipment')).find(s=>s.itemId==='other-item');await f.repository.upsertRecord('alpha','shipment',{...shipment,destinationId:'pickup-2',address:'다른 행사장'});}
+  const response=await f.call('POST','vendor-checkout/confirm-payment',{code:other.link.code,buyerId:other.buyer.id,expectedVersion:mutation==='wrong-vendor'?f.buyer.payment.editVersion:version,requestId:'stale-scoped-confirm'});
+  assert.equal(response.status,409,response.body);assert.equal((await f.notices()).length,0);
+ }
+});
 test('operator confirmation atomically queues the buyer completion notice and all roles see paid',async t=>{
  const f=await fixture(t),response=await f.confirm();assert.equal(response.status,200,response.body);
  const notices=await f.notices();assert.equal(notices.length,1);assert.equal(response.json().notification.status,'queued');

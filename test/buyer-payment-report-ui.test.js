@@ -11,6 +11,12 @@ function setup(){
  const $=selector=>dialog.querySelector(selector),open=()=>report.open('v',document.getElementById('opener'));
  return {report,dialog,document,window,$,open,focus,calls,finished,busy,get data(){return data},setData:value=>{data=value},handler:value=>{handler=value},refresh:value=>{refresh=value},apply:value=>{apply=value}};
 }
+test('another vendor update does not invalidate an open report but own payment updates do',async()=>{
+ const s=setup();s.data.vendors[0].payment.editVersion='vendor-version';s.open();s.data.editVersion='changed-other-vendor';
+ await s.$('[data-confirm]').onclick();assert.equal(s.calls.length,1);assert.equal(s.calls[0].expectedVersion,'vendor-version');
+ s.open();s.data.vendors[0].payment.editVersion='changed-own-payment';await s.$('[data-confirm]').onclick();
+ assert.equal(s.calls.length,1);assert.equal(s.$('[data-reload]').hidden,false);
+});
 test('report confirmation identifies the exact vendor, amount and account; opening or cancelling never reports',async()=>{
  const s=setup();s.open();assert.equal(s.report.isOpen(),true);assert.equal(s.calls.length,0);assert.equal(s.$('[data-vendor]').textContent,'가상 <업체>');assert.equal(s.$('[data-vendor]').children.length,0);assert.equal(s.$('[data-amount]').textContent,'126,000원');assert.match(s.$('[data-account]').textContent,/000-123/);assert.equal(s.focus.at(-1),'cancel');
  s.$('[data-cancel]').click();assert.equal(s.report.isOpen(),false);assert.equal(s.calls.length,0);assert.equal(s.focus.at(-1),'opener');

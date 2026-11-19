@@ -1605,7 +1605,9 @@ function createPlatformApi({
             const hasBaseItem = Boolean(orderedBundle[0] && group.items.some((item) => item.id === orderedBundle[0].id));
             const shippingBreakdown = selection ? { multiVendor: rawGroups.length > 1, hasBaseItem, additionalOnly: rawGroups.length > 1 && !hasBaseItem && ['parge', 'dodosi'].includes(selection.destinationType), ownItemCount: group.items.length, additionalItemCount: hasBaseItem ? Math.max(0, group.items.length - 1) : group.items.length, destinationType: selection.destinationType || '' } : null;
             if(shippingBreakdown && selection.destinationType==='parge' && combinedShipping?.eligible && selection.pargeRegion===combinedShipping.pargeRegion && selection.pargeShop===combinedShipping.pargeShop)Object.assign(shippingBreakdown,{crossRound:true,additionalItemCount:group.items.length});
-            return { ...group, shipments, settlement, shippingAmount, shippingSupportAmount, totalAmount, payment, shippingBreakdown };
+            const result = { ...group, shipments, settlement, shippingAmount, shippingSupportAmount, totalAmount, payment, shippingBreakdown };
+            result.editVersion = paymentEditVersion(context, result);
+            return result;
         });
         const deliverySchedule = deliverySchedules ? await deliverySchedules.estimate(context.channel, selection, latest?.destinationRegisteredAt || latest?.buyerSubmittedAt) : null;
         return { rates, latest, selection, shipping, groups, deliverySchedule, combinedShipping };
@@ -1630,6 +1632,7 @@ function createPlatformApi({
                 paymentStatus: group.shipments.find((shipment) => shipment.itemId === item.id)?.paymentStatus || ''
             })),
             payment: {
+                editVersion: group.editVersion,
                 status: group.payment.status,
                 method: latest?.paymentMethod || '',
                 canChangeMethod: !group.shipments.some(checkoutChangeLocked),
@@ -1852,6 +1855,17 @@ function createPlatformApi({
     function buyerEditVersion(context) {
         const order = rows => [...rows].sort((a,b) => String(a.id).localeCompare(String(b.id)));
         return sessionKey(JSON.stringify([order(context.bundleItems), order(ownCheckoutShipments(context))]));
+    }
+    function paymentEditVersion(context, group) {
+        const order = rows => [...rows].sort((a,b) => String(a.id).localeCompare(String(b.id)));
+        const account = group.payment.latest?.bankSnapshot || group.vendor || {};
+        return sessionKey(JSON.stringify([context.channel.id, context.round?.key, group.key,
+            order(group.items), order(group.shipments), group.totalAmount,
+            [account.bankName, account.bankAccount, account.bankHolder]]));
+    }
+    function matchesPaymentVersion(context, group, version) {
+        // Older open clients still send the whole-buyer version. Never accept a stale one.
+        return version === group.editVersion || version === buyerEditVersion(context);
     }
     function buyerDestinationKey(context) {
         return `creo_buyer_destination::${sessionKey(context.anchorPhone)}`;
@@ -2270,7 +2284,7 @@ function createPlatformApi({
             return duplicateReport();
         }
         // Validate the complete bundle before mutating any existing shipment.
-        if (expectedVersion && expectedVersion !== buyerEditVersion(context)) throw buyerInputError('결제 정보가 변경되었습니다. 새로고침 후 다시 확인해 주세요.',409);
+        if (expectedVersion && !matchesPaymentVersion(context, group, expectedVersion)) throw buyerInputError('결제 정보가 변경되었습니다. 새로고침 후 다시 확인해 주세요.',409);
         if (group.items.some(item => !group.shipments.some(shipment => shipment.itemId === item.id))) {
             throw buyerInputError('추가 낙찰 내역의 배송정보를 먼저 저장해 주세요.', 409);
         }
@@ -2325,7 +2339,7 @@ function createPlatformApi({
              group.shipments.some(shipment => Number(shipment.paymentRequestedAmount) !== group.totalAmount))) {
             throw buyerInputError('결제금액이 변경되었습니다. 외부 결제 내역과 현재 금액을 다시 확인해 주세요.', 409);
         }
-        if (confirmation.expectedVersion && confirmation.expectedVersion !== buyerEditVersion(context)) throw buyerInputError('결제 정보가 변경되었습니다. 새로고침 후 실제 결제 내역을 다시 확인해 주세요.',409);
+        if (confirmation.expectedVersion && !matchesPaymentVersion(context, group, confirmation.expectedVersion)) throw buyerInputError('결제 정보가 변경되었습니다. 새로고침 후 실제 결제 내역을 다시 확인해 주세요.',409);
         const now = new Date().toISOString();
         const saved = [];
         const existingByItem = new Map(group.shipments.map((shipment) => [shipment.itemId, shipment]));
@@ -2537,7 +2551,7 @@ function createPlatformApi({
                 paid: group.shipments.find((shipment) => shipment.itemId === item.id)?.paymentStatus === 'paid'
             })),
             payment: {
-                editVersion: buyerEditVersion(bundle.context),
+                editVersion: group.editVersion,
                 canResetCardGuide: canResetCardGuide(group),
                 status: group.payment.status,
                 method: latest?.paymentMethod || '',
@@ -2906,7 +2920,7 @@ function createPlatformApi({
         if (await readCheckoutActionReceipt(context.channel.id, receiptKey, fingerprint)) return { duplicate: true };
         await assertNoCheckoutChange(bundle.context);
         if (body.confirmedOldCardLinkCancelled !== true || body.confirmedUnpaid !== true) throw buyerInputError('기존 결제 앱에서 요청을 취소·차단하고 미결제 상태인지 확인해 주세요.', 409);
-        if (!body.expectedVersion || body.expectedVersion !== buyerEditVersion(bundle.context) || Number(body.expectedAmount) !== group.totalAmount) throw buyerInputError('결제 정보가 변경되었습니다. 새로고침 후 다시 확인해 주세요.', 409);
+        if (!body.expectedVersion || !matchesPaymentVersion(bundle.context, group, body.expectedVersion) || Number(body.expectedAmount) !== group.totalAmount) throw buyerInputError('결제 정보가 변경되었습니다. 새로고침 후 다시 확인해 주세요.', 409);
         if (!canResetCardGuide(group)) throw buyerInputError('대기로 변경할 수 없는 내역입니다. 결제 확인·발송 상태를 확인해 주세요.', 409);
         const now = new Date().toISOString();
         const unpaid = group.shipments.filter(row => row.paymentStatus !== 'paid');
@@ -2952,7 +2966,7 @@ function createPlatformApi({
             const notification = await commitCheckoutAction(context,receiptKey,fingerprint,[],{result:{duplicate:true}});
             return { duplicate: true, bundle, payload: await vendorCheckoutPayload(context), notification };
         }
-        if (confirmation.expectedVersion && confirmation.expectedVersion !== buyerEditVersion(bundle.context)) throw buyerInputError('결제 정보가 변경되었습니다. 새로고침 후 현재 금액으로 다시 등록해 주세요.',409);
+        if (confirmation.expectedVersion && !matchesPaymentVersion(bundle.context, group, confirmation.expectedVersion)) throw buyerInputError('결제 정보가 변경되었습니다. 새로고침 후 현재 금액으로 다시 등록해 주세요.',409);
         if (!needsCardCancellation && group.payment.latest?.cardLinkPreparedAt) throw buyerInputError('이미 카드결제 안내가 등록되었습니다. 새로고침 후 확인해 주세요.',409);
         if (group.items.some(item=>!group.shipments.some(shipment=>shipment.itemId===item.id))) throw buyerInputError('추가 낙찰 내역의 배송·결제 정보를 먼저 저장해 주세요.',409);
         const now = new Date().toISOString();
