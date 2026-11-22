@@ -4,11 +4,11 @@
  let dirty=false,loading=false,initialized=false;
  function display(data){
   if(!initialized||!dirty){$('shipping-auto-enabled').checked=data.enabled;$('shipping-alert-phone').value=data.alertPhone||'';initialized=true;}
-  $('shipping-auto-status').textContent=data.enabled?'하루 1회 · 거점·요금·일정':'자동 갱신 꺼짐';
+  $('shipping-auto-status').textContent=data.enabled?'하루 1회 · 거점·요금 갱신':'자동 갱신 꺼짐';
   for(const [id,name] of [['parge','파르게'],['dodosi','도도시']]){
    const p=data.providers?.[id]||{};
    const stamp=p.checkedAt?new Intl.DateTimeFormat('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Seoul'}).format(new Date(p.checkedAt)):'';
-   $('shipping-auto-'+id).textContent=name+' · '+(p.failures?'갱신 실패 · 기존 자료 유지':stamp?'갱신 '+stamp:'첫 갱신 대기');
+   $('shipping-auto-'+id).textContent=name+' · '+(p.failures?'갱신 실패 · 기존 자료 유지':stamp?'갱신 '+stamp:'첫 갱신 대기')+(id==='dodosi'?' · 배송일은 정거샵 확인':'');
   }
  }
  async function refresh(){if(loading||document.body.dataset.authenticated!=='true')return;loading=true;try{display(await CreoPlatform.api('shipping-rates/automation'))}catch{$('shipping-auto-status').textContent='자동 갱신 상태 확인 필요'}finally{loading=false}}
