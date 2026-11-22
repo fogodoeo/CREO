@@ -9,7 +9,9 @@ async function creoDodosiRead({ originId, originName = '', full = true, destinat
   if (!props || !Number.isInteger(props.accountDiscountBp)) throw Error('로그인 계정의 배송 예약 화면을 확인해 주세요.');
   const estimateRows = records(flight(await get('/estimate')));
   const directory = estimateRows.find(r => Array.isArray(r) && Array.isArray(r[3]?.shops))?.[3].shops || [];
-  const shops = props.shops.map(({ id, label }) => ({ id, label, region: directory.find(s => s.id === id)?.region || label.match(/^\[([^/\]]+)/)?.[1] || '' }));
+  const mapRows = records(flight(await get('/map')));
+  const mapShops = mapRows.find(r => Array.isArray(r) && Array.isArray(r[3]?.shops))?.[3].shops || [];
+  const shops = props.shops.map(({ id, label }) => { const place=mapShops.find(s=>s.id===id);return { id, label, region: directory.find(s => s.id === id)?.region || label.match(/^\[([^/\]]+)/)?.[1] || '', address:place?.address||'',hours:place?.hoursKnown?place.hours:'',off:Array.isArray(place?.off)?place.off:[] }; });
   if (!originId && originName) { const norm=s=>s.replace(/[\s()[\]·-]/g,'');const matches=shops.filter(s=>norm(s.label.replace(/^\[[^\]]+\]\s*/,''))===norm(originName));if(matches.length===1)originId=matches[0].id; }
   if (shops.length < 20 || !shops.some(s => s.id === originId)) throw Error('출발 정거샵을 다시 선택해 주세요.');
   const actions = {};

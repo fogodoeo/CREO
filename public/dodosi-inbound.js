@@ -20,6 +20,7 @@
     const route=cache.routes.find(r=>r.from===selected&&r.to===cache.origin);
     const slot=(route?.slots||[]).filter(s=>s.dropoff>=today&&s.arrival<target.date).sort((a,b)=>b.dropoff.localeCompare(a.dropoff))[0];
     out.innerHTML=slot?`<p class="inbound-deadline"><strong>${fmt(slot.dropoff)}까지 맡기기</strong></p><ol class="inbound-route"><li><span>맡김</span><strong>${fmt(slot.dropoff)}</strong></li><li><span>수거</span><strong>${fmt(slot.pickup)}</strong></li><li><span>대구 도착 예정</span><strong>${fmt(slot.arrival)}</strong></li></ol>${route.price!=null?`<p class="inbound-basis">1마리 정상요금 ${route.price.toLocaleString('ko-KR')}원 · 본인 계정 할인은 예약 화면에서 확인</p>`:''}`:'<p class="inbound-warning">방송 전 도착 가능한 편이 없어요. 직접 운송 또는 운영자 확인이 필요합니다.</p>';
+    const place=cache.shops.find(s=>s.id===selected);if(place?.address)out.insertAdjacentHTML('beforeend',`<p class="inbound-basis">${esc(place.address)}${place.hours?'<br>영업 '+esc(place.hours):''}${place.off?.length?' · '+esc(place.off.join('·'))+' 휴무':''}</p>`);
     host.querySelector('a').href='https://www.dodosi.co.kr/order?myShop='+encodeURIComponent(selected)+'&shop='+encodeURIComponent(cache.origin);
    }select.onchange=update;update();
   }catch{if(host.isConnected)host.innerHTML='<h2 id="inbound-title">출품 운송 · 도도시</h2><p>일정을 불러오지 못했어요.</p><a href="https://www.dodosi.co.kr/order" target="_blank" rel="noopener">도도시에서 확인 ↗</a>';}

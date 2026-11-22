@@ -12,7 +12,8 @@ function validate(input, now = Date.now()) {
   if (!Array.isArray(input.shops) || input.shops.length < 20 || input.shops.length > 1000) throw error('정거샵 목록을 확인해 주세요.');
   const shops = input.shops.map(s => {
     if (!/^[a-f\d-]{36}$/.test(s.id) || typeof s.label !== 'string' || !s.label || s.label.length > 180 || typeof s.region !== 'string' || s.region.length > 50) throw error('정거샵 정보가 올바르지 않습니다.');
-    return { id: s.id, label: s.label, region: s.region };
+    const safe=v=>typeof v==='string'?v.replace(/[\u0000-\u001f]/g,'').slice(0,240):'';
+    return { id: s.id, label: s.label, region: s.region, address:safe(s.address),hours:safe(s.hours),off:Array.isArray(s.off)?s.off.filter(d=>typeof d==='string'&&/^[일월화수목금토]$/.test(d)):[] };
   });
   const ids = new Set(shops.map(s => s.id));
   if (ids.size !== shops.length || !ids.has(input.origin) || !Number.isInteger(input.discountBp) || input.discountBp < 0 || input.discountBp > 10000) throw error('출발지·할인 정보가 올바르지 않습니다.');
