@@ -42,6 +42,9 @@
   if(next.state.inboundScheduleReview){
    const html='<section id="inbound-panel" class="inbound-panel" aria-labelledby="inbound-title"><h2 id="inbound-title">출품 운송 · 도도시</h2><p class="inbound-notice">방송 전 도착 일정은 맡기는 정거샵에 확인해 주세요.</p><p><a href="https://www.dodosi.co.kr/map" target="_blank" rel="noopener">도도시 정거샵 찾기 ↗</a></p><p><a href="https://www.dodosi.co.kr/estimate" target="_blank" rel="noopener">배송 요금 확인 ↗</a></p></section>';
    const host=document.querySelector('#vendor-inbound');if(host)host.innerHTML=html;else calendar.insertAdjacentHTML('afterend',html);
+   const panel=document.querySelector('#inbound-panel');
+   if(window.CreoDodosiInbound)window.CreoDodosiInbound.render(panel,next.state,next.month);
+   else {const script=document.createElement('script');script.src='/dodosi-inbound.js?v=20261123';script.onload=()=>panel.isConnected&&window.CreoDodosiInbound.render(panel,next.state,next.month);document.head.append(script);}
    return;
   }
   calendar.querySelector('.calendar-head').insertAdjacentHTML('afterend',`<div class="calendar-key" aria-label="달력 표시"><span><i class="calendar-key-broadcast" aria-hidden="true"></i>방송</span><span><i class="calendar-key-route parge" aria-hidden="true"></i>파르게</span><span><i class="calendar-key-route dodosi" aria-hidden="true"></i>도도시</span><span>준비일부터 방송일까지 · 눌러서 일정</span></div>`);

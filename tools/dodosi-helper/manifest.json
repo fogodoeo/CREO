@@ -1,0 +1,10 @@
+{
+  "manifest_version":3,
+  "name":"CREO 도도시 입력 도우미",
+  "version":"1.0.0",
+  "description":"도도시 정거샵·일정 갱신과 예약서 입력. 약관 동의·결제는 직접 확인합니다.",
+  "permissions":["scripting"],
+  "host_permissions":["https://www.dodosi.co.kr/*"],
+  "background":{"service_worker":"background.js"},
+  "content_scripts":[{"matches":["https://creok.onrender.com/dodosi-dispatch.html*"],"js":["bridge.js"]}]
+}

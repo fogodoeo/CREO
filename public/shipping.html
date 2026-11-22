@@ -2673,7 +2673,7 @@
             const archive = new URLSearchParams(location.search).get('archive');
             const label = String(channel?.name || SHIPPING_CHANNEL_ID).trim() + (archive ? ' · 이전 회차' : '');
             const locations = channel?.shippingDefaults?.pickupLocations;
-            const dodosiLink=document.getElementById('shipping-dodosi-link');dodosiLink.hidden=!!archive||!(channel?.shippingDefaults?.enabledCarriers||[]).includes('dodosi');if(dodosiLink.hidden)dodosiLink.style.setProperty('display','none','important');else dodosiLink.style.removeProperty('display');
+            const dodosiLink=document.getElementById('shipping-dodosi-link');dodosiLink.href='dodosi-dispatch.html?channel='+encodeURIComponent(SHIPPING_CHANNEL_ID);dodosiLink.textContent='도도시 배송 준비';dodosiLink.removeAttribute('target');dodosiLink.setAttribute('aria-label','도도시 배송 준비');dodosiLink.hidden=!!archive||!(channel?.shippingDefaults?.enabledCarriers||[]).includes('dodosi');if(dodosiLink.hidden)dodosiLink.style.setProperty('display','none','important');else dodosiLink.style.removeProperty('display');
             channelPickupLocations = Object.freeze(Array.isArray(locations) && locations.length ? [...locations] : [...DEFAULT_PICKUP_LOCATIONS]);
             const channelLabel = document.getElementById('shipping-channel-label');
             const dialogTitle = document.getElementById('shipping-company-dialog-title');

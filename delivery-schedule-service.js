@@ -1,6 +1,7 @@
 'use strict';
 const crypto = require('node:crypto');
 const Core = require('./delivery-schedule-core');
+const Dodosi = require('./dodosi-routes');
 const { channelKey } = require('./platform-core');
 const { createSourceReader } = require('./delivery-schedule-source');
 const KEY = 'creo_v2::delivery_schedule_sources';
@@ -10,6 +11,7 @@ const carriers = ['parge', 'dodosi'], labels = { parge: '파르게', dodosi: '�
 const hash = value => crypto.createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 16);
 
 function createDeliveryScheduleService({ repository, notificationService = null, reader = createSourceReader(), now = () => Date.now(), logger = console }) {
+    const dodosiRoutes = Dodosi.createStore(repository, now);
     let snapshot = {}, rates = {}, health = { providers: {} }, settings = { enabled: true, alertPhone: '' };
     let loaded, running, timer, interval, stopped = false, nextAttempt = 0;
     const controller = new AbortController(), configurations = new Map();
@@ -26,7 +28,7 @@ function createDeliveryScheduleService({ repository, notificationService = null,
         return loaded;
     }
     function revision() {
-        return Object.entries(snapshot).map(([id, row]) => `${id}:${row.revision}:${now() - Date.parse(row.checkedAt) > 3 * Core.DAY ? 'stale' : 'ready'}`).sort().join('|');
+        return Object.entries(snapshot).map(([id, row]) => `${id}:${row.revision}:${now() - Date.parse(row.checkedAt) > 3 * Core.DAY ? 'stale' : 'ready'}`).sort().join('|') + '|' + dodosiRoutes.revision();
     }
     async function saveHealth() {
         const failed = carriers.filter(c => health.providers[c]?.failures > 0);
@@ -124,6 +126,10 @@ function createDeliveryScheduleService({ repository, notificationService = null,
         try { await load(); } catch { return Core.estimate({ config, carrier, destination: { shop: selection.pargeShop }, now: now() }); }
         checkConfiguration(channel, carrier, config);
         if (!snapshot[carrier]) refreshSoon();
+        if (carrier === 'dodosi') {
+            const data = await dodosiRoutes.get(config.dodosiOrigin);
+            if (data) return Dodosi.outbound(data, config, { region: selection.pargeRegion, shop: selection.pargeShop }, submittedAt, now());
+        }
         return Core.estimate({ config, carrier, nationalMondaySpecial: /^national-cre(?:-\d{8})?$/.test(channel.id || ''),
             destination: { region: selection.pargeRegion, shop: selection.pargeShop }, source: snapshot[carrier], submittedAt, now: now() });
     }
@@ -133,6 +139,10 @@ function createDeliveryScheduleService({ repository, notificationService = null,
         try { await load(); } catch { /* Missing data produces a pending estimate, never blocks checkout. */ }
         checkConfiguration(channel, carrier, config);
         if (!snapshot[carrier]) refreshSoon();
+        if (carrier === 'dodosi') {
+            const data = await dodosiRoutes.get(config.dodosiOrigin);
+            if (data) return regions.map(group => ({ ...group, shops: group.shops.map(shop => ({ ...shop, deliverySchedule: Dodosi.outbound(data, config, { region: group.region, shop: shop.name }, submittedAt, now()) })) }));
+        }
         return regions.map(group => ({ ...group, shops: group.shops.map(shop => ({ ...shop, deliverySchedule: Core.estimate({
             config, carrier, nationalMondaySpecial: /^national-cre(?:-\d{8})?$/.test(channel.id || ''), destination: { region: group.region, shop: shop.name },
             source: snapshot[carrier], submittedAt: selection?.destinationType === carrier && selection.pargeRegion === group.region && selection.pargeShop === shop.name
@@ -167,6 +177,6 @@ function createDeliveryScheduleService({ repository, notificationService = null,
         refreshSoon(); interval = setInterval(() => void refresh(), 60000); interval.unref?.();
     }
     async function stop() { stopped = true; clearInterval(interval); clearTimeout(timer); controller.abort(); if (running) await running; }
-    return { load, refresh, refreshSoon, refreshCarrier, configure, status, assertAlertCurrent, isEnabled, estimate, enrichRates, revision, start, stop };
+    return { load, refresh, refreshSoon, refreshCarrier, configure, status, assertAlertCurrent, isEnabled, estimate, enrichRates, revision, start, stop, dodosiRoutes };
 }
 module.exports = { KEY, SETTINGS_KEY, STATUS_KEY, SYSTEM_CHANNEL, createDeliveryScheduleService };

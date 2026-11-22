@@ -4255,6 +4255,20 @@ function createPlatformApi({
                 return true;
             }
 
+            if (segments.length === 2 && segments[0] === 'shipping-rates' && segments[1] === 'dodosi-routes' && ['GET','PUT'].includes(method)) {
+                if (!deliverySchedules?.dodosiRoutes) throw buyerInputError('도도시 일정 연결 준비 중입니다.', 503);
+                if (method === 'PUT') {
+                    if (!await requireAdmin(req,res)) return true;
+                    await withMutationLock('dodosi-route-import', async () => replyJson(res,200,await deliverySchedules.dodosiRoutes.put(await readJson(req))));
+                } else {
+                    const data=await deliverySchedules.dodosiRoutes.get(cleanText(url.searchParams.get('origin'),100)||'크레용(대구)');
+                    const D=require('./dodosi-routes'),fresh=D.fresh(data);
+                    // Public directory and schedules only. Account discount stays operator-only.
+                    replyJson(res,200,{checkedAt:data?.checkedAt||'',fresh,origin:data?.origin||'',shops:data?.shops||[],routes:fresh?(data?.routes||[]).map(({from,to,available,slots,quote})=>({from,to,available,slots,price:quote?.total??null})):[]});
+                }
+                return true;
+            }
+
             if (segments.length === 2 && segments[0] === 'shipping-rates' && segments[1] === 'automation' && ['GET','PUT'].includes(method)) {
                 if (!await requireAdmin(req, res)) return true;
                 if (!deliverySchedules) throw buyerInputError('배송정보 자동 갱신이 준비되지 않았습니다.', 503);
@@ -6300,6 +6314,34 @@ function createPlatformApi({
                     const body=await readJson(req);
                     replyJson(res,200,body.action==='sync'?await itemSheetSync.sync(channelId):await itemSheetSync.configure(channel,body));
                 } else replyJson(res,405,{error:'Method not allowed'});
+                return true;
+            }
+
+            if (segments.length === 3 && segments[2] === 'dodosi-dispatch') {
+                if (!await requireAdmin(req,res)) return true;
+                const D=require('./dodosi-routes'),Dispatch=require('./dodosi-dispatch'),cfg=require('./delivery-schedule-core').channelConfig(channel)||{dodosiOrigin:channelId==='jjunine'?'쭌이네':'크레용(대구)',auctionDate:''};
+                const data=await deliverySchedules.dodosiRoutes.get(cfg.dodosiOrigin),key='dodosi-dispatch';
+                const state=async()=>await repository.getRecord(channelId,'setting',key)||{id:key,channelId,revision:0,sender:{name:'',phone:''},prepared:[]};
+                const groups=async()=>Dispatch.build(await workspace(channelId),channelId,data,cfg);
+                if(method==='GET')replyJson(res,200,{...(await groups()),...(await state()),originName:cfg.dodosiOrigin,originId:data?.origin||'',checkedAt:data?.checkedAt||'',fresh:D.fresh(data),discountBp:data?.discountBp??null});
+                else if(method==='POST')await withMutationLock(`channel:${channelId}`,async()=>{
+                    const body=await readJson(req),saved=await state();
+                    if(body.expectedRevision!==saved.revision)throw buyerInputError('다른 창에서 변경됐습니다. 새로고침해 주세요.',409);
+                    if(body.action==='save-sender'){
+                        const next={...saved,sender:Dispatch.sender(body),revision:saved.revision+1};
+                        await repository.upsertRows([{key:channelKey(channelId,'setting',key),value:JSON.stringify(next)}]);replyJson(res,200,next);
+                    }else if(body.action==='prepare'){
+                        if(!D.fresh(data))throw buyerInputError('도도시 일정을 먼저 갱신해 주세요.',409);
+                        const g=(await groups()).groups.find(g=>g.id===body.groupId);
+                        if(!g||!g.paid||g.schedule.status!=='estimated')throw buyerInputError('결제·배송정보가 바뀌었거나 일정을 확인해야 합니다. 새로고침해 주세요.',409);
+                        const sender=Dispatch.sender(saved.sender);
+                        const plan={schema:'creo.dodosi.dispatch.v1',channelId,groupId:g.id,originId:data.origin,originName:cfg.dodosiOrigin,sender,...g,createdAt:new Date().toISOString()};
+                        // Preparing is not booking or dispatch. Never changes shipment/payment/notification rows.
+                        const next={...saved,revision:saved.revision+1,prepared:[...saved.prepared.filter(r=>r.groupId!==g.id),{groupId:g.id,at:plan.createdAt}].slice(-500)};
+                        await repository.upsertRows([{key:channelKey(channelId,'setting',key),value:JSON.stringify(next)}]);replyJson(res,200,{plan,revision:next.revision});
+                    }else throw buyerInputError('지원하지 않는 작업입니다.');
+                });
+                else replyJson(res,405,{error:'Method not allowed'});
                 return true;
             }
 

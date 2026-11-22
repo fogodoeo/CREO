@@ -12,7 +12,8 @@
         const note = options && options.careNote ? `<p class="delivery-schedule-care">${CARE_NOTE}</p>` : '';
         const dispatch = format(schedule.dispatchDate), arrival = format(schedule.arrivalDate);
         if (schedule.status !== 'estimated' || !dispatch || !arrival) return `<p class="delivery-schedule-pending">배송 일정 확인 중</p>${note}`;
-        return `<dl class="delivery-schedule"><div><dt>발송 예정</dt><dd><time datetime="${schedule.dispatchDate}">${dispatch}</time></dd></div><div><dt>수령 예정</dt><dd><time datetime="${schedule.arrivalDate}">${arrival}</time></dd></div></dl>${note}`;
+        const dropoff = format(schedule.dropoffDate);
+        return `<dl class="delivery-schedule">${dropoff ? `<div><dt>정거샵 맡김</dt><dd><time datetime="${schedule.dropoffDate}">${dropoff}</time></dd></div>` : ''}<div><dt>발송 예정</dt><dd><time datetime="${schedule.dispatchDate}">${dispatch}</time></dd></div><div><dt>수령 예정</dt><dd><time datetime="${schedule.arrivalDate}">${arrival}</time></dd></div></dl>${dropoff ? '<p class="delivery-schedule-care">정거샵 도착 알림을 받은 후 방문해 주세요.</p>' : ''}${note}`;
     }
     global.CreoDeliverySchedule = Object.freeze({ html, format, CARE_NOTE });
 })(window);

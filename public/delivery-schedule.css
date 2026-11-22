@@ -9,4 +9,6 @@
 #delivery-schedule .delivery-schedule-pending{margin:0;color:#191f28;font-weight:600}
 #delivery-schedule .delivery-schedule+.delivery-schedule-care{margin-top:12px;padding-top:11px;border-top:1px solid #e2e7ed}
 .archive-destination .delivery-schedule{margin-top:14px}
+.delivery-schedule:has(>div:nth-child(3)){grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media(max-width:360px){.delivery-schedule:has(>div:nth-child(3)) dd{font-size:16px}}
 .organizer-auction-item .delivery-schedule{padding:12px 16px 16px;margin:0}
