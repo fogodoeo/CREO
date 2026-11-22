@@ -56,11 +56,11 @@ function createDeliveryScheduleService({ repository, notificationService = null,
             await load();
             if (!settings.enabled && !forceCarrier) return;
             const catalog = await repository.getCatalog();
-            const channels = catalog.channels.filter(c => c.status === 'active' && c.dataAdapter === 'platform' && Core.channelConfig(c)?.enabled);
+            const channels = catalog.channels.filter(c => ['active','draft'].includes(c.status) && c.dataAdapter === 'platform' && c.features?.shipping !== false);
             let attempted = false;
             for (const carrier of carriers) {
                 if (stopped) break;
-                const origins = carrier === 'dodosi' ? [...new Set(['크레용(대구)', ...channels.filter(c => c.shippingDefaults?.enabledCarriers?.includes(carrier)).map(c => Core.channelConfig(c).dodosiOrigin)])] : [];
+                const origins = carrier === 'dodosi' ? [...new Set(['크레용(대구)', ...channels.filter(c => c.shippingDefaults?.enabledCarriers?.includes(carrier)).map(c => Core.channelConfig(c)?.dodosiOrigin || (c.id==='jjunine'?'쭌이네':'크레용(대구)'))])] : [];
                 const prior = snapshot[carrier], status = health.providers[carrier] || {};
                 const covered = carrier === 'parge' || origins.every(name => prior?.origins?.some(o => Core.compact(o.name) === Core.compact(name)));
                 const age = now() - Date.parse(prior?.checkedAt);

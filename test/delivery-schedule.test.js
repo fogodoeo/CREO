@@ -110,6 +110,20 @@ function repository() {
     const rows=new Map();let writes=0;
     return {rows,get writes(){return writes},async getRowsByKeys(keys){return keys.filter(k=>rows.has(k)).map(key=>({key,value:rows.get(key)}))},async upsertRows(input){writes++;for(const r of input)rows.set(r.key,r.value)},async getCatalog(){return{channels:[{id:'test',status:'active',dataAdapter:'platform',shippingDefaults:{enabledCarriers:['parge','dodosi'],deliverySchedule:config}}]}}};
 }
+
+test('Dodosi rates include active and draft origins even when arrival-date display is disabled', async () => {
+    const repo=repository();
+    repo.getCatalog=async()=>({channels:[
+        {id:'jjunine',status:'active',dataAdapter:'platform',shippingDefaults:{enabledCarriers:['dodosi'],deliverySchedule:{enabled:false,dodosiOrigin:'쭌이네'}}},
+        {id:'next',status:'draft',dataAdapter:'platform',shippingDefaults:{enabledCarriers:['dodosi'],deliverySchedule:{enabled:false,dodosiOrigin:'다음 출발점'}}},
+        {id:'past',status:'archived',dataAdapter:'platform',shippingDefaults:{enabledCarriers:['dodosi'],deliverySchedule:{enabled:true,dodosiOrigin:'보관된 출발점'}}}
+    ]});
+    let requested;
+    const service=createDeliveryScheduleService({repository:repo,reader:{async parge(){return parge()},async dodosi(origins){requested=origins;return dodosi()}},now:()=>now});
+    await service.refresh();
+    assert.deepEqual(requested,['크레용(대구)','쭌이네','다음 출발점']);
+    await service.stop();
+});
 test('concurrent refresh and 80 page reads share data; reload uses durable data without provider requests', async () => {
     const repo=repository();let calls=0;const reader={async parge(){calls++;return parge()},async dodosi(){calls++;return dodosi()}};
     const service=createDeliveryScheduleService({repository:repo,reader,now:()=>now});
