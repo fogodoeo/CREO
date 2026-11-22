@@ -76,8 +76,9 @@ function createSourceReader(fetchImpl = globalThis.fetch) {
     }
     async function dodosi(originNames, options = {}) {
         const ratesOnly = options.ratesOnly === true;
-        const get = budget(90000, options.signal);
-        const html = await get.text('https://www.dodosi.co.kr/113');
+        const get = budget(180000, options.signal);
+        const html = await get.text('https://www.dodosi.co.kr/estimate');
+        if (html.includes('self.__next_f.push')) return require('./dodosi-public-reader').readModern(get, html, originNames);
         const id = html.match(/const spreadsheetId\s*=\s*'([a-zA-Z0-9_-]+)'/)?.[1];
         const key = html.match(/const apiKey\s*=\s*'([a-zA-Z0-9_-]+)'/)?.[1];
         if (!id || !key) throw new Error('DODOSI schedule source changed');

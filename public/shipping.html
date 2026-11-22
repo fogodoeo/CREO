@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="/buyer-link-manager.css">
     <script src="channel-runtime.js?v=20260901-operator-routing-v1"></script>
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
-    <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
+    <script src="supabase-bridge.js?v=20261122-dodosi"></script>
     <script src="channel-adapters.js?v=20261023-checkout-pricing"></script>
     <script src="operation-channel.js?v=20261020-rounds"></script>
     <script src="settlement-discount.js?v=20260823-v1"></script>
@@ -2060,6 +2060,7 @@
         .editor-save-action:hover { border-color:#60A5FA; background:#DBEAFE; }
         .shipping-admin-login { margin-left:auto; height:36px; padding:0 12px; border:1px solid #D4D4D8; border-radius:9px; background:#FFF; color:#3F3F46; font-family:inherit; font-size:11px; font-weight:850; cursor:pointer; }
         .shipping-admin-login:hover { border-color:#A1A1AA; background:#FAFAFA; }
+        #shipping-dodosi-link { min-height:44px; height:auto; font-size:14px; font-weight:650; }
         #company-select-modal { margin:0; width:100%; max-width:none; height:100%; max-height:none; padding:0; border:0; color:inherit; }
         #company-select-modal::backdrop { background:transparent; }
         .company-dialog-head { display:grid; grid-template-columns:44px minmax(0,1fr) 44px; align-items:center; gap:8px; margin-bottom:18px; }
@@ -2131,7 +2132,7 @@
                     <label for="shipping-work-query">낙찰자·개체 찾기<input id="shipping-work-query" type="search" placeholder="이름, 전화번호, 개체명" autocomplete="off"></label>
                 </div>
                 <div id="shipping-work-filters" role="group" aria-label="처리 상태"></div>
-                <div class="shipping-work-result"><p id="shipping-work-count" role="status"></p><button id="shipping-work-reset" type="button" hidden>전체 보기</button></div>
+                <div class="shipping-work-result"><p id="shipping-work-count" role="status"></p><button id="shipping-work-reset" type="button" hidden>전체 보기</button><a id="shipping-dodosi-link" class="shipping-admin-login" style="display:grid;place-items:center;text-decoration:none;white-space:nowrap" href="https://www.dodosi.co.kr/order" target="_blank" rel="noopener" aria-label="도도시 예약, 새 창">도도시 예약 ↗</a></div>
             </section>
             <details id="shipping-vendor-settings" style="background:white;border:1px solid #ddd;border-radius:12px;padding:16px;margin-bottom:16px" hidden>
                 <summary style="cursor:pointer;font-weight:700">업체 연락처 · 결제 설정 <span id="vendor-settings-state"></span></summary>
@@ -2672,6 +2673,7 @@
             const archive = new URLSearchParams(location.search).get('archive');
             const label = String(channel?.name || SHIPPING_CHANNEL_ID).trim() + (archive ? ' · 이전 회차' : '');
             const locations = channel?.shippingDefaults?.pickupLocations;
+            const dodosiLink=document.getElementById('shipping-dodosi-link');dodosiLink.hidden=!!archive||!(channel?.shippingDefaults?.enabledCarriers||[]).includes('dodosi');if(dodosiLink.hidden)dodosiLink.style.setProperty('display','none','important');else dodosiLink.style.removeProperty('display');
             channelPickupLocations = Object.freeze(Array.isArray(locations) && locations.length ? [...locations] : [...DEFAULT_PICKUP_LOCATIONS]);
             const channelLabel = document.getElementById('shipping-channel-label');
             const dialogTitle = document.getElementById('shipping-company-dialog-title');
@@ -2679,7 +2681,7 @@
             if (dialogTitle) dialogTitle.textContent = `${label} 배송관리`;
             document.title = `${label} · 배송관리`;
             document.getElementById('shipping-changes-link').href='checkout-changes.html?'+new URLSearchParams({channel:SHIPPING_CHANNEL_ID,...(archive?{archive}:{})});
-            const pargeLink=document.getElementById('shipping-parge-link');pargeLink.href='parge-dispatch.html?channel='+encodeURIComponent(SHIPPING_CHANNEL_ID);pargeLink.hidden=!!archive;if(archive)pargeLink.style.setProperty('display','none','important');
+            const pargeLink=document.getElementById('shipping-parge-link');pargeLink.href='parge-dispatch.html?channel='+encodeURIComponent(SHIPPING_CHANNEL_ID);pargeLink.textContent='기존 파르게 접수';pargeLink.hidden=!!archive||!(channel?.shippingDefaults?.enabledCarriers||['parge']).includes('parge');if(pargeLink.hidden)pargeLink.style.setProperty('display','none','important');else pargeLink.style.removeProperty('display');
             document.querySelectorAll('.app-bottom-nav a').forEach(link => {
                 const url = new URL(link.getAttribute('href'), window.location.href);
                 url.searchParams.set('channel', SHIPPING_CHANNEL_ID);
@@ -2822,13 +2824,14 @@
         async function initializeShipping() {
             if (shippingInitializing) return;
             shippingInitializing = true;
-            syncShippingChannelUi();
             showLoading(true, '데이터를 불러오는 중...');
             try {
+                await shippingOperation?.ready();
+                syncShippingChannelUi();
                 console.log('[INIT] Step 1: Loading dodosi...');
                 // 도도시 동적 가격표 로드
                 try {
-                    const dodosiRes = await getDodosiData();
+                    const dodosiRes = await getDodosiData(shippingOperation?.channel?.shippingDefaults?.deliverySchedule?.dodosiOrigin || (SHIPPING_CHANNEL_ID==='jjunine'?'쭌이네':'크레용(대구)'));
                     if (dodosiRes && dodosiRes.success && dodosiRes.data && dodosiRes.data.length > 0) {
                         SHIPPING_DATA['도도시'].regions = {};
                         dodosiRes.data.forEach(item => {
@@ -4527,13 +4530,13 @@
             const itemCount = state ? state.allItems.length : 1;
 
             if (!q) {
-                resultsBox.innerHTML = '<div class="search-empty-hint">업체명, 지역 또는 거점명을 입력하면<br>모든 배송업체를 한 번에 검색합니다.</div>';
+                resultsBox.innerHTML = '<div class="search-empty-hint">지역 또는 거점명을 입력해 주세요.</div>';
                 return;
             }
 
-            // 도도시·파르게·랩팡의 모든 거점을 하나의 검색 목록으로 합친다.
+            // New destinations use the channel's enabled carriers; saved shipments stay intact.
             let allHubs = [];
-            ['도도시', '파르게', '랩팡'].forEach(company => {
+            (shippingOperation?.channel?.shippingDefaults?.enabledCarriers||['parge']).map(id=>({dodosi:'도도시',parge:'파르게'})[id]).filter(Boolean).forEach(company => {
                 const compData = SHIPPING_DATA[company];
                 Object.keys(compData?.regions || {}).forEach(regName => {
                     compData.regions[regName].forEach(h => {

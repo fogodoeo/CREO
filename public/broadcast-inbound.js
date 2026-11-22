@@ -39,6 +39,11 @@
   context=next;milestones=new Map();document.querySelector('#inbound-panel')?.remove();
   const calendar=document.querySelector('.broadcast-calendar');if(!calendar)return;
   calendar.querySelector('.calendar-key')?.remove();
+  if(next.state.inboundScheduleReview){
+   const html='<section id="inbound-panel" class="inbound-panel" aria-labelledby="inbound-title"><h2 id="inbound-title">출품 운송 · 도도시</h2><p class="inbound-notice">방송 전 도착 일정은 맡기는 정거샵에 확인해 주세요.</p><p><a href="https://www.dodosi.co.kr/map" target="_blank" rel="noopener">도도시 정거샵 찾기 ↗</a></p><p><a href="https://www.dodosi.co.kr/estimate" target="_blank" rel="noopener">배송 요금 확인 ↗</a></p></section>';
+   const host=document.querySelector('#vendor-inbound');if(host)host.innerHTML=html;else calendar.insertAdjacentHTML('afterend',html);
+   return;
+  }
   calendar.querySelector('.calendar-head').insertAdjacentHTML('afterend',`<div class="calendar-key" aria-label="달력 표시"><span><i class="calendar-key-broadcast" aria-hidden="true"></i>방송</span><span><i class="calendar-key-route parge" aria-hidden="true"></i>파르게</span><span><i class="calendar-key-route dodosi" aria-hidden="true"></i>도도시</span><span>준비일부터 방송일까지 · 눌러서 일정</span></div>`);
   if(!data){calendar.insertAdjacentHTML('afterend',failed?'<section id="inbound-panel" class="inbound-panel"><p>운송 일정을 불러오지 못했어요.</p><button type="button" class="text" data-inbound-retry>다시 불러오기</button></section>':'<section id="inbound-panel" class="inbound-panel"><p class="muted" role="status">운송 일정 불러오는 중…</p></section>');return;}
   const {state,month}=context,today=new Date(Date.parse(state.now)+9*3600000).toISOString().slice(0,10);

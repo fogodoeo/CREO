@@ -28,7 +28,7 @@
     <header class="top"><div><div class="eyebrow">GLOBAL SHIPPING DATA</div><h1>공용 배송 데이터</h1><p>여기서 갱신한 거점과 요금은 모든 채널에 즉시 적용됩니다.</p></div><div class="top-actions"><button class="admin-button" id="admin-button" type="button">관리자 로그인</button><a class="back" id="back-link" href="/">돌아가기</a></div></header>
     <section class="auth-gate" id="auth-gate" hidden><div><div class="gate-icon">🔒</div><h2>관리자 전용 요금표</h2><p>배송사 요금과 거점 정보는 관리자 로그인 후 확인하고 갱신할 수 있습니다.<br>채널 배송 조회 페이지는 로그인 없이 계속 이용할 수 있습니다.</p><button class="gate-login" id="gate-login" type="button">관리자 로그인</button></div></section>
     <div class="admin-content" id="admin-content" hidden>
-        <section class="notice"><div><strong>파르게 API와 도도시·랩팡 공개 옵션을 직접 확인합니다.</strong><span>수집 결과가 비정상이면 저장하지 않고 현재 데이터를 유지합니다.</span></div><button class="refresh-all" id="refresh-all" type="button">전체 최신정보 가져오기</button></section>
+        <section class="notice"><div><strong>신규 배송은 도도시를 이용합니다.</strong><span>공개 견적으로 요금을 갱신합니다. 기존 배송사 자료는 접수 내역 확인용으로 유지합니다.</span></div><button class="refresh-all" id="refresh-all" type="button">전체 최신정보 가져오기</button></section>
         <div class="status" id="status"></div>
         <section class="shipping-auto" aria-labelledby="shipping-auto-title"><h2 id="shipping-auto-title">파르게·도도시 자동 갱신</h2><p id="shipping-auto-status" role="status">갱신 상태 확인 중</p><p id="shipping-auto-parge"></p><p id="shipping-auto-dodosi"></p>
         <form id="shipping-auto-form"><label><input id="shipping-auto-enabled" type="checkbox"> 자동 갱신</label><label for="shipping-alert-phone">실패 알림 받을 번호<input id="shipping-alert-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="01012345678" pattern="010[0-9-]{8,10}"></label><button id="shipping-auto-save" type="submit">저장</button></form>

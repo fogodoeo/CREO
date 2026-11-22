@@ -5,6 +5,11 @@ const {fixture,day}=require('./national-settlement-fixture.cjs');
 async function main(){
  const port=Number(process.env.BUYER_PREVIEW_PORT)||4398,origin='http://127.0.0.1:'+port,f=await fixture({origin});f.advance(30*86400000);
  const photoReview=process.env.BUYER_PREVIEW_PHOTOS==='1';
+ if(process.env.BUYER_PREVIEW_DODOSI==='1'){
+  const catalog=await f.repository.getCatalog();
+  await f.repository.saveCatalog(catalog.channels.map(c=>({...c,shippingDefaults:{...c.shippingDefaults,enabledCarriers:['dodosi']}})));
+  await f.repository.upsertRows([{key:'shipping_rate_dodosi',value:JSON.stringify({items:[{route:'전라',region:'광주',shop:'미리보기 정거샵',price:28000}]})}]);
+ }
  if(photoReview){
   const item=await f.repository.getRecord('national-cre','item','a01');
   await f.repository.upsertRecord('national-cre','item',{...item,name:'릴리화이트 크레스티드게코 긴 이름',media:[{url:'/__preview/photo/landscape',thumbnailUrl:'/__preview/photo/landscape',label:'가로 사진 · 16:9'},{url:'/__preview/photo/portrait',label:'세로 사진 · 9:16'}],parents:[{role:'sire',name:'부모 이름이 길어도 모두 표시되는 아빠',morph:'릴리화이트 트라이컬러',media:['/__preview/photo/square']},{role:'dam',name:'엄마 크레스티드게코',media:['/__preview/photo/missing']}],attributes:{...item.attributes,morph:'릴리화이트',weight:'28'}});

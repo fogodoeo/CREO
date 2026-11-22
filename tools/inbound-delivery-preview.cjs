@@ -3,6 +3,9 @@ const fs=require('node:fs'),path=require('node:path'),http=require('node:http');
 const {createFixture}=require('./vendor-portal-preview.cjs');
 async function main(){
  const port=Number(process.env.INBOUND_PREVIEW_PORT)||4359,origin='http://127.0.0.1:'+port,f=await createFixture({origin});f.advance(12*86400000);
+ if(process.env.INBOUND_PREVIEW_DODOSI==='1'){
+  const catalog=await f.repository.getCatalog();await f.repository.saveCatalog(catalog.channels.map(c=>({...c,shippingDefaults:{...c.shippingDefaults,enabledCarriers:['dodosi']}})));
+ }
  await f.repository.upsertRecord('national-cre','setting',{id:'national-cycle-config',mode:'regional-cycle-v1'});
  const demos=[['seoul','서울·인천','서울 테스트',''],['daegu','대구·경북','대구 테스트',''],['daegu-local','대구·경북','대구 소재지 테스트','대구광역시 달서구 월배로 1'],['incheon','서울·인천','크레리즘','인천광역시 서구 청라에메랄드로 79'],['gyeonggi','경기','경기 테스트','경기도 부천시 원미구'],['chungcheong','전라·충청','충청 테스트',''],['own','경기','크레다이브','경기도 부천시 원미구'],['duplicate','서울','다이노마켓','']];
  const links={};for(const [id,region,name,address] of demos){await f.repository.upsertRecord('national-cre','vendor',{id,name,address,active:true,broadcastRegion:region,phone:'01000000001',bankName:'가상은행',bankAccount:'000000',bankHolder:'테스트'});const r=await f.call(f.client(),'POST','/api/platform/channels/national-cre/vendor-checkout-link',{vendorId:id},{'x-creo-admin':f.secret});links[id]=new URL(r.json().url,origin).pathname.split('/').pop();}

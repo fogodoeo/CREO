@@ -70,6 +70,7 @@ function estimate({ config: rawConfig, carrier, destination, source, submittedAt
     const config = normalizeConfig(rawConfig);
     if (!config?.enabled || !['parge', 'dodosi'].includes(carrier) || !destination?.shop) return null;
     if (!config.auctionDate) return review('configuration', source);
+    if (source?.scheduleUnavailable) return review('schedule_unavailable', source);
     if (!source || !Number.isFinite(Date.parse(source.checkedAt)) || now - Date.parse(source.checkedAt) > 3 * DAY || Date.parse(source.checkedAt) > now + 60000) return review('schedule_unavailable', source);
     let origin, target, collectDays, arrivalDays, transitDays = 1, arrivalWeeks = [];
     if (carrier === 'parge') {

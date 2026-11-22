@@ -1899,11 +1899,13 @@ async function saveShippingRateData(company, payload) {
     return { success: true, updated: result.payload.updated || '' };
 }
 
-async function getDodosiData() {
+async function getDodosiData(origin = '') {
     try {
         const override = await _getShippingRateOverride('도도시');
         if (override && Array.isArray(override.items)) {
-            return { success: true, data: override.items, updated: override.updated || '', source: override.source || '공용 데이터' };
+            const local = origin && override.origins?.find(row => row.name === origin);
+            if (origin && override.source === 'dodosi-public-estimate' && !local) throw new Error('출발 지점의 도도시 요금표를 확인해 주세요.');
+            return { success: true, data: local ? local.items : override.items, updated: override.updated || '', source: override.source || '공용 데이터' };
         }
         const resp = await fetch('dodosi_data.json');
         if (!resp.ok) throw new Error('dodosi_data.json 로드 실패');

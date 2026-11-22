@@ -1455,14 +1455,20 @@ function createPlatformApi({
     async function pargeRates(provider = 'parge', channel) {
         if (provider === 'dodosi') {
             let payload = require('./public/dodosi_data.json');
-            if (channel?.id === 'jjunine') {
-                const local = require('./jjun-dodosi-rates.json');
-                payload = local.origin === channel.shippingDefaults?.deliverySchedule?.dodosiOrigin ? local : [];
-            } else try {
+            let storedPayload;
+            try {
                 const rows = await repository.getRowsByKeys(['shipping_rate_dodosi']);
                 const stored = rows?.find(row => row.key === 'shipping_rate_dodosi')?.value;
-                if (stored) payload = JSON.parse(stored);
+                if (stored) storedPayload = JSON.parse(stored);
             } catch (error) { logger.warn?.('[shipping] 도도시 요금표 조회 실패:', error.message); }
+            const originName = channel?.shippingDefaults?.deliverySchedule?.dodosiOrigin || (channel?.id === 'jjunine' ? '쭌이네' : '크레용(대구)');
+            const originRates = storedPayload?.origins?.find(o => o.name === originName);
+            if (originRates) payload = originRates;
+            else if (storedPayload?.source === 'dodosi-public-estimate') payload = {items:[]};
+            else if (channel?.id === 'jjunine') {
+                const local = require('./jjun-dodosi-rates.json');
+                payload = local.origin === channel.shippingDefaults?.deliverySchedule?.dodosiOrigin ? local : [];
+            } else if (storedPayload) payload = storedPayload;
             const groups = {};
             const items = Array.isArray(payload) ? payload : payload.items || payload.data || [];
             for (const item of Array.isArray(items) ? items : []) {
@@ -2089,7 +2095,8 @@ function createPlatformApi({
         } else if (['parge', 'dodosi'].includes(destinationId) && (await carrierRequests.allowed(context,destinationId) || unchangedDestination)) {
             const pargeRegion = cleanText(body.pargeRegion, 80);
             const pargeShop = cleanText(body.pargeShop, 120);
-            if (!selectedPargeRate(rates, pargeRegion, pargeShop)) throw buyerInputError('배송업체의 수령 지점을 다시 선택해 주세요.');
+            const allQuoted = unchangedDestination && context.bundleItems.every(item => context.shipments.some(s => s.itemId === item.id && s.buyerSubmittedAt));
+            if (!selectedPargeRate(rates, pargeRegion, pargeShop) && !allQuoted) throw buyerInputError('배송업체의 수령 지점을 다시 선택해 주세요.');
             selection = { destinationType: destinationId, destinationId, pargeRegion, pargeShop };
             method = 'delivery';
             carrier = destinationId === 'parge' ? '파르게' : '도도시';
@@ -2101,6 +2108,19 @@ function createPlatformApi({
         const requestedMethods = requestedPaymentMethods(body, groups);
         const combinedShipping = await pargeDelay.bundle(context);
         const shipping = Checkout.allocateShipping(context.bundleItems, selection, {...context.channel,combinedShipping}, rates, unchangedDestination ? context.shipments : []);
+        if (unchangedDestination) {
+            for (const item of context.bundleItems) {
+                const quoted = Checkout.newestShipment(context.shipments.filter(s => s.itemId === item.id && s.buyerSubmittedAt));
+                if (!quoted) continue;
+                shipping.allocations.set(item.id, Math.max(0, Number(quoted.cost) || 0));
+                if (quoted.shippingSupportDate) {
+                    shipping.supportDates ||= new Map(); shipping.supportAllocations ||= new Map(); shipping.grossAllocations ||= new Map();
+                    shipping.supportDates.set(item.id, quoted.shippingSupportDate);
+                    shipping.supportAllocations.set(item.id, Number(quoted.shippingSupportAmount) || 0);
+                    shipping.grossAllocations.set(item.id, (Number(quoted.cost) || 0) + (Number(quoted.shippingSupportAmount) || 0));
+                }
+            }
+        }
         if(options.operatorCustom?.allocations)for(const [id,cost] of options.operatorCustom.allocations)shipping.allocations.set(id,cost);
         const existingByItem = new Map(context.shipments.map((shipment) => [shipment.itemId, shipment]));
         const now = new Date().toISOString();
@@ -4382,6 +4402,7 @@ function createPlatformApi({
                 const body = await readJson(req);
                 const catalog = await loadCatalog();
                 const requested = body.channel || {};
+                if (!requested.shippingDefaults) requested.shippingDefaults = {enabledCarriers:['dodosi']};
                 const checked = validateChannel({ ...requested, broadcastDefaults: { ...(requested.broadcastDefaults || {}), layoutPreset: 'standard-v1' } }, catalog.channels);
                 if (!checked.valid) {
                     replyJson(res, 422, { error: checked.errors.join(' '), errors: checked.errors });

@@ -30,7 +30,7 @@ test('Dodosi matches duplicate shop names by city and only performs read-only op
  const shops=[['출발점','대구','수/일'],['동명점','부산','월','화','2026/09/24','2026/09/27'],['동명점','울산','월'],...Array.from({length:17},(_,i)=>['다른점'+i,'서울','월'])];
  const reader=createSourceReader(async(url,options)=>{
   calls.push({url,method:options.method||'GET'});
-  if(url.endsWith('/113'))return response("const spreadsheetId = 'public-sheet'; const apiKey = 'public-key';");
+  if(url.endsWith('/estimate'))return response("const spreadsheetId = 'public-sheet'; const apiKey = 'public-key';");
   if(url.includes('sheets.googleapis.com'))return response({values:url.includes('dodosiShopData')?shops:url.includes('dodosiEditData')?[['대구','동명점','3']]:[['1','대구출발','대구','부산도착','','/shop_view?idx=1']]});
   if(url.includes('shop_view'))return response('"prod_edit_time":"123"');
   assert.equal(new URL(url).pathname,'/shop/load_option.cm');assert.equal(options.method,'POST');

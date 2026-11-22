@@ -20,7 +20,7 @@
   if(!arch&&['active','draft'].includes(c.status)){
    result.workspace=c.dataAdapter==='legacy-cdcup'&&c.legacy?.managementUrl?Runtime.preserveChannel(c.legacy.managementUrl,id):r.workspace;
    result.broadcast=Runtime.operationalFeatureAvailable(c,'broadcast')?r.control:'';result.captures=r.captures;
-   result.parge=c.dataAdapter==='platform'&&Runtime.operationalFeatureAvailable(c,'shipping')?'/parge-dispatch.html?channel='+encodeURIComponent(id):'';
+   result.parge=c.dataAdapter==='platform'&&Runtime.operationalFeatureAvailable(c,'shipping')&&(s.finished||(c.shippingDefaults?.enabledCarriers||['parge']).includes('parge'))?'/parge-dispatch.html?channel='+encodeURIComponent(id):'';
    const theme=national(c)?'national':c.broadcastProfile==='basic-dice'?'ryangecko':'academy';
    result.pinball='/roulette/?'+new URLSearchParams({channel:id,channelName:s.label,theme});
    if(c.features?.survey===true&&c.pages?.survey)result.survey=Runtime.preserveChannel(c.pages.survey,id);
