@@ -7,7 +7,7 @@ test('Gyeonggi proclamation stays a single poster in thumbnail, preview and clip
  vm.runInContext(source.slice(source.indexOf(' function bodyHTML('),source.indexOf('\n function preview(')),ctx);
  const src='/promo-assets/gyeonggi-ten-20261111.png',t={name:'경기십선',title:'전국크레자랑 시즌2',blocks:[{type:'image',src,alt:'경기십선'},{type:'text',text:'11월 11일 수요일 밤 8시',size:20,bold:true}]};
  assert.equal(ctx.thumbnailImage(t).src,src);
- assert.equal(ctx.postBlocks(t,[{src:'/unused-partners.png'}]).filter(b=>b.type==='image').length,1);
+ assert.equal(ctx.postBlocks(t,[{src:'/selected-partners.png'}]).filter(b=>b.type==='image').length,2);
  for(const copy of [false,true]){const html=ctx.bodyHTML(t,copy);assert.equal((html.match(/<img /g)||[]).length,1);assert.match(html,/gyeonggi-ten-20261111/);assert.doesNotMatch(html,/museum|ticket|partners/);}
  assert.ok(fs.existsSync(require('node:path').join(__dirname,'../public',src)));
  assert.equal(require('../promo-media.json')[src],'https://creok.onrender.com'+src);

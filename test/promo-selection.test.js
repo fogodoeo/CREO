@@ -26,6 +26,19 @@ test('switching to none cancels old results and restores copying without stale l
  const f=fixture(),first=f.ctx.updatePartners();assert.equal(f.ctx.partnerReady,false);
  f.ctx.partnerMode='none';await f.ctx.updatePartners();assert.equal(f.ctx.partnerReady,true);f.calls[0].resolve({partners:{version:'old'}});await first;assert.equal(f.calls.length,1);assert.equal(f.ctx.partnerImages.length,0);assert.equal(f.ctx.partnerReady,true);
 });
+
+test('single-poster manuscripts keep partner choices visible and none selected initially',()=>{
+ const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8');
+ const picker={hidden:true},radios=['none','all','regions'].map(value=>({value,checked:false}));
+ const nodes=new Map(['post-title','copy-status','detail'].map(id=>[id,{textContent:'',showModal(){},querySelector(){return {scrollTop:40};}}]));
+ nodes.set('partner-controls',{closest:()=>picker});
+ const ctx=vm.createContext({state:{templates:[{id:'poster',title:'부울경편'}]},singlePoster:()=>true,$:id=>nodes.get(id),document:{activeElement:{},querySelectorAll:()=>radios},error(){},showPartnerRegions(){},drawPost(){},updatePartners(){}});
+ vm.runInContext(source.slice(source.indexOf(' function preview('),source.indexOf('\n function syncCopyButtons(')),ctx);
+ ctx.preview('poster');
+ assert.equal(picker.hidden,false);
+ assert.equal(ctx.partnerMode,'none');
+ assert.deepEqual(radios.filter(r=>r.checked).map(r=>r.value),['none']);
+});
 test('failed generation blocks copying; retry succeeds; closed preview ignores completion',async()=>{
  const f=fixture(),first=f.ctx.updatePartners();f.calls[0].resolve({partners:{version:'v'}});await new Promise(setImmediate);assert.equal(f.calls[1].body.catalogVersion,'v');f.calls[1].reject(Object.assign(Error('명단 변경'),{status:409}));await first;assert.equal(f.ctx.partnerReady,false);assert.equal(f.nodes.get('partner-retry').hidden,false);
  const second=f.ctx.updatePartners();f.calls[2].resolve({partners:{version:'new'}});await new Promise(setImmediate);f.calls[3].resolve({images:[{src:'https://example.com/new.png'}],count:2});await second;assert.equal(f.ctx.partnerReady,true);assert.equal(f.ctx.partnerImages[0].src,'https://example.com/new.png');

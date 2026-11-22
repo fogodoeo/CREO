@@ -25,7 +25,11 @@
  function isSharedAsset(b,kind){if(b.type!=='image')return false;const u=new URL(b.src,location.origin);return u.origin===location.origin&&(kind==='ticket'?/^\/promo-assets\/ticket(?:-seoul-incheon-v2|-wolssu-gamachi-v1|-wolssu-sponsors-v1)?\.png$/:/^\/promo-assets\/partners-20261007(?:-v4)?\.png$/).test(u.pathname);}
  function singlePoster(t){return t.blocks.find(b=>b.type==='image'&&/^\/promo-assets\/(?:gyeonggi-ten-20261111(?:-v[5678])?\.png|jeoncre-daegu-gyeongbuk-20261118-v1\.jpg|jeoncre-busan-20261123-v3\.jpg)$/.test(new URL(b.src,location.origin).pathname));}
  function postBlocks(t,images=[]){
-  if(singlePoster(t))return t.blocks;
+  if(singlePoster(t)){
+   const blocks=t.blocks.slice(),index=blocks.findIndex(b=>b.href);
+   blocks.splice(index<0?blocks.length:index,0,...images.map(i=>({...i,type:'image'})));
+   return blocks;
+  }
   const blocks=[],hasBoard=t.blocks.some(b=>isSharedAsset(b,'partners'));
   let inserted=false;
   for(const b of t.blocks){
@@ -132,7 +136,7 @@
  function preview(id){template=state.templates.find(t=>t.id===id);if(!template){error('보관된 원고입니다. 운영자에게 문의해 주세요.');return;}
   const standalone=!!singlePoster(template);
   partnerMode=standalone?'none':'all';partnerRegions=new Set();partnerImages=[];partnerReady=standalone;
-  $('partner-controls').closest('.partner-picker').hidden=standalone;
+  $('partner-controls').closest('.partner-picker').hidden=false;
   $('post-title').textContent=template.title;$('copy-status').textContent='';
   for(const radio of document.querySelectorAll('[name="partner-mode"]'))radio.checked=radio.value===partnerMode;
   showPartnerRegions();drawPost();trigger=document.activeElement;$('detail').showModal();$('detail').querySelector('.dialog-scroll').scrollTop=0;updatePartners();

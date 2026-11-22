@@ -16,4 +16,17 @@ test('Busan November 23 begins with one selected poster in preview and copied HT
   assert.doesNotMatch(html,/hero-wolssu|museum|ticket|partners/);
  }
  assert.equal(require('../promo-media.json')[src],'https://creok.onrender.com'+src);
+ const selected=[{src:'/selected-busan-partners.png',alt:'부울경 업체'}];
+ const withLink={...t,blocks:[...t.blocks,{type:'text',text:'밴드 바로가기',href:'https://band.us/test'}]};
+ const before=JSON.stringify(withLink);
+ const blocks=ctx.postBlocks(withLink,selected);
+ assert.equal(blocks[0].src,src);
+ assert.equal(blocks[blocks.length-2].src,selected[0].src);
+ assert.equal(JSON.stringify(withLink),before);
+ for(const copy of [false,true]){
+  const html=ctx.bodyHTML(withLink,copy,selected);
+  assert.equal((html.match(/<img /g)||[]).length,2);
+  assert.match(html,/selected-busan-partners/);
+  assert.doesNotMatch(html,/hero-wolssu|museum|ticket/);
+ }
 });
