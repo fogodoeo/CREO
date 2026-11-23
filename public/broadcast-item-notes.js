@@ -6,6 +6,13 @@
   }
   const escape=value=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function markup(...values){const note=text(...values);return note?`<div class="broadcast-item-note"><span>${escape(note)}</span></div>`:'';}
+  function itemText(item={},checklist={}){
+    const description=text(checklist.memo,item.note);
+    const morph=text(checklist.morph)||text(item.attributes?.entry_traits?.morph)||text(item.category);
+    // Treat spacing and the two common probability spellings as the same text.
+    const key=value=>value.normalize('NFKC').toLowerCase().replace(/헷\s*(\d+(?:\.\d+)?)\s*%?/g,'$1헷').replace(/[\s%]+/g,'');
+    return text(morph&&!key(description).includes(key(morph))?morph:'',description);
+  }
   function pricingTerms(item={},pricing={}){
     const checklist=String(item.attributes?.checklist||item.checklist||'');
     if(/(?:^|\|)\s*sale_mode\s*:\s*(?:quiz|buy_now)\s*(?:\||$)/i.test(checklist))return [];
@@ -30,7 +37,7 @@
     measure();
   }
   if(root.document)root.document.fonts?.ready.then(measure);
-  const api={text,markup,pricingTerms,pricingMarkup,hydrate};
+  const api={text,markup,itemText,pricingTerms,pricingMarkup,hydrate};
   if(typeof module==='object'&&module.exports)module.exports=api;
   root.CreoBroadcastItemNotes=api;
 })(typeof window==='object'?window:globalThis);

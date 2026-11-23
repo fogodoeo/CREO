@@ -2,6 +2,29 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const notes=require('../public/broadcast-item-notes'),contract=require('../public/auction-contract'),textLayout=require('../public/broadcast-text-layout');
 
+test('national descriptions include saved morphs without inventing genetics or repeating entered notes',()=>{
+ const item={category:'세이블 릴리 100%헷 아잔틱',note:'',attributes:{entry_traits:{morph:'세이블 릴리 100%헷 아잔틱'}}},before=structuredClone(item);
+ assert.equal(notes.itemText(item),item.category);
+ assert.equal(notes.itemText({...item,note:'세이블릴리 헷100아잔틱'}),'세이블릴리 헷100아잔틱');
+ assert.equal(notes.itemText({...item,note:'부모 확인'}),'세이블 릴리 100%헷 아잔틱 · 부모 확인');
+ assert.equal(notes.itemText(item,{morph:'세이블 아잔틱',memo:'PCR 확인'}),'세이블 아잔틱 · PCR 확인');
+ assert.equal(notes.itemText({category:'66%헷 아잔틱',note:'100%헷 아잔틱'}),'66%헷 아잔틱 · 100%헷 아잔틱');
+ assert.equal(notes.itemText({note:'직해칭 개체'}),'직해칭 개체');
+ assert.equal(notes.itemText({}), '');assert.deepEqual(item,before);
+});
+
+test('national P2 renders a morph even with an empty note and clears it on the next specimen',()=>{
+ const source=fs.readFileSync(require.resolve('../public/auction-live.html'),'utf8');
+ const functions=source.slice(source.indexOf('function pageTwoInfoTraits('),source.indexOf('function pageTwoParents('));
+ const c=vm.createContext({CreoBroadcastItemNotes:notes,CreoAuctionContract:contract,esc:String});vm.runInContext(functions,c);
+ const render=(item,show=true)=>c.pageTwoInlineInfo(item,'',show,true,false,{},true);
+ const item={name:'A01',category:'세이블 릴리 100%헷 아잔틱',note:'',attributes:{checklist:'gender:U|morph:세이블 릴리 100%헷 아잔틱'}};
+ assert.match(render(item),/broadcast-item-note.*세이블 릴리 100%헷 아잔틱/);
+ assert.doesNotMatch(render(item,false),/broadcast-item-note|100%헷/);
+ assert.doesNotMatch(render({name:'A02',note:'',category:''}),/broadcast-item-note|100%헷/);
+ assert.match(render({name:'A03',category:'<img onerror="bad">'}),/&lt;img/);
+});
+
 test('pricing notes use explicit won/manwon units, clear zero values and preserve original notes',()=>{
  const item={name:'A11',startPrice:50000,note:'SPT 아잔틱 · PCR',attributes:{checklist:'memo:부모 확인'}};
  const before=structuredClone(item);
