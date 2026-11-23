@@ -19,13 +19,14 @@ test('Ticket preview escapes untrusted names; only known carrier yields two page
  const html=D.preview(D.ticket(item,s));assert.ok(html.includes('&lt;img'));assert.ok(!html.includes('<img'));assert.equal((html.match(/class="dodosi-label-paper"/g)||[]).length,2);
  assert.equal(D.physicalCount([{shipping_company:'unknown'}]),1);
 });
-test('Blank-field sticker has editable sender, broadcast date and exactly one active bundle cell per side',()=>{
+test('Blank-field sticker has editable sender and bundle cells only on the arrival sticker',()=>{
  const result=D.ticket(item,state,{name:'전크자',phone:'01049287600'});
  assert.deepEqual(result.errors,[]);assert.equal(result.payload.sender_name,'전크자');
  assert.equal(result.payload.broadcast_date,'2026-11-23');assert.deepEqual(result.payload.bundle_lots,['A01','B02','C03']);assert.equal(result.payload.bundle_index,1);
  const html=D.preview(result);
- assert.equal((html.match(/dt-cell is-current/g)||[]).length,2);
- assert.equal((html.match(/class="dt-cell(?: |")/g)||[]).length,6);
+ assert.equal((html.match(/dt-cell is-current/g)||[]).length,1);
+ assert.equal((html.match(/class="dt-cell(?: |")/g)||[]).length,3);
+ assert.equal((html.match(/class="dt-broadcast"/g)||[]).length,1);
  assert.ok(html.includes('11/28'));assert.ok(!html.includes('11/28(토)'));
  assert.doesNotMatch(html,/보내는 분|받는 분|도도시 · 출발|출발지|합배송 3마리/);
  assert.equal(D.ticket(item,state).payload.sender_name,'발송인');

@@ -82,6 +82,8 @@ def render_portrait(num, shop, person, phone, date_value, summary='', departure=
     text(phone, 39, 10, 39)
     day = date.fromisoformat(date_value)
     text(f'{day.month}/{day.day}' + (f'({"월화수목금토일"[day.weekday()]})' if departure else ''), 59, 11, 50)
+    if departure:
+        return page
     footer = json.loads(summary)
     broadcast = date.fromisoformat(footer['date'])
     d.line((18, 462, 342, 462), fill=0, width=2)

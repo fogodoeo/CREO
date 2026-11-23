@@ -50,10 +50,10 @@
                 + field('dt-main', ((departure ? p.sender_name : p.destination) || '입력 필요').replace(/^(\[[^\]]+\])\s*/, '$1\n'), 48)
                 + field('dt-phone', tel || '연락처 확인', 39)
                 + field('dt-date', shortDate(departure ? p.dropoff_date : p.arrival_date, departure), 50)
-                + field('dt-broadcast', shortDate(p.broadcast_date, false) + ' 방송', 27)
+                + (departure ? '' : field('dt-broadcast', shortDate(p.broadcast_date, false) + ' 방송', 27)
                 + `<div class="dt-cells" style="grid-template-columns:repeat(${columns},minmax(0,1fr))">`
                 + p.bundle_lots.map((lot, index) => `<div class="dt-cell${index === p.bundle_index ? ' is-current' : ''}" data-ticket-size="30"${index === p.bundle_index ? ' aria-label="' + esc(lot + ', 현재 개체') + '"' : ''}><span>${esc(lot)}</span></div>`).join('')
-                + '</div></div></div>';
+                + '</div>') + '</div></div>';
         };
         return '<div class="dodosi-label-pair">' + side(true) + side(false) + '</div>'
             + (result.errors.length ? '<p class="dodosi-label-warning" role="status">' + esc(result.errors.join(' · ')) + '</p>' : '');
