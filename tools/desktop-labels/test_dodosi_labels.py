@@ -8,6 +8,7 @@ from unittest.mock import patch
 APP = os.environ.get('CREO_LABEL_APP', '')
 if APP:
     sys.path.insert(0, APP)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dodosi_label_design import normalize_ticket, render_portrait
 
 
@@ -43,6 +44,45 @@ class TicketTest(unittest.TestCase):
             self.assertIsNotNone(image.getbbox())
         with self.assertRaises(b.LabelBridgeRequestError):
             b.normalize_label_request({'labels':[ticket(),{**ticket(),'winner_phone':''}]})
+
+    @unittest.skipUnless(APP,'installed app integration')
+    def test_arrival_recipient_phone_date_and_single_line_lots(self):
+        import niimbot_printer as p
+        item=ticket()
+        with patch.object(p,'_draw_text_in_box',wraps=p._draw_text_in_box) as draw:
+            page=render_portrait('A01',item['destination'],item['winner_name'],item['winner_phone'],item['arrival_date'],normalize_ticket(item)[1]['sold_price'],False)
+        calls={call.args[1]:call for call in draw.call_args_list}
+        self.assertEqual(calls['수령인'].args[3][1:4:2],(234,294))
+        self.assertEqual(calls['01000000002'].args[3][1:4:2],(354,420))
+        self.assertEqual(calls['11/28'].args[3][1:4:2],(474,540))
+        for lot in item['bundle_lots']:
+            self.assertEqual(calls[lot].args[3][1:4:2],(3,39))
+        self.assertEqual(calls['A01'].kwargs['fill'],255)
+        self.assertEqual(calls['B02'].kwargs['fill'],0)
+        self.assertEqual(page.size,(360,600))
+
+    @unittest.skipUnless(APP,'installed app integration')
+    def test_departure_has_origin_sender_phone_and_dropoff_date(self):
+        import niimbot_printer as p
+        item=ticket()
+        with patch.object(p,'_draw_multiline_text_in_box',wraps=p._draw_multiline_text_in_box) as multiline, patch.object(p,'_draw_text_in_box',wraps=p._draw_text_in_box) as draw:
+            render_portrait('A01',item['origin'],item['sender_name'],item['sender_phone'],item['dropoff_date'],normalize_ticket(item)[0]['sold_price'],True)
+        self.assertEqual(multiline.call_args.args[1],['크레용(대구)'])
+        self.assertEqual(multiline.call_args.args[3][1:4:2],(42,192))
+        calls={call.args[1]:call for call in draw.call_args_list}
+        self.assertEqual(calls['발송인'].args[3][1:4:2],(234,294))
+        self.assertEqual(calls['01000000001'].args[3][1:4:2],(354,420))
+        self.assertEqual(calls['11/24(화)'].args[3][1:4:2],(474,540))
+
+    @unittest.skipUnless(APP,'installed app integration')
+    def test_twelve_lots_stay_on_one_line_within_stock(self):
+        import niimbot_printer as p
+        item={**ticket(),'bundle_lots':[f'A{i:02}' for i in range(1,13)]}
+        with patch.object(p,'_draw_text_in_box',wraps=p._draw_text_in_box) as draw:
+            render_portrait('A01',item['destination'],item['winner_name'],item['winner_phone'],item['arrival_date'],normalize_ticket(item)[1]['sold_price'],False)
+        calls=[c for c in draw.call_args_list if c.args[1] in item['bundle_lots']]
+        self.assertEqual(len(calls),12)
+        self.assertTrue(all(c.args[3][1]==3 and c.args[3][2]<=342 for c in calls))
 
     @unittest.skipUnless(APP,'installed app integration')
     def test_http_batch_queues_left_then_right_without_printing(self):
