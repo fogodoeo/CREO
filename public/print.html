@@ -17,6 +17,8 @@
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="mobile-phone.js?v=20261018-contact"></script>
     <script src="print-shipping-summary.js?v=20261024-packing-label"></script>
+    <script src="dodosi-labels.js?v=20261123"></script>
+    <link rel="stylesheet" href="dodosi-labels.css?v=20261123">
     <script src="google-sheets-export.js?v=20261015-gross-shipping"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
@@ -783,6 +785,15 @@
             .label-item { grid-template-columns:24px 62px minmax(0,1fr) 82px; gap:8px; }
             .label-item .label-phone,.label-item .label-destination { grid-column:3 / -1; }
             .label-selection-summary { width:100%;margin-left:0; }
+            .label-toolbar { flex-wrap:wrap; }
+            .label-toolbar label { min-height:44px;white-space:nowrap;flex-shrink:0; }
+            .label-toolbar > span { max-width:100%; }
+            .label-item .label-payment { grid-column:4;grid-row:1; }
+            #tab-labels .header { flex-wrap:wrap;gap:6px; }
+            .label-preview-nav button { min-height:44px; }
+            body[data-print-tab="labels"] .tab-bar .tab-btn { flex:1 0 calc(50% - 8px);white-space:nowrap;min-height:44px; }
+            body[data-print-tab="labels"] .tab-bar .channel-chip,
+            body[data-print-tab="labels"] .tab-bar .workspace-link { flex:1 0 calc(50% - 8px); }
             .label-preview-stage { min-height:0;padding:14px 8px; }
             .settlement-stats { grid-template-columns:repeat(2,minmax(120px,1fr)); }
             .settlement-tools { align-items:stretch; flex-direction:column; }
@@ -860,7 +871,7 @@
     <div class="tab-content" id="tab-labels">
         <div class="header">
             <h1>배송 라벨</h1>
-            <div class="meta">30×50mm (가로형) · 개체당 1장</div>
+            <div class="meta">도도시: 개체당 세로 2장 · 그 외: 가로 1장</div>
         </div>
         <div class="label-workspace">
             <div class="label-toolbar">
@@ -873,7 +884,7 @@
                 <section class="label-preview-panel" aria-label="배송 라벨 출력 미리보기">
                     <div class="label-preview-heading">
                         <strong>출력 미리보기</strong>
-                        <span>실제 B1 PRO 30×50mm (가로형) 비율</span>
+                        <span>B1 PRO 30×50mm 라벨</span>
                     </div>
                     <div class="label-preview-stage" id="label-preview-stage">
                         <div class="label-preview-empty">라벨 자료를 불러오는 중입니다.</div>
@@ -883,7 +894,7 @@
                         <span class="label-preview-counter" id="label-preview-counter">0 / 0</span>
                         <button id="label-preview-next" type="button" onclick="moveShippingLabelPreview(1)">다음</button>
                     </div>
-                    <div class="label-preview-note">가로 50mm × 세로 30mm · B1 PRO 전용. 회색 외곽선은 실제로 인쇄되지 않습니다.</div>
+                    <div class="label-preview-note">도도시는 출발 → 도착 순서로 2장 출력합니다. 세로로 돌려 승차권 좌·우에 붙여 주세요. 회색 테두리는 인쇄되지 않습니다. <a id="dodosi-label-settings" href="#">보내는 분·일정 설정</a></div>
                 </section>
                 <div class="label-item-list" id="label-item-list"><div class="loading">불러오는 중...</div></div>
             </div>
@@ -1285,7 +1296,7 @@
             var selectAll = document.getElementById('label-select-all');
             selectAll.checked = Boolean(checks.length) && selected === checks.length;
             selectAll.indeterminate = selected > 0 && selected < checks.length;
-            document.getElementById('label-selection-summary').textContent = selected + '장 선택 / 출력 가능 ' + checks.length + '장';
+            document.getElementById('label-selection-summary').textContent = selected + '개체 선택 · 총 ' + CreoDodosiLabels.physicalCount(selectedShippingLabelItems()) + '장 / ' + checks.length + '개체';
             if (Number.isInteger(preferredIndex)) window._shippingLabelPreviewIndex = preferredIndex;
             renderShippingLabelPreview();
         }
@@ -1366,6 +1377,19 @@
             }
 
             var position = indexes.indexOf(activeIndex);
+            if (CreoDodosiLabels.isDodosi(items[activeIndex])) {
+                stage.innerHTML = CreoDodosiLabels.preview(CreoDodosiLabels.ticket(items[activeIndex], window._dodosiLabelState));
+                counter.textContent = (position + 1) + ' / ' + indexes.length + ' · 세로 2장';
+                prev.disabled = position <= 0;
+                next.disabled = position >= indexes.length - 1;
+                fitShippingLabelPreview();
+                if (document.fonts) document.fonts.ready.then(fitShippingLabelPreview);
+                if (!window._shippingLabelPreviewObserver && typeof ResizeObserver !== 'undefined') {
+                    window._shippingLabelPreviewObserver = new ResizeObserver(fitShippingLabelPreview);
+                    window._shippingLabelPreviewObserver.observe(stage);
+                }
+                return;
+            }
             var payload = d10ShippingLabelPayload(items[activeIndex]);
             var route = CreoPrintShippingSummary.compactLabelRoute(payload.destination);
             var group = String(payload.bundle_summary || '').match(/^합배송(?: 대상)?\s*(\d+)\s*(?:마리|개)\s*·\s*(.*)$/);
@@ -1394,6 +1418,13 @@
         }
 
         function fitShippingLabelPreview() {
+            document.querySelectorAll('.dodosi-label-paper [data-ticket-size]').forEach(function (box) {
+                var content = box.firstElementChild;
+                for (var size = Number(box.dataset.ticketSize); size >= 10; size--) {
+                    box.style.fontSize = (size / 3.6) + 'cqw';
+                    if (content.scrollWidth <= box.clientWidth + 1 && content.getBoundingClientRect().height <= box.clientHeight + 1) break;
+                }
+            });
             document.querySelectorAll('.label-paper [data-label-size]').forEach(function (box) {
                 var content = box.firstElementChild;
                 if (!content || !box.clientWidth) return;
@@ -1433,6 +1464,7 @@
                 var response = await fetchD10Bridge('/v1/status', { method: 'GET' }, 2200);
                 if (!response.ok) throw new Error('브리지 응답 오류');
                 var payload = await response.json();
+                window._dodosiTicketSupported = payload.dodosiTicketVersion === 1;
                 var suffix = payload.printing ? ' · 인쇄 중' : payload.queued ? ' · 대기 ' + payload.queued + '장' : '';
                 if (!payload.shippingLabelDetails || !(Number(payload.shippingLabelVersion) >= 2)) {
                     setD10PrinterStatus('새 라벨 적용: 모니터 앱 다시 열기', 'error');
@@ -1447,6 +1479,11 @@
         }
 
         function d10ShippingLabelPayload(it) {
+            if (typeof CreoDodosiLabels !== 'undefined' && CreoDodosiLabels.isDodosi(it)) {
+                var ticket = CreoDodosiLabels.ticket(it, window._dodosiLabelState);
+                if (ticket.errors.length) throw new Error((it.name || '도도시') + ': ' + ticket.errors.join(' · '));
+                return ticket.payload;
+            }
             var winner = parseWinner(it);
             var bundle = window._shippingLabelBundles && window._shippingLabelBundles.get(it);
             var lotNumber = String(it.name || auctionNumber(it) || '').trim();
@@ -1466,6 +1503,9 @@
         }
 
         async function printSelectedShippingLabels() {
+            if (window._shippingPrintBusy) return;
+            window._shippingPrintBusy = true;
+            try {
             var items = selectedShippingLabelItems();
             if (!items.length) {
                 alert('출력할 배송 라벨을 선택해 주세요.');
@@ -1475,28 +1515,39 @@
                 alert('합배송 라벨을 적용하려면 밴드 모니터 앱을 다시 열어 주세요.');
                 return;
             }
+            if (items.some(CreoDodosiLabels.isDodosi) && !window._dodosiTicketSupported) {
+                alert('도도시 세로 2장 출력을 적용하려면 업데이트된 밴드 모니터 앱을 다시 열어 주세요.');
+                return;
+            }
             var button = document.getElementById('print-action-btn');
             button.disabled = true;
             button.textContent = 'B1 PRO 전송 중...';
             setD10PrinterStatus('B1 PRO 대기열 전송 중', 'checking');
             try {
+                // Refresh sender/recipient/schedule before printing. Never print a stale preview.
+                if (items.some(CreoDodosiLabels.isDodosi)) await loadDodosiLabelState();
+                var labels = items.map(d10ShippingLabelPayload);
                 var response = await fetchD10Bridge('/v1/labels', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         channel: PRINT_CHANNEL_ID,
-                        labels: items.map(d10ShippingLabelPayload)
+                        labels: labels
                     })
                 }, 5000);
                 var payload = await response.json().catch(function () { return {}; });
                 if (!response.ok || !payload.ok) throw new Error(payload.error || 'B1 PRO 대기열에 전송하지 못했습니다.');
                 setD10PrinterStatus('B1 PRO ' + payload.accepted + '장 출력 대기', 'ready');
             } catch (error) {
-                setD10PrinterStatus('B1 PRO 앱 미연결', 'error');
-                alert('밴드 모니터링 앱을 실행한 뒤 다시 눌러 주세요.\nPDF 인쇄로 전환되지 않습니다.');
+                setD10PrinterStatus('출력 확인 필요', 'error');
+                alert(error.message || '인쇄 결과를 확인하지 못했습니다. 앱 대기열을 먼저 확인해 주세요.');
             } finally {
+                renderShippingLabelPreview();
                 button.disabled = false;
                 button.textContent = 'B1 PRO 선택 출력';
+            }
+            } finally {
+                window._shippingPrintBusy = false;
             }
         }
 
@@ -1844,6 +1895,7 @@
         }
 
         function syncPrintChannel(channel) {
+            document.getElementById('dodosi-label-settings').href = '/dodosi-dispatch.html?channel=' + encodeURIComponent(PRINT_CHANNEL_ID);
             var label = String(channel.name || channel.shortName || PRINT_CHANNEL_ID).trim();
             if(new URLSearchParams(location.search).has('archive'))label += ' · 이전 회차';
             const dispatch=document.getElementById('parge-dispatch-link');
@@ -1870,12 +1922,23 @@
             });
         }
 
+        async function loadDodosiLabelState() {
+            window._dodosiLabelState = null;
+            if (new URLSearchParams(location.search).has('archive')) throw new Error('이전 회차의 도도시 일정은 접수 내역에서 확인해 주세요.');
+            window._dodosiLabelState = await CreoPlatform.api('channels/' + encodeURIComponent(PRINT_CHANNEL_ID) + '/dodosi-dispatch');
+        }
+
         async function loadPrintData() {
             await resolvePrintChannelId();
             var operation = await printOperation.ready();
             var channel = operation.channel;
             syncPrintChannel(channel);
             var items=await printOperation.loadPrintItems();
+            window._dodosiLabelState = null;
+            if (channel.dataAdapter === 'platform' && items.some(CreoDodosiLabels.isDodosi) && !new URLSearchParams(location.search).has('archive')) {
+                try { await loadDodosiLabelState(); }
+                catch (error) { console.warn('도도시 라벨 정보 조회 실패:', error.message); }
+            }
             if(channel.dataAdapter==='platform'){
                 try{
                     var result=await CreoPlatform.api('channels/'+encodeURIComponent(channel.id)+'/shipping-suggestions');

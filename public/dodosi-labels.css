@@ -1,0 +1,18 @@
+/* 30 × 50 mm portrait artwork, paired in ticket order. No colour-dependent fields. */
+.dodosi-label-pair { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%;max-width:560px; }
+.dodosi-label-side { min-width:0; }
+.dodosi-side-caption { text-align:center;font-size:12px;font-weight:600;margin-bottom:8px;color:#111; }
+.dodosi-label-paper { position:relative;container-type:inline-size;aspect-ratio:3/5;background:white;color:black;font-family:'Pretendard',sans-serif;font-weight:700;border:1px solid #aaa; }
+.dodosi-label-paper [data-ticket-size] { position:absolute;left:5%;width:90%;display:flex;align-items:center;line-height:1.12;overflow-wrap:anywhere; }
+.dodosi-label-paper [data-ticket-size]>span { width:100%; }
+.dodosi-label-paper .dt-heading { top:2.5%;height:6%;border-bottom:1px solid black; }
+.dodosi-label-paper .dt-lot { top:9%;height:11%; }
+.dodosi-label-paper .dt-shop-label { top:22%;height:4%; }
+.dodosi-label-paper .dt-shop { top:27%;height:14%;white-space:pre-line; }
+.dodosi-label-paper .dt-person-label { top:44%;height:4%; }
+.dodosi-label-paper .dt-person { top:49%;height:8%; }
+.dodosi-label-paper .dt-phone { top:58%;height:7%;white-space:nowrap; }
+.dodosi-label-paper .dt-date-label { top:70%;height:4%; }
+.dodosi-label-paper .dt-date { top:75%;height:10%;white-space:nowrap; }
+.dodosi-label-paper .dt-bundle { top:90%;height:5%;border-top:1px solid black; }
+.dodosi-label-warning { font-size:13px;line-height:1.5;margin:12px 0 0;color:#9b1c1c; }
