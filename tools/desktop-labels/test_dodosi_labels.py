@@ -14,7 +14,7 @@ from dodosi_label_design import normalize_ticket, render_portrait
 def ticket():
     return dict(kind='dodosi_ticket',lot_number='A01',origin='크레용(대구)',sender_name='발송인',sender_phone='01000000001',
                 destination='[서울/강동] 티그리스게코',winner_name='수령인',winner_phone='01000000002',
-                dropoff_date='2026-11-24',arrival_date='2026-11-28',bundle_summary='합배송 2마리')
+                dropoff_date='2026-11-24',arrival_date='2026-11-28',broadcast_date='2026-11-23',bundle_lots=['A01','B02','C03'],bundle_index=0)
 
 
 class TicketTest(unittest.TestCase):
@@ -24,9 +24,10 @@ class TicketTest(unittest.TestCase):
         self.assertEqual(jobs[0]['winner_name'],'발송인')
         self.assertEqual(jobs[1]['winner_name'],'수령인')
         self.assertEqual(json.loads(json.dumps(jobs)),jobs)
+        self.assertEqual(json.loads(jobs[0]['sold_price']),{'date':'2026-11-23','lots':['A01','B02','C03'],'index':0})
 
     def test_invalid_data_is_not_silently_truncated(self):
-        for key,value in [('sender_phone',''),('arrival_date','2026-11-22'),('dropoff_date','2026-02-30'),('lot_number',''),('destination','x'*181)]:
+        for key,value in [('sender_phone',''),('arrival_date','2026-11-22'),('dropoff_date','2026-02-30'),('lot_number',''),('destination','x'*181),('broadcast_date',''),('bundle_index',2),('bundle_lots',['A01']*13)]:
             with self.assertRaises(ValueError):normalize_ticket({**ticket(),key:value})
 
     @unittest.skipUnless(APP,'installed app integration')
@@ -53,7 +54,7 @@ class TicketTest(unittest.TestCase):
             conn=http.client.HTTPConnection('127.0.0.1',bridge.port,timeout=3)
             headers={'Origin':'https://creok.onrender.com','Content-Type':'application/json'}
             conn.request('GET','/v1/status',headers=headers)
-            self.assertEqual(json.loads(conn.getresponse().read())['dodosiTicketVersion'],1)
+            self.assertEqual(json.loads(conn.getresponse().read())['dodosiTicketVersion'],2)
             conn.request('POST','/v1/labels',json.dumps({'labels':[ticket(),ticket()]}).encode(),headers)
             response=conn.getresponse();self.assertEqual(response.status,202)
             self.assertEqual(json.loads(response.read())['accepted'],4)

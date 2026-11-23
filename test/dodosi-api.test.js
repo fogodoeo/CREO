@@ -29,6 +29,7 @@ test('preparing a Dodosi form is isolated, concurrency guarded, cannot book, not
  const f=await setup(t),route='channels/alpha/dodosi-dispatch';await f.call('PUT','shipping-rates/dodosi-routes',f.data,true);
  const before=await f.repo.listRecords('alpha','shipment');assert.equal((await f.call('GET',route)).status,401);
  let state=(await f.call('GET',route,null,true)).json();assert.equal(state.groups.length,1);assert.equal(state.groups[0].schedule.dropoffDate,add(f.today,1));
+ assert.equal(state.broadcastDate,f.today);assert.equal(state.labelSenderDefault,null);
  const save=await f.call('POST',route,{action:'save-sender',name:'가상발송인',phone:'01000000002',expectedRevision:0},true);assert.equal(save.status,200,save.body);
  assert.equal((await f.call('POST',route,{action:'save-sender',name:'늦은저장',phone:'01000000003',expectedRevision:0},true)).status,409);
  const body={action:'prepare',expectedRevision:1,groupId:state.groups[0].id};

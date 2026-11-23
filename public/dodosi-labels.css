@@ -5,14 +5,16 @@
 .dodosi-label-paper { position:relative;container-type:inline-size;aspect-ratio:3/5;background:white;color:black;font-family:'Pretendard',sans-serif;font-weight:700;border:1px solid #aaa; }
 .dodosi-label-paper [data-ticket-size] { position:absolute;left:5%;width:90%;display:flex;align-items:center;line-height:1.12;overflow-wrap:anywhere; }
 .dodosi-label-paper [data-ticket-size]>span { width:100%; }
-.dodosi-label-paper .dt-heading { top:2.5%;height:6%;border-bottom:1px solid black; }
-.dodosi-label-paper .dt-lot { top:9%;height:11%; }
-.dodosi-label-paper .dt-shop-label { top:22%;height:4%; }
-.dodosi-label-paper .dt-shop { top:27%;height:14%;white-space:pre-line; }
-.dodosi-label-paper .dt-person-label { top:44%;height:4%; }
-.dodosi-label-paper .dt-person { top:49%;height:8%; }
-.dodosi-label-paper .dt-phone { top:58%;height:7%;white-space:nowrap; }
-.dodosi-label-paper .dt-date-label { top:70%;height:4%; }
-.dodosi-label-paper .dt-date { top:75%;height:10%;white-space:nowrap; }
-.dodosi-label-paper .dt-bundle { top:90%;height:5%;border-top:1px solid black; }
+.dodosi-label-paper .dt-main { top:7%;height:25%;white-space:pre-line; }
+.dodosi-label-paper .dt-phone { top:39%;height:10%;white-space:nowrap; }
+.dodosi-label-paper .dt-date { top:59%;height:11%;white-space:nowrap; }
+.dodosi-label-paper .dt-broadcast { top:77%;height:6%;border-top:1px solid black; }
+.dodosi-label-paper .dt-cells { position:absolute;left:5%;width:90%;top:85%;height:12%;display:grid;gap:1cqw; }
+.dodosi-label-paper .dt-cell { position:static;left:auto;width:auto;min-width:0;border:1px solid black;text-align:center;white-space:nowrap; }
+.dodosi-label-paper .dt-cell.is-current { background:black;color:white; }
 .dodosi-label-warning { font-size:13px;line-height:1.5;margin:12px 0 0;color:#9b1c1c; }
+.dodosi-label-editor { display:flex;flex-wrap:wrap;gap:12px;padding:14px 16px;border:1px solid #d8dee8;border-radius:12px;background:#f8fafc; }
+.dodosi-label-editor[hidden] { display:none; }
+.dodosi-label-editor label { flex:1 1 190px;display:grid;gap:6px;font-size:13px;font-weight:700; }
+.dodosi-label-editor input { width:100%;min-width:0;min-height:44px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:6px;font:400 16px 'Pretendard',sans-serif; }
+.dodosi-label-editor p { flex-basis:100%;font-size:12px;color:#475569; }

@@ -14,7 +14,7 @@ def prepare(app):
         'label_print_bridge.py': [
             ('    return [normalize_identification_label(label) if isinstance(label, dict) and label.get("kind") == "identification" else normalize_shipping_label(label) for label in labels]',
              '    from dodosi_label_design import normalize_ticket\n    jobs = []\n    for label in labels:\n        if isinstance(label, dict) and label.get("kind") == "dodosi_ticket":\n            jobs.extend(normalize_ticket(label, LabelBridgeRequestError))\n        else:\n            jobs.append(normalize_identification_label(label) if isinstance(label, dict) and label.get("kind") == "identification" else normalize_shipping_label(label))\n    return jobs'),
-            ('"shippingLabelVersion": 2,', '"shippingLabelVersion": 2, "dodosiTicketVersion": 1,'),
+            ('"shippingLabelVersion": 2,', '"shippingLabelVersion": 2, "dodosiTicketVersion": 2,'),
             ('    provider = status_provider or (lambda: {"ready": True})', '    provider = status_provider or (lambda: {"ready": True})\n    enqueue_lock = threading.Lock()'),
             ('                accepted = enqueue_labels(labels)', '                with enqueue_lock:\n                    accepted = enqueue_labels(labels)'),
         ],
@@ -31,6 +31,8 @@ def prepare(app):
     for name, edits in replacements.items():
         original = (app / name).read_bytes()
         source = original.decode('utf-8').replace('\r\n', '\n')
+        if name == 'label_print_bridge.py':
+            source = source.replace('"dodosiTicketVersion": 1', '"dodosiTicketVersion": 2')
         for before, after in edits:
             if after in source:
                 continue

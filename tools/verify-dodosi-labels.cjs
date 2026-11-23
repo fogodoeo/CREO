@@ -3,7 +3,7 @@
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict'),puppeteer=require('puppeteer');
 const root=path.resolve(__dirname,'../public'),out=path.resolve(process.argv[2]||'outputs/dodosi-labels');fs.mkdirSync(out,{recursive:true});
 const item={name:'A01',status:'낙찰',winner:'가상낙찰자',winner_phone:'01000000002',_winner:{name:'가상낙찰자',phone:'01000000002'},shipping_type:'배송',shipping_company:'도도시',shipping_region:'[서울/강동] 티그리스게코',payment_status:'paid',_platformItemId:'fixture-1',soldPrice:10};
-const state={fresh:true,originName:'크레용(대구)',sender:{name:'가상 발송인',phone:'01000000001'},groups:[{name:'가상 수령인',phone:'01000000002',shop:'[서울/강동] 티그리스게코',quantity:2,items:[{id:'fixture-1',lot:'A01'}],schedule:{status:'estimated',dropoffDate:'2026-11-24',arrivalDate:'2026-11-28'}}]};
+const state={fresh:true,broadcastDate:'2026-11-23',originName:'크레용(대구)',sender:{name:'전크자',phone:'01049287600'},groups:[{name:'가상 수령인',phone:'01020202020',shop:'[서울/강동] 티그리스게코',quantity:3,items:[{id:'fixture-1',lot:'A01'},{id:'fixture-2',lot:'B02'},{id:'fixture-3',lot:'C03'}],schedule:{status:'estimated',dropoffDate:'2026-11-24',arrivalDate:'2026-11-28'}}]};
 let supported=true,posts=[];
 const server=http.createServer((req,res)=>{
  const u=new URL(req.url,'http://localhost');
@@ -21,7 +21,7 @@ const server=http.createServer((req,res)=>{
    if(req.url().startsWith('http://127.0.0.1:17876')){
     const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'content-type','Access-Control-Allow-Private-Network':'true'};
     if(req.method()==='OPTIONS')return req.respond({status:204,headers});
-    if(req.url().endsWith('/v1/status'))return req.respond({status:200,headers,contentType:'application/json',body:JSON.stringify({shippingLabelDetails:true,shippingLabelVersion:2,dodosiTicketVersion:supported?1:0})});
+    if(req.url().endsWith('/v1/status'))return req.respond({status:200,headers,contentType:'application/json',body:JSON.stringify({shippingLabelDetails:true,shippingLabelVersion:2,dodosiTicketVersion:supported?2:1})});
     const body=JSON.parse(req.postData());posts.push(body);await new Promise(r=>setTimeout(r,80));return req.respond({status:202,headers,contentType:'application/json',body:JSON.stringify({ok:true,accepted:body.labels.reduce((n,l)=>n+(l.kind==='dodosi_ticket'?2:1),0)})});
    }
    if(req.url().startsWith(base)||req.url().startsWith('data:'))return req.continue();return req.abort();
@@ -37,8 +37,13 @@ const server=http.createServer((req,res)=>{
    const overflow=await page.$$eval('[data-ticket-size]',nodes=>nodes.filter(n=>n.firstElementChild.scrollWidth>n.clientWidth+1||n.firstElementChild.getBoundingClientRect().height>n.clientHeight+1).map(n=>n.textContent));assert.deepEqual(overflow,[]);
   }
   supported=false;await page.evaluate(()=>printSelectedShippingLabels());assert.equal(posts.length,1);assert.ok(dialogs.at(-1).includes('업데이트'));
-  supported=true;state.sender={};await page.evaluate(()=>printSelectedShippingLabels());assert.equal(posts.length,1);assert.ok(dialogs.at(-1).includes('보내는 분'));
+  supported=true;await page.evaluate(()=>{document.getElementById('dodosi-label-phone').value='';saveDodosiLabelSender();});await page.evaluate(()=>printSelectedShippingLabels());assert.equal(posts.length,1);assert.ok(dialogs.at(-1).includes('보내는 분'));
   await page.screenshot({path:path.join(out,'incomplete.png'),fullPage:true});
+  await page.evaluate(()=>{document.getElementById('dodosi-label-phone').value='01049287600';document.getElementById('dodosi-label-name').value='수정 이름';saveDodosiLabelSender();});
+  await page.reload();await page.evaluate((item,state)=>{window._dodosiLabelState=state;renderShippingLabels([item]);showTab('labels');},item,state);
+  assert.equal(await page.$eval('#dodosi-label-name',e=>e.value),'수정 이름');assert.equal(await page.$eval('#dodosi-label-phone',e=>e.value),'01049287600');
+  await page.evaluate((item,state)=>{PRINT_CHANNEL_ID='fixture-other';window._dodosiLabelState=state;renderShippingLabels([item]);},item,state);
+  assert.equal(await page.$eval('#dodosi-label-name',e=>e.value),'전크자');
   assert.deepEqual(errors,[]);console.log(JSON.stringify({ok:true,posts:posts.length,widths:[1280,390,320],guarded:['duplicate click','old bridge','missing sender'],out}));
  }finally{await browser.close();server.close();}
 })().catch(e=>{console.error(e);server.close();process.exitCode=1;});

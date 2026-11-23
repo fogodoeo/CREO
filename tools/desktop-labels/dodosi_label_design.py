@@ -3,6 +3,7 @@
 Pure validation/rendering only. Never books a shipment or sends printer commands.
 """
 import re
+import json
 from datetime import date
 from PIL import Image, ImageDraw
 
@@ -34,7 +35,20 @@ def normalize_ticket(label, error_type=ValueError):
     if dates[1] < dates[0]:
         raise error_type('도착 예정일이 맡김일보다 빠릅니다.')
     num = required('lot_number', 20)
-    summary = ' '.join(str(label.get('bundle_summary') or '').split())[:60]
+    lots = label.get('bundle_lots')
+    index = label.get('bundle_index')
+    broadcast = str(label.get('broadcast_date') or '')
+    try:
+        if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', broadcast):
+            raise ValueError()
+        date.fromisoformat(broadcast)
+    except ValueError:
+        raise error_type('방송일을 확인해 주세요.')
+    if not isinstance(lots, list) or not 1 <= len(lots) <= 12 or any(not isinstance(v, str) or not v.strip() or len(v) > 20 for v in lots):
+        raise error_type('합배송 개체번호를 확인해 주세요. 최대 12칸까지 출력합니다.')
+    if type(index) is not int or not 0 <= index < len(lots) or lots[index] != num:
+        raise error_type('합배송에서 현재 개체 위치를 확인해 주세요.')
+    summary = json.dumps({'date':broadcast, 'lots':lots, 'index':index}, ensure_ascii=False)
     jobs = []
     for index, (shop, person, phone) in enumerate((('origin', 'sender_name', 'sender_phone'), ('destination', 'winner_name', 'winner_phone'))):
         jobs.append({'num': num, 'item_name': required(shop, 180), 'winner_name': required(person, 40),
@@ -64,19 +78,28 @@ def render_portrait(num, shop, person, phone, date_value, summary='', departure=
             font = p._fit_font_to_box(d, str(value), font_path, 324, box[3]-box[1], max_size=size, min_size=10)
             p._draw_text_in_box(d, str(value), font, box, align='left')
 
-    text('도도시 · 출발' if departure else '도도시 · 도착', 2.5, 6, 28)
-    d.line((18, 51, 342, 51), fill=0, width=2)
-    text(num, 9, 11, 58)
-    text('출발지' if departure else '도착지', 22, 4, 22)
-    text(shop, 27, 14, 39, wrap=True)
-    text('보내는 분' if departure else '받는 분', 44, 4, 22)
-    text(person, 49, 8, 40)
-    text(re.sub(r'^(\d{3})(\d{3,4})(\d{4})$', r'\1-\2-\3', phone), 58, 7, 30)
-    text('맡기는 날 · 예정' if departure else '찾는 날 · 도착 예정', 70, 4, 22)
+    text(person if departure else shop, 7, 25, 48, wrap=True)
+    text(phone, 39, 10, 39)
     day = date.fromisoformat(date_value)
-    text(f'{day.month}/{day.day}({"월화수목금토일"[day.weekday()]})', 75, 10, 44)
-    d.line((18, 540, 342, 540), fill=0, width=2)
-    text(summary, 90, 5, 22)
+    text(f'{day.month}/{day.day}' + (f'({"월화수목금토일"[day.weekday()]})' if departure else ''), 59, 11, 50)
+    footer = json.loads(summary)
+    broadcast = date.fromisoformat(footer['date'])
+    d.line((18, 462, 342, 462), fill=0, width=2)
+    text(f'{broadcast.month}/{broadcast.day} 방송', 77, 6, 27)
+    lots = footer['lots']
+    cols = len(lots) if len(lots) <= 3 else 3 if len(lots) <= 9 else 4
+    rows = (len(lots) + cols - 1) // cols
+    gap = 4
+    cell_width = (324 - gap * (cols - 1)) / cols
+    cell_height = (72 - gap * (rows - 1)) / rows
+    for i, lot in enumerate(lots):
+        x = 18 + (i % cols) * (cell_width + gap)
+        y = 510 + (i // cols) * (cell_height + gap)
+        current = i == footer['index']
+        box = (x, y, x + cell_width, y + cell_height)
+        d.rectangle(box, outline=0, fill=0 if current else 255, width=2)
+        font = p._fit_font_to_box(d, lot, font_path, cell_width-8, cell_height-6, max_size=30, min_size=8)
+        p._draw_text_in_box(d, lot, font, (x+4,y+3,x+cell_width-4,y+cell_height-3), fill=255 if current else 0, align='center')
     return page
 
 

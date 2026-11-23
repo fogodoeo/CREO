@@ -17,8 +17,8 @@
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="mobile-phone.js?v=20261018-contact"></script>
     <script src="print-shipping-summary.js?v=20261024-packing-label"></script>
-    <script src="dodosi-labels.js?v=20261123"></script>
-    <link rel="stylesheet" href="dodosi-labels.css?v=20261123">
+    <script src="dodosi-labels.js?v=20261123-v2"></script>
+    <link rel="stylesheet" href="dodosi-labels.css?v=20261123-v2">
     <script src="google-sheets-export.js?v=20261015-gross-shipping"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
@@ -874,6 +874,11 @@
             <div class="meta">도도시: 개체당 세로 2장 · 그 외: 가로 1장</div>
         </div>
         <div class="label-workspace">
+            <div class="dodosi-label-editor" id="dodosi-label-editor" hidden>
+                <label for="dodosi-label-name">보내는 이름<input id="dodosi-label-name" maxlength="40" autocomplete="organization" oninput="saveDodosiLabelSender()"></label>
+                <label for="dodosi-label-phone">연락처<input id="dodosi-label-phone" type="tel" inputmode="tel" maxlength="24" autocomplete="tel" oninput="saveDodosiLabelSender()"></label>
+                <p id="dodosi-label-sender-status" role="status">라벨에만 적용 · 이 기기에 회차별 저장</p>
+            </div>
             <div class="label-toolbar">
                 <label><input id="label-select-all" type="checkbox" onchange="toggleAllShippingLabels(this.checked)"> 전체 선택</label>
                 <span>결제 완료 건이 기본 선택됩니다.</span>
@@ -894,7 +899,7 @@
                         <span class="label-preview-counter" id="label-preview-counter">0 / 0</span>
                         <button id="label-preview-next" type="button" onclick="moveShippingLabelPreview(1)">다음</button>
                     </div>
-                    <div class="label-preview-note">도도시는 출발 → 도착 순서로 2장 출력합니다. 세로로 돌려 승차권 좌·우에 붙여 주세요. 회색 테두리는 인쇄되지 않습니다. <a id="dodosi-label-settings" href="#">보내는 분·일정 설정</a></div>
+                    <div class="label-preview-note">승차권 빈칸에 세로로 붙이는 2장입니다. 하단 검은 칸이 현재 개체예요. 날짜는 배송 예정일입니다. <a id="dodosi-label-settings" href="#">배송 일정 확인</a></div>
                 </section>
                 <div class="label-item-list" id="label-item-list"><div class="loading">불러오는 중...</div></div>
             </div>
@@ -1224,7 +1229,32 @@
             return [carrier, location].filter(Boolean).join(' · ');
         }
 
+        function initDodosiLabelSender(items) {
+            document.getElementById('dodosi-label-editor').hidden = !(items || []).some(CreoDodosiLabels.isDodosi);
+            var key = 'creo.dodosi.label.sender.v2:' + PRINT_CHANNEL_ID;
+            if (window._dodosiSenderEditorKey === key) return;
+            window._dodosiSenderEditorKey = key;
+            var saved;
+            try { saved = JSON.parse(localStorage.getItem(key) || 'null'); } catch (_) {}
+            var defaults = window._dodosiLabelState?.labelSenderDefault || window._dodosiLabelState?.sender || {};
+            document.getElementById('dodosi-label-name').value = typeof saved?.name === 'string' ? saved.name : defaults.name || '';
+            document.getElementById('dodosi-label-phone').value = typeof saved?.phone === 'string' ? saved.phone : defaults.phone || '';
+        }
+
+        function dodosiLabelSender() {
+            return {name:document.getElementById('dodosi-label-name').value,phone:document.getElementById('dodosi-label-phone').value};
+        }
+
+        function saveDodosiLabelSender() {
+            try {
+                localStorage.setItem(window._dodosiSenderEditorKey, JSON.stringify(dodosiLabelSender()));
+                document.getElementById('dodosi-label-sender-status').textContent = '라벨에만 적용 · 이 기기에 회차별 저장됨';
+            } catch (_) { document.getElementById('dodosi-label-sender-status').textContent = '현재 화면에 적용됨 · 이 기기에 저장하지 못했어요.'; }
+            renderShippingLabelPreview();
+        }
+
         function renderShippingLabels(items) {
+            initDodosiLabelSender(items);
             var eligible = (items || []).filter(function (it) {
                 var winner = parseWinner(it);
                 return CreoAuctionContract.isSoldStatus(it.status)
@@ -1378,7 +1408,7 @@
 
             var position = indexes.indexOf(activeIndex);
             if (CreoDodosiLabels.isDodosi(items[activeIndex])) {
-                stage.innerHTML = CreoDodosiLabels.preview(CreoDodosiLabels.ticket(items[activeIndex], window._dodosiLabelState));
+                stage.innerHTML = CreoDodosiLabels.preview(CreoDodosiLabels.ticket(items[activeIndex], window._dodosiLabelState, dodosiLabelSender()));
                 counter.textContent = (position + 1) + ' / ' + indexes.length + ' · 세로 2장';
                 prev.disabled = position <= 0;
                 next.disabled = position >= indexes.length - 1;
@@ -1464,7 +1494,7 @@
                 var response = await fetchD10Bridge('/v1/status', { method: 'GET' }, 2200);
                 if (!response.ok) throw new Error('브리지 응답 오류');
                 var payload = await response.json();
-                window._dodosiTicketSupported = payload.dodosiTicketVersion === 1;
+                window._dodosiTicketSupported = payload.dodosiTicketVersion >= 2;
                 var suffix = payload.printing ? ' · 인쇄 중' : payload.queued ? ' · 대기 ' + payload.queued + '장' : '';
                 if (!payload.shippingLabelDetails || !(Number(payload.shippingLabelVersion) >= 2)) {
                     setD10PrinterStatus('새 라벨 적용: 모니터 앱 다시 열기', 'error');
@@ -1480,7 +1510,7 @@
 
         function d10ShippingLabelPayload(it) {
             if (typeof CreoDodosiLabels !== 'undefined' && CreoDodosiLabels.isDodosi(it)) {
-                var ticket = CreoDodosiLabels.ticket(it, window._dodosiLabelState);
+                var ticket = CreoDodosiLabels.ticket(it, window._dodosiLabelState, dodosiLabelSender());
                 if (ticket.errors.length) throw new Error((it.name || '도도시') + ': ' + ticket.errors.join(' · '));
                 return ticket.payload;
             }

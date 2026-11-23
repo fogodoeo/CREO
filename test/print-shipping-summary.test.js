@@ -27,6 +27,7 @@ test('estimated destination stays unsubmitted, unpriced and explicit in exported
 test('estimated destination cannot enter the label print selection',()=>{
  const fs=require('fs'),vm=require('vm'),source=fs.readFileSync(require.resolve('../public/print.html'),'utf8');
  const list={},context=vm.createContext({window:{},document:{getElementById:()=>list},CreoAuctionContract:{isSoldStatus:()=>true},CreoPrintShippingSummary:Summary,parseWinner:()=>({name:'예시',phone:'01012345678'}),fmtPhone:String,escapePrintHtml:String,auctionNumber:()=> 'A01',updateShippingLabelSelection(){}});
+ context.initDodosiLabelSender=()=>{};
  for(const name of ['shippingLabelDestination','renderShippingLabels','estimatedShippingRows']){
   const begin=source.indexOf('        function '+name+'('),end=source.indexOf('\n        function ',begin+1);vm.runInContext(source.slice(begin,end),context);
  }
