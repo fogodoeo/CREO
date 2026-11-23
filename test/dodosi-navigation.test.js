@@ -6,7 +6,7 @@ const state={channel,label:channel.name,round:{},home:'/main?channel='+channel.i
 test('Dodosi registration stays reachable after broadcast ends and retains the selected round',()=>{
  for(const finished of [false,true]){
   const s={...state,finished};assert.equal(Home.links(s).dodosi,'/dodosi-dispatch.html?channel='+channel.id);
-  assert.equal(Shell.entry(s,'dodosi').label,'도도시 접수');assert.equal(Shell.entry(s,'dodosi').scope,'round');
+  assert.equal(Shell.entry(s,'dodosi').label,'도도시 배송 입력');assert.equal(Shell.entry(s,'dodosi').scope,'round');
   assert.equal(Shell.resolve(Home.links(s).dodosi,s).key,'dodosi');
  }
  for(const s of [{...state,archiveId:'old'},{...state,channel:{...channel,status:'archived'}},{...state,channel:{...channel,shippingDefaults:{enabledCarriers:['parge']}}},{...state,channel:{...channel,features:{shipping:false}}}])assert.equal(Shell.entry(s,'dodosi'),null);
@@ -21,8 +21,8 @@ test('Dodosi menu opens a top-level page for the extension on desktop and mobile
   document.dispatchEvent(new window.Event('DOMContentLoaded'));
   const ready=new window.Event('creo:operator-ready');ready.detail={state,catalog:{channels:[channel]},rounds:[]};document.dispatchEvent(ready);
   assert.equal(target,'/dodosi-dispatch.html?channel='+channel.id);
-  assert.equal(document.querySelector('[data-work-key="dodosi"]').textContent,'도도시 접수');
-  assert.equal(document.querySelector('option[value="dodosi"]').textContent,'도도시 접수');
+  assert.equal(document.querySelector('[data-work-key="dodosi"]').textContent,'도도시 배송 입력');
+  assert.equal(document.querySelector('option[value="dodosi"]').textContent,'도도시 배송 입력');
   assert.equal(document.getElementById('operator-frame').getAttribute('src'),null);
  }
 });

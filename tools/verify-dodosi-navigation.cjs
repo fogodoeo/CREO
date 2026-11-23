@@ -22,6 +22,14 @@ const server=http.createServer((req,res)=>{
 (async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port;let browser;
  try{browser=await puppeteer.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.setRequestInterception(true);page.on('request',r=>r.url().startsWith(base)||r.url().startsWith('data:')?r.continue():r.abort());
   for(const width of [1440,390,320]){
+   await page.setViewport({width,height:900});await page.goto(base+'/main?channel='+channel.id);
+   await page.waitForSelector('#quick-dodosi:not([hidden])');
+   assert.equal(await page.$eval('#quick-dodosi',a=>a.getAttribute('href')),'/dodosi-dispatch.html?channel='+channel.id);
+   assert.equal(await page.$eval('#quick-dodosi strong',a=>a.textContent),'도도시 배송 입력');
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+   await page.screenshot({path:path.join(out,'home-'+width+'.png'),fullPage:true});
+   await Promise.all([page.waitForNavigation(),page.click('#quick-dodosi')]);
+   assert.equal(page.url(),base+'/dodosi-dispatch.html?channel='+channel.id);
    await page.setViewport({width,height:900});await page.goto(base+'/main?channel='+channel.id+'&view=shipping');await page.waitForSelector('[data-work-key="dodosi"]');
    const iframe=await page.waitForSelector('#operator-frame'),frame=await iframe.contentFrame();await frame.waitForSelector('#shipping-dodosi-link');await frame.waitForSelector('.operator-embedded');
    assert.equal(await frame.$eval('#shipping-dodosi-link',a=>a.getBoundingClientRect().height>=44),true);

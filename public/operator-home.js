@@ -17,9 +17,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   for(const [id,name] of Object.entries({'quick-workspace':'workspace','quick-broadcast':'broadcast','quick-shipping':'shipping','quick-print':'print','quick-shipping-status':'shippingStatus','quick-parge':'parge','quick-pinball':'pinball','quick-captures':'captures','quick-survey':'survey','quick-settings':'settings','quick-rounds':'archives','quick-intake':'intake','quick-bookings':'bookings','manage-rounds':'rounds'}))link(id,links[name]);
   link('quick-report',links.report);
   link('quick-organizer',links.organizer);
+  link('quick-dodosi',links.dodosi);
   if(links.workspace)link('quick-workspace',links.workspace+'&tab=items');
   for(const id of ['quick-workspace','quick-broadcast'])if(state.finished)$(id).hidden=true;
-  const priority=state.finished?['quick-shipping','quick-organizer','quick-workspace','quick-broadcast']:['quick-workspace','quick-broadcast','quick-shipping','quick-organizer'];
+  const priority=state.finished?['quick-shipping','quick-dodosi','quick-organizer','quick-workspace','quick-broadcast']:['quick-workspace','quick-broadcast','quick-shipping','quick-dodosi','quick-organizer'];
   let step=0;for(const id of priority){document.querySelector('.pipeline').append($(id));if(!$(id).hidden)$(id).querySelector('.step').textContent=String(++step).padStart(2,'0');}
   document.querySelector('.pipeline').style.setProperty('--operation-count',Math.max(1,document.querySelectorAll('.pipeline a:not([hidden])').length));
   $('round-tools').hidden=![...$('round-tools').querySelectorAll('a')].some(a=>!a.hidden);

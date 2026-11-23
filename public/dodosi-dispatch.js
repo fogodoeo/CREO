@@ -3,7 +3,7 @@
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const money=n=>Number(n).toLocaleString('ko-KR')+'원',fmt=d=>`${+d.slice(5,7)}/${+d.slice(8)}(${['일','월','화','수','목','금','토'][new Date(d+'T00:00:00Z').getUTCDay()]})`;
  let state,busy=false,quotes=new Map(),selected=new Set();const fail=e=>$('error').textContent=e.message||String(e);
- const attempted=g=>state.prepared.some(r=>r.groupId===g.id),eligible=g=>state.fresh&&g.paid&&g.schedule.status==='estimated'&&!attempted(g);
+ const attempted=g=>state.prepared.some(r=>r.groupId===g.id),eligible=g=>state.fresh&&g.paid&&g.schedule.status==='estimated';
  const previousBatch=()=>{const latest=state.prepared.map(r=>r.at||'').sort().at(-1);return state.prepared.filter(r=>latest&&r.at===latest).map(r=>r.groupId);};
  $('back').href='/shipping.html?channel='+encodeURIComponent(channelId);
  function helper(action,plan){return new Promise((resolve,reject)=>{const requestId=crypto.randomUUID(),timer=setTimeout(()=>{window.removeEventListener('message',receive);reject(Error(action==='ping'?'입력 도구를 설치한 뒤 새로고침해 주세요.':'작업 결과를 확인하지 못했어요. 열린 도도시 예약서를 확인해 주세요.'));},action==='ping'?2000:600000);function receive(e){if(e.source!==window||e.origin!==location.origin||e.data?.requestId!==requestId)return;if(e.data.type==='creo-dodosi-progress'){$('sender-status').textContent=e.data.text;return;}if(e.data.type!=='creo-dodosi-result')return;clearTimeout(timer);window.removeEventListener('message',receive);e.data.result?.error?reject(Error(e.data.result.error)):resolve(e.data.result);}window.addEventListener('message',receive);window.postMessage({type:'creo-dodosi-command',requestId,action,plan},location.origin);});}
@@ -17,19 +17,32 @@
   $('excluded').innerHTML=state.excluded.map(r=>`<li>${esc(r.lot)} · ${esc(r.reason)}</li>`).join('');
   document.querySelectorAll('#app button:not([data-fill]):not([data-quote]),#sender-form input,#import').forEach(b=>b.disabled=busy);$('resume-many').hidden=previousBatch().length<2;selection();
  }
- async function load(){state=await CreoPlatform.api(route);$('sender-name').value=state.sender.name;$('sender-phone').value=state.sender.phone;selected=new Set(state.groups.filter(eligible).map(g=>g.id));render();}
+ async function load(){state=await CreoPlatform.api(route);$('sender-name').value=state.sender.name;$('sender-phone').value=state.sender.phone;selected=new Set(state.groups.filter(g=>eligible(g)&&!attempted(g)).map(g=>g.id));render();}
  async function sync(){await helper('ping');$('sender-status').textContent='도도시 왕복 노선·일정·요금 확인 중…';const payload=await helper('sync',{originId:state.originId,originName:state.originName});await CreoPlatform.api('shipping-rates/dodosi-routes',{method:'PUT',body:JSON.stringify(payload)});await load();$('sender-status').textContent='일정·요금 갱신 완료';}
  function senderCheck(){if($('sender-name').value!==state.sender.name||$('sender-phone').value!==state.sender.phone)throw Error('변경한 보내는 분 정보를 먼저 저장해 주세요.');}
  function resultText(r){return `예약서 ${r.forms?.length||1}개 · ${r.count||1}명 입력 완료. 도도시에서 확인 후 결제해 주세요.`;}
  $('sync').onclick=()=>task(sync);$('refresh').onclick=()=>task(load);
  $('select-all').onchange=e=>{selected=new Set(e.target.checked?state.groups.filter(eligible).map(g=>g.id):[]);render();};
  $('rows').onchange=e=>{const id=e.target.dataset.select;if(!id||busy)return;e.target.checked?selected.add(id):selected.delete(id);selection();};
- $('fill-many').onclick=()=>task(async()=>{senderCheck();const info=await helper('ping');if(Number(info.version.split('.')[1])<1)throw Error('도도시 입력 도구 1.1로 업데이트해 주세요.');const ids=state.groups.filter(g=>eligible(g)&&selected.has(g.id)).map(g=>g.id);if(!ids.length)throw Error('접수할 배송을 선택해 주세요.');const prepared=await CreoPlatform.api(route,{method:'POST',body:JSON.stringify({action:'prepare-many',groupIds:ids,expectedRevision:state.revision})});state.revision=prepared.revision;try{const result=await helper('fill-many',{plans:prepared.plans});$('sender-status').textContent=resultText(result);}finally{await load();}});
+ $('fill-many').onclick=()=>task(async()=>{
+  senderCheck();const info=await helper('ping');if(Number(info.version.split('.')[1])<1)throw Error('도도시 입력 도구 1.1로 업데이트해 주세요.');
+  const chosen=state.groups.filter(g=>eligible(g)&&selected.has(g.id));if(!chosen.length)throw Error('접수할 배송을 선택해 주세요.');
+  const batches=new Map();
+  for(const g of chosen){const old=state.prepared.find(r=>r.groupId===g.id),key=old?`retry:${old.at||g.id}`:'new';if(!batches.has(key))batches.set(key,{resume:!!old,at:old?.at,ids:[]});batches.get(key).ids.push(g.id);}
+  // Preserve the original group so its open review tab is reused, not duplicated.
+  for(const b of batches.values())if(b.resume&&b.at){const missing=state.prepared.filter(r=>r.at===b.at&&!b.ids.includes(r.groupId));if(missing.length)throw Error('같은 예약서에 넣었던 배송을 함께 선택해 주세요. 전체 선택하면 기존 예약서로 이어집니다.');}
+  if([...batches.values()].some(b=>b.resume)&&!confirm('입력 이력이 있는 배송이 포함돼 있어요. 도도시에 아직 접수하지 않은 건인지 확인한 뒤, 기존 예약서에 이어서 입력할까요?'))return;
+  let count=0,forms=0;
+  try{for(const b of batches.values()){
+   const prepared=await CreoPlatform.api(route,{method:'POST',body:JSON.stringify({action:'prepare-many',resume:b.resume,groupIds:b.ids,expectedRevision:state.revision})});state.revision=prepared.revision;
+   const result=await helper('fill-many',{plans:prepared.plans,resume:b.resume});count+=result.count||b.ids.length;forms+=result.forms?.length||1;
+  }$('sender-status').textContent=resultText({count,forms:Array(forms)});}finally{await load();}
+ });
  $('resume-many').onclick=()=>task(async()=>{senderCheck();await helper('ping');if(!confirm('도도시 접수 내역에 아직 등록되지 않은 건인지 확인해 주세요. 열린 예약서는 이어서 입력하고, 없는 예약서는 새로 엽니다. 계속할까요?'))return;const prepared=await CreoPlatform.api(route,{method:'POST',body:JSON.stringify({action:'prepare-many',resume:true,groupIds:previousBatch(),expectedRevision:state.revision})});state.revision=prepared.revision;try{const result=await helper('fill-many',{plans:prepared.plans,resume:true});$('sender-status').textContent=resultText(result);}finally{await load();}});
  $('sender-form').onsubmit=e=>{e.preventDefault();task(async()=>{await CreoPlatform.api(route,{method:'POST',body:JSON.stringify({action:'save-sender',name:$('sender-name').value,phone:$('sender-phone').value,expectedRevision:state.revision})});await load();$('sender-status').textContent='보내는 분 저장됨';});};
  $('rows').onclick=e=>{const btn=e.target.closest('[data-fill],[data-quote]');if(!btn)return;task(async()=>{const g=state.groups.find(g=>g.id===(btn.dataset.fill||btn.dataset.quote));await helper('ping');if(btn.dataset.quote){const quote=await helper('quote',{originId:state.originId,destinationId:g.destinationId,quantity:g.quantity});if(!quote.available)throw Error('예약할 수 없는 노선입니다.');quotes.set(g.id,quote);return;}senderCheck();if(attempted(g)&&!confirm('열린 예약서와 도도시 접수 내역에 없는 배송인지 확인했나요? 새 예약서에 다시 입력합니다.'))return;const prepared=await CreoPlatform.api(route,{method:'POST',body:JSON.stringify({action:'prepare',groupId:g.id,expectedRevision:state.revision})});state.revision=prepared.revision;try{const result=await helper('fill',prepared.plan);$('sender-status').textContent=resultText(result);}finally{await load();}});};
  $('import').onchange=()=>task(async()=>{const f=$('import').files[0];if(!f)return;if(f.size>2000000)throw Error('일정 파일이 너무 큽니다.');await CreoPlatform.api('shipping-rates/dodosi-routes',{method:'PUT',body:await f.text()});await load();$('import').value='';});
  window.addEventListener('beforeunload',e=>{if(busy){e.preventDefault();e.returnValue='';}});
- async function boot(){try{$('error').textContent='';if(!await CreoPlatform.verifyAdmin()){$('login').hidden=false;return;}$('login').hidden=true;$('app').hidden=false;await load();try{await helper('ping');if(!state.checkedAt||Date.now()-Date.parse(state.checkedAt)>86400000)await task(sync);}catch{/* Installation guidance remains available. */}}catch(e){fail(e);}}
+ async function boot(){try{$('error').textContent='';if(!await CreoPlatform.verifyAdmin()){$('login').hidden=false;return;}$('login').hidden=true;$('app').hidden=false;await load();}catch(e){fail(e);}}
  $('login').onsubmit=async e=>{e.preventDefault();try{if(!await CreoPlatform.verifyAdmin($('password').value))throw Error('비밀번호를 확인해 주세요.');$('password').value='';await boot();}catch(e){fail(e)}};boot();
 })();
