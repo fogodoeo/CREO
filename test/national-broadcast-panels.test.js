@@ -17,16 +17,37 @@ test('national captions remain theme-scoped, transparent outside their slots, an
  assert.ok(html.indexOf('broadcast-national.css')>html.indexOf('broadcast-bidders.css'));
  const bodyRule=css.match(/body\[data-broadcast-theme="national-stage"\]\{([^}]+)\}/)[1];assert.doesNotMatch(bodyRule,/(?:^|;)\s*(?:background|border|padding|margin):/);
 });
-test('national item notes wrap on fitted line surfaces without motion or font shrinking',()=>{
+test('national item notes keep one line with full text and use the shared overflow behavior',()=>{
  const shared=fs.readFileSync(path.join(__dirname,'../public/broadcast-item-notes.css'),'utf8');
  assert.match(shared,/@media\(prefers-reduced-motion:reduce\)/);
  const selector='body[data-broadcast-theme="national-stage"][data-page="2"] #stage .national-item-detail .broadcast-item-note > span';
  const rule=css.slice(css.indexOf(selector)).split('}')[0];
  assert.ok(css.includes(selector));
- for(const property of ['white-space:normal','box-decoration-break:clone','display:inline','animation-name:none!important','transform:none!important'])assert.ok(rule.includes(property),property);
+ for(const property of ['white-space:nowrap','width:max-content','display:block'])assert.ok(rule.includes(property),property);
+ assert.doesNotMatch(rule,/animation-name:none|transform:none/);
  assert.doesNotMatch(rule,/ellipsis|--national-row-fit/);
  assert.doesNotMatch(css,/\.has-item-note\[data-text-auto-width="1"\]/);
  assert.ok(html.indexOf('broadcast-national.css')>html.indexOf('broadcast-item-notes.css'));
+});
+
+test('national P2 anchors live pricing to bidders independently of notes and clears absent terms',()=>{
+ const ctx=renderer(['bidSortValue','pageTwoBidRows','bidAmountLabel','pageTwoBidders','pageTwoInfoTraits','pageTwoInlineInfo','pageTwo'],{CreoBroadcastStandby:require('../public/broadcast-standby'),channelId:'national-cre',editorMode:false,CreoBroadcastProfiles:{resolve:()=>({settings:{page2InfoLayout:'inline-traits'}})},vendorLogo:()=>'',pageTwoProgress:()=>'',pageTwoParents:()=>'',banner:()=>'',showBanner:()=>false,pageTicker:()=>''});
+ const item={id:'test',name:'A01',status:'live',startPrice:50000,note:'비고 <원문>',attributes:{checklist:'memo:부모 확인'}};
+ const render=(row,unit=1,show=true)=>ctx.pageTwo({broadcastTheme:'national-stage'},{mode:'live',activeItemId:'test',page2NoteOn:show},[row],[],{}, {bidUnitManwon:unit});
+ const output=render(item);
+ assert.match(output,/<div class="broadcast-item-note"><span>부모 확인 · 비고 &lt;원문&gt;<\/span><\/div>/);
+ assert.match(output,/<div class="live-bidders"[^>]*><div class="broadcast-item-pricing"><span>시작가 5만원 · 입찰단위 1만원<\/span><\/div><div class="live-bid-row is-empty"/);
+ assert.equal((output.match(/입찰단위/g)||[]).length,1);
+ assert.match(render(item,5),/입찰단위 5만원/);
+ const noNote=render({...item,note:'',attributes:{}});assert.doesNotMatch(noNote,/broadcast-item-note/);assert.match(noNote,/broadcast-item-pricing/);
+ assert.doesNotMatch(render({...item,startPrice:0},0),/broadcast-item-pricing/);
+ assert.doesNotMatch(render(item,5,false),/broadcast-item-note/);
+ assert.match(render(item,5,false),/입찰단위 5만원/);
+ assert.doesNotMatch(ctx.pageTwo({broadcastTheme:'national-stage'},{mode:'live',activeItemId:'test',page2BiddersOn:false},[item],[],{}, {bidUnitManwon:1}),/broadcast-item-pricing|입찰단위/);
+ const base=ctx.pageTwo({broadcastTheme:'base'},{mode:'live',activeItemId:'test'},[item],[],{}, {bidUnitManwon:1});
+ assert.doesNotMatch(base,/broadcast-item-pricing/);assert.match(base,/입찰단위 1만원/);
+ assert.match(render({...item,bidLog:[{name:'가상 입찰자',amount:10}]},5),/broadcast-item-pricing[\s\S]*live-bid-row[\s\S]*가상 입찰자/);
+ assert.doesNotMatch(render({...item,attributes:{checklist:'sale_mode:buy_now'}}),/broadcast-item-pricing/);
 });
 test('national caption and board color pairs meet text contrast requirements',()=>{
  const rgb=hex=>hex.match(/\w\w/g).map(n=>parseInt(n,16));

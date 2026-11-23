@@ -45,15 +45,15 @@
         const field = (cls, value, size) => `<div class="${cls}" data-ticket-size="${size}"><span>${esc(value)}</span></div>`;
         const side = departure => {
             const tel = departure ? p.sender_phone : p.winner_phone;
-            const columns = p.bundle_lots.length <= 3 ? Math.max(1, p.bundle_lots.length) : p.bundle_lots.length <= 9 ? 3 : 4;
-            return `<div class="dodosi-label-side"><div class="dodosi-side-caption">${departure ? '① 왼쪽 · 출발' : '② 오른쪽 · 도착'}</div><div class="dodosi-label-paper">`
-                + field('dt-main', ((departure ? p.sender_name : p.destination) || '입력 필요').replace(/^(\[[^\]]+\])\s*/, '$1\n'), 48)
+            return `<div class="dodosi-label-side"><div class="dodosi-side-caption">${departure ? '① 왼쪽 · 출발' : '② 오른쪽 · 도착'}</div><div class="dodosi-label-paper${departure ? '' : ' is-arrival'}">`
+                + (departure ? '' : '<div class="dt-lots" data-ticket-size="30"><span>'
+                + p.bundle_lots.map((lot, index) => `<span class="dt-lot${index === p.bundle_index ? ' is-current' : ''}"${index === p.bundle_index ? ' aria-label="' + esc(lot + ', 현재 개체') + '"' : ''}>${esc(lot)}</span>`).join(' · ')
+                + '</span></div>')
+                + field('dt-main', ((departure ? p.origin : p.destination) || '입력 필요').replace(/^(\[[^\]]+\])\s*/, '$1\n'), 48)
+                + field('dt-recipient', (departure ? p.sender_name : p.winner_name) || '이름 확인', 44)
                 + field('dt-phone', tel || '연락처 확인', 39)
                 + field('dt-date', shortDate(departure ? p.dropoff_date : p.arrival_date, departure), 50)
-                + (departure ? '' : field('dt-broadcast', shortDate(p.broadcast_date, false) + ' 방송', 27)
-                + `<div class="dt-cells" style="grid-template-columns:repeat(${columns},minmax(0,1fr))">`
-                + p.bundle_lots.map((lot, index) => `<div class="dt-cell${index === p.bundle_index ? ' is-current' : ''}" data-ticket-size="30"${index === p.bundle_index ? ' aria-label="' + esc(lot + ', 현재 개체') + '"' : ''}><span>${esc(lot)}</span></div>`).join('')
-                + '</div>') + '</div></div>';
+                + (departure ? '' : field('dt-broadcast', shortDate(p.broadcast_date, false) + ' 방송', 20)) + '</div></div>';
         };
         return '<div class="dodosi-label-pair">' + side(true) + side(false) + '</div>'
             + (result.errors.length ? '<p class="dodosi-label-warning" role="status">' + esc(result.errors.join(' · ')) + '</p>' : '');

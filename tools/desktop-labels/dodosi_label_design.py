@@ -78,30 +78,32 @@ def render_portrait(num, shop, person, phone, date_value, summary='', departure=
             font = p._fit_font_to_box(d, str(value), font_path, 324, box[3]-box[1], max_size=size, min_size=10)
             p._draw_text_in_box(d, str(value), font, box, align='left')
 
-    text(person if departure else shop, 7, 25, 48, wrap=True)
-    text(phone, 39, 10, 39)
     day = date.fromisoformat(date_value)
-    text(f'{day.month}/{day.day}' + (f'({"월화수목금토일"[day.weekday()]})' if departure else ''), 59, 11, 50)
+    text(shop, 7, 25, 48, wrap=True)
+    text(person, 39, 10, 44)
+    text(phone, 59, 11, 39)
+    text(f'{day.month}/{day.day}' + (f'({"월화수목금토일"[day.weekday()]})' if departure else ''), 79, 11, 50)
     if departure:
         return page
     footer = json.loads(summary)
     broadcast = date.fromisoformat(footer['date'])
-    d.line((18, 462, 342, 462), fill=0, width=2)
-    text(f'{broadcast.month}/{broadcast.day} 방송', 77, 6, 27)
+    text(f'{broadcast.month}/{broadcast.day} 방송', 94, 4, 20)
     lots = footer['lots']
-    cols = len(lots) if len(lots) <= 3 else 3 if len(lots) <= 9 else 4
-    rows = (len(lots) + cols - 1) // cols
-    gap = 4
-    cell_width = (324 - gap * (cols - 1)) / cols
-    cell_height = (72 - gap * (rows - 1)) / rows
+    # Keep every bundled lot on one line above the fixed destination field.
+    font = p._fit_font_to_box(d, ' · '.join(lots), font_path, 324, 36, max_size=30, min_size=1)
+    x = 18
     for i, lot in enumerate(lots):
-        x = 18 + (i % cols) * (cell_width + gap)
-        y = 510 + (i // cols) * (cell_height + gap)
+        if i:
+            width = d.textlength(' · ', font=font)
+            p._draw_text_in_box(d, ' · ', font, (x, 3, x+width, 39), align='left')
+            x += width
+        width = d.textlength(lot, font=font)
         current = i == footer['index']
-        box = (x, y, x + cell_width, y + cell_height)
-        d.rectangle(box, outline=0, fill=0 if current else 255, width=2)
-        font = p._fit_font_to_box(d, lot, font_path, cell_width-8, cell_height-6, max_size=30, min_size=8)
-        p._draw_text_in_box(d, lot, font, (x+4,y+3,x+cell_width-4,y+cell_height-3), fill=255 if current else 0, align='center')
+        box = (x, 3, x+width, 39)
+        if current:
+            d.rectangle(box, fill=0)
+        p._draw_text_in_box(d, lot, font, box, fill=255 if current else 0, align='left')
+        x += width
     return page
 
 

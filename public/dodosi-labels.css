@@ -6,12 +6,12 @@
 .dodosi-label-paper [data-ticket-size] { position:absolute;left:5%;width:90%;display:flex;align-items:center;line-height:1.12;overflow-wrap:anywhere; }
 .dodosi-label-paper [data-ticket-size]>span { width:100%; }
 .dodosi-label-paper .dt-main { top:7%;height:25%;white-space:pre-line; }
-.dodosi-label-paper .dt-phone { top:39%;height:10%;white-space:nowrap; }
-.dodosi-label-paper .dt-date { top:59%;height:11%;white-space:nowrap; }
-.dodosi-label-paper .dt-broadcast { top:77%;height:6%;border-top:1px solid black; }
-.dodosi-label-paper .dt-cells { position:absolute;left:5%;width:90%;top:85%;height:12%;display:grid;gap:1cqw; }
-.dodosi-label-paper .dt-cell { position:static;left:auto;width:auto;min-width:0;border:1px solid black;text-align:center;white-space:nowrap; }
-.dodosi-label-paper .dt-cell.is-current { background:black;color:white; }
+.dodosi-label-paper .dt-phone { top:59%;height:11%;white-space:nowrap; }
+.dodosi-label-paper .dt-date { top:79%;height:11%;white-space:nowrap; }
+.dodosi-label-paper .dt-lots { top:.5%;height:6%;white-space:nowrap; }
+.dodosi-label-paper .dt-lot.is-current { background:black;color:white; }
+.dodosi-label-paper .dt-recipient { top:39%;height:10%;white-space:nowrap; }
+.dodosi-label-paper .dt-broadcast { top:94%;height:4%;white-space:nowrap; }
 .dodosi-label-warning { font-size:13px;line-height:1.5;margin:12px 0 0;color:#9b1c1c; }
 .dodosi-label-editor { display:flex;flex-wrap:wrap;gap:12px;padding:14px 16px;border:1px solid #d8dee8;border-radius:12px;background:#f8fafc; }
 .dodosi-label-editor[hidden] { display:none; }
