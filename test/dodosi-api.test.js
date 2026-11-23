@@ -63,5 +63,7 @@ test('bulk preparation validates the entire selection, blocks repeats across res
  const responses=await Promise.all([f.call('POST',route,body,true),f.call('POST',route,body,true)]);assert.deepEqual(responses.map(r=>r.status).sort(),[200,409]);assert.equal(responses.find(r=>r.status===200).json().plans.length,2);
  await f.restart();state=(await f.call('GET',route,null,true)).json();assert.equal(state.prepared.length,2);
  assert.equal((await f.call('POST',route,{...body,expectedRevision:state.revision},true)).status,409);
+ assert.equal((await f.call('POST',route,{...body,resume:true,groupIds:[ids[0]],expectedRevision:state.revision},true)).status,409);
+ const resumed=await f.call('POST',route,{...body,resume:true,expectedRevision:state.revision},true);assert.equal(resumed.status,200,resumed.body);assert.equal(resumed.json().plans.length,2);
  assert.deepEqual(await f.repo.listRecords('alpha','shipment'),before);assert.deepEqual(await f.repo.listRecords('alpha','notification'),[]);
 });

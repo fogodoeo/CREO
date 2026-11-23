@@ -6,7 +6,7 @@ function validPlan(p){return p?.schema==='creo.dodosi.dispatch.v1'&&uuid(p.origi
 function readTab(tabs){return [...tabs].filter(t=>{const u=new URL(t.url);return u.origin==='https://www.dodosi.co.kr'&&u.pathname==='/order';}).sort((a,b)=>Number(b.active)-Number(a.active)||b.id-a.id)[0];}
 async function ready(id){await new Promise((resolve,reject)=>{const finish=error=>{clearTimeout(timer);chrome.tabs.onUpdated.removeListener(listener);error?reject(error):resolve();},timer=setTimeout(()=>finish(Error('예약 화면을 열지 못했습니다.')),25000);function listener(tabId,info){if(tabId===id&&info.status==='complete')finish();}chrome.tabs.onUpdated.addListener(listener);chrome.tabs.get(id).then(t=>{if(t.status==='complete')finish();},finish);});}
 async function run(action,plan,progress=()=>{}){
- if(action==='ping')return{version:'1.1.0'};
+ if(action==='ping')return{version:'1.1.1'};
  if(action==='fill'||action==='fill-many'){
   const plans=action==='fill'?[plan]:plan?.plans;
   if(!Array.isArray(plans)||!plans.length||plans.length>100||plans.some(p=>!validPlan(p))||new Set(plans.map(p=>p.groupId)).size!==plans.length)throw Error('CREO 배송정보를 다시 불러와 주세요.');
@@ -26,9 +26,10 @@ async function run(action,plan,progress=()=>{}){
    const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(batch.map(p=>[p.channelId,p.groupId,p.sender,p.schedule]))));
    const key=[...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join('');
    const old=(await chrome.tabs.query({url:'https://www.dodosi.co.kr/order*'})).find(t=>new URL(t.url).searchParams.get('creoBatch')===key);
-   if(old){await chrome.tabs.update(old.id,{active:true});throw Error('같은 배송의 예약서가 이미 열려 있어요. 열린 예약서를 먼저 확인해 주세요.');}
+   if(old&&!plan?.resume){await chrome.tabs.update(old.id,{active:true});throw Error('같은 배송의 예약서가 이미 열려 있어요. 열린 예약서를 먼저 확인해 주세요.');}
    progress(`예약서 입력 ${i+1}/${dates.length} · ${batch.length}명`);
-   const opened=await chrome.tabs.create({url:'https://www.dodosi.co.kr/order?'+new URLSearchParams({myShop:p.originId,shop:p.destinationId,qty:String(p.quantity),creoBatch:key}),active:true});
+   const opened=old||await chrome.tabs.create({url:'https://www.dodosi.co.kr/order?'+new URLSearchParams({myShop:p.originId,shop:p.destinationId,qty:String(p.quantity),creoBatch:key}),active:true});
+   if(old)await chrome.tabs.update(old.id,{active:true});
    await ready(opened.id);
    const results=await chrome.scripting.executeScript({target:{tabId:opened.id},world:'MAIN',func:creoDodosiFill,args:[p,batch]});
    const result=results[0]?.result;

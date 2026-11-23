@@ -12,6 +12,7 @@ test('two logged-in base tabs work; grouped recipients use one form per date and
  const f=fixture();assert.equal(f.context.readTab(f.tabs).id,2);
  const plans=[plan(1),plan(2),plan(3,'2026-11-26')],r=await f.context.run('fill-many',{plans});assert.equal(r.count,3);assert.equal(f.created.length,2);assert.equal(f.fills[0].length,2);assert.equal(f.fills[1].length,1);
  await assert.rejects(f.context.run('fill-many',{plans}),/이미 열려/);assert.equal(f.created.length,2);
+ const resumed=await f.context.run('fill-many',{plans,resume:true});assert.equal(resumed.count,3);assert.equal(f.created.length,2);
 });
 test('date drift, malformed input and mixed rounds fail before opening a form',async()=>{
  const f=fixture({badDate:true});await assert.rejects(f.context.run('fill-many',{plans:[plan(1)]}),/일정이 변경/);assert.equal(f.created.length,0);

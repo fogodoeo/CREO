@@ -6337,7 +6337,9 @@ function createPlatformApi({
                         if(!Array.isArray(ids)||!ids.length||ids.length>100||new Set(ids).size!==ids.length)throw buyerInputError('접수할 배송을 다시 선택해 주세요.');
                         const current=(await groups()).groups,selected=ids.map(id=>current.find(g=>g.id===id));
                         if(selected.some(g=>!g||!g.paid||g.schedule.status!=='estimated'))throw buyerInputError('결제·배송정보가 바뀌었거나 일정을 확인해야 합니다. 새로고침해 주세요.',409);
-                        if(many&&selected.some(g=>saved.prepared.some(r=>r.groupId===g.id)))throw buyerInputError('이미 입력을 시도한 배송이 포함돼 있습니다. 목록을 새로고침하고 해당 예약서를 먼저 확인해 주세요.',409);
+                        const resume=many&&body.resume===true;
+                        if(resume){const records=ids.map(id=>saved.prepared.find(r=>r.groupId===id));if(records.some(r=>!r)||new Set(records.map(r=>r.at)).size!==1||saved.prepared.filter(r=>r.at===records[0].at).length!==ids.length)throw buyerInputError('같은 일괄 작업만 이어서 입력할 수 있습니다.',409);}
+                        if(many&&!resume&&selected.some(g=>saved.prepared.some(r=>r.groupId===g.id)))throw buyerInputError('이미 입력을 시도한 배송이 포함돼 있습니다. 목록을 새로고침하고 해당 예약서를 먼저 확인해 주세요.',409);
                         const sender=Dispatch.sender(saved.sender);
                         const createdAt=new Date().toISOString(),plans=selected.map(g=>({schema:'creo.dodosi.dispatch.v1',channelId,groupId:g.id,originId:data.origin,originName:cfg.dodosiOrigin,sender,...g,createdAt}));
                         // Preparing is not booking or dispatch. Never changes shipment/payment/notification rows.
