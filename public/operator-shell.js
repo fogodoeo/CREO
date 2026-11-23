@@ -35,9 +35,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   $('refresh-home').hidden=current!=='home';$('operator-reload').hidden=current==='home';$('operator-page-title').hidden=current==='home';document.body.classList.toggle('operator-working',current!=='home');document.querySelector('.operator-more').open=false;
   document.querySelector('.skip').href=current==='home'?'#work-title':'#operator-page-title';
   if(current==='home'){$('operator-standalone').hidden=true;clear();return;}
-  // The installed Parge extension is scoped to a top-level dispatch page.
+  // Installed carrier extensions are scoped to top-level dispatch pages.
   // Its native page supplies the same navigation without changing that contract.
-  if(current==='parge'&&e?.href){location.replace(e.href);return;}
+  if(['parge','dodosi'].includes(current)&&e?.href){location.replace(e.href);return;}
   const next=Model.frame(state,current,location.search);$('operator-unavailable').hidden=Boolean(next);$('operator-frame').hidden=!next;$('operator-standalone').hidden=!next;
   if(!next){source='';$('operator-loading').hidden=true;$('operator-frame').removeAttribute('src');return;}
   const standalone=new URL(next,location.origin);standalone.searchParams.delete('embedded');standalone.searchParams.delete('adminShell');$('operator-standalone').href=standalone.pathname+standalone.search+standalone.hash;$('operator-frame').title=e.label;
@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  document.addEventListener('creo:operator-ready',e=>render(e.detail));
  document.addEventListener('creo:operator-reset',clear);
  document.addEventListener('creo:operator-before-navigate',e=>{if(!allowed())e.preventDefault();else dirty=false;});
- $('operator-frame').addEventListener('load',()=>{try{const doc=$('operator-frame').contentDocument;if(doc&&!doc.documentElement.classList.contains('operator-embedded')){const bridge=doc.createElement('script');bridge.src='/operator-embed.js?v=20261112-audit';doc.head.appendChild(bridge);}}catch(_){}$('operator-loading').hidden=true;});
+ $('operator-frame').addEventListener('load',()=>{try{const doc=$('operator-frame').contentDocument;if(doc&&!doc.documentElement.classList.contains('operator-embedded')){const bridge=doc.createElement('script');bridge.src='/operator-embed.js?v=20261124-dodosi';doc.head.appendChild(bridge);}}catch(_){}$('operator-loading').hidden=true;});
  $('operator-reload').addEventListener('click',()=>{if(!allowed())return;dirty=false;if(source){$('operator-loading').hidden=false;$('operator-frame').src=source;}});
  document.addEventListener('click',event=>{const a=event.target.closest?.('a');if(!a||!state||event.defaultPrevented||event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||a.target==='_blank'||a.hasAttribute('download'))return;
   const url=new URL(a.href,location.href);if(url.origin!==location.origin)return;

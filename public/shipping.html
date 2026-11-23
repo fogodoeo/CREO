@@ -2061,6 +2061,7 @@
         .shipping-admin-login { margin-left:auto; height:36px; padding:0 12px; border:1px solid #D4D4D8; border-radius:9px; background:#FFF; color:#3F3F46; font-family:inherit; font-size:11px; font-weight:850; cursor:pointer; }
         .shipping-admin-login:hover { border-color:#A1A1AA; background:#FAFAFA; }
         #shipping-dodosi-link { min-height:44px; height:auto; font-size:14px; font-weight:650; }
+        #current-company-bar { flex-wrap:wrap; gap:8px; }
         #company-select-modal { margin:0; width:100%; max-width:none; height:100%; max-height:none; padding:0; border:0; color:inherit; }
         #company-select-modal::backdrop { background:transparent; }
         .company-dialog-head { display:grid; grid-template-columns:44px minmax(0,1fr) 44px; align-items:center; gap:8px; margin-bottom:18px; }
@@ -2123,6 +2124,7 @@
                 </div>
                 <button class="shipping-admin-login" id="shipping-admin-button" type="button">업체변경</button>
                 <a id="shipping-changes-link" class="shipping-admin-login" style="display:grid;place-items:center;text-decoration:none;margin-left:8px" href="#">변경 요청</a>
+                <a id="shipping-dodosi-link" class="shipping-admin-login" style="display:grid;place-items:center;text-decoration:none;white-space:nowrap" href="#" hidden>도도시 접수</a>
                 <a id="shipping-parge-link" class="shipping-admin-login" style="display:grid;place-items:center;text-decoration:none;margin-left:8px" href="#">파르게 접수</a>
             </div>
             <section id="closing-tools" hidden aria-label="낙찰자 안내와 결제 확인"></section>
@@ -2132,7 +2134,7 @@
                     <label for="shipping-work-query">낙찰자·개체 찾기<input id="shipping-work-query" type="search" placeholder="이름, 전화번호, 개체명" autocomplete="off"></label>
                 </div>
                 <div id="shipping-work-filters" role="group" aria-label="처리 상태"></div>
-                <div class="shipping-work-result"><p id="shipping-work-count" role="status"></p><button id="shipping-work-reset" type="button" hidden>전체 보기</button><a id="shipping-dodosi-link" class="shipping-admin-login" style="display:grid;place-items:center;text-decoration:none;white-space:nowrap" href="https://www.dodosi.co.kr/order" target="_blank" rel="noopener" aria-label="도도시 예약, 새 창">도도시 예약 ↗</a></div>
+                <div class="shipping-work-result"><p id="shipping-work-count" role="status"></p><button id="shipping-work-reset" type="button" hidden>전체 보기</button></div>
             </section>
             <details id="shipping-vendor-settings" style="background:white;border:1px solid #ddd;border-radius:12px;padding:16px;margin-bottom:16px" hidden>
                 <summary style="cursor:pointer;font-weight:700">업체 연락처 · 결제 설정 <span id="vendor-settings-state"></span></summary>
@@ -2673,7 +2675,7 @@
             const archive = new URLSearchParams(location.search).get('archive');
             const label = String(channel?.name || SHIPPING_CHANNEL_ID).trim() + (archive ? ' · 이전 회차' : '');
             const locations = channel?.shippingDefaults?.pickupLocations;
-            const dodosiLink=document.getElementById('shipping-dodosi-link');dodosiLink.href='dodosi-dispatch.html?channel='+encodeURIComponent(SHIPPING_CHANNEL_ID);dodosiLink.textContent='도도시 배송 준비';dodosiLink.removeAttribute('target');dodosiLink.setAttribute('aria-label','도도시 배송 준비');dodosiLink.hidden=!!archive||!(channel?.shippingDefaults?.enabledCarriers||[]).includes('dodosi');if(dodosiLink.hidden)dodosiLink.style.setProperty('display','none','important');else dodosiLink.style.removeProperty('display');
+            const dodosiLink=document.getElementById('shipping-dodosi-link');dodosiLink.href='dodosi-dispatch.html?channel='+encodeURIComponent(SHIPPING_CHANNEL_ID);dodosiLink.textContent='도도시 접수';dodosiLink.removeAttribute('target');dodosiLink.setAttribute('aria-label','도도시 접수');dodosiLink.hidden=!!archive||!(channel?.shippingDefaults?.enabledCarriers||[]).includes('dodosi');if(dodosiLink.hidden)dodosiLink.style.setProperty('display','none','important');else dodosiLink.style.removeProperty('display');
             channelPickupLocations = Object.freeze(Array.isArray(locations) && locations.length ? [...locations] : [...DEFAULT_PICKUP_LOCATIONS]);
             const channelLabel = document.getElementById('shipping-channel-label');
             const dialogTitle = document.getElementById('shipping-company-dialog-title');
