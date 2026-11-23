@@ -1,5 +1,7 @@
 # Promo manuscript formatting
 
+- 2026-11-23 follow-up: Sponsor v3 pairs the existing SILKTREE logo with the supplied `도도시.ai` first-artboard color logo (PDF-compatible vector rendered at 3×, not AI-generated). Current Busan manuscript explicitly includes this banner before the BAND CTA and a short carrier-change notice: new shipments use Dodosi; already accepted Parge shipments retain their original handling. No automatic banner insertion into other single-poster manuscripts.
+
 - 2026-11-23: Remove PARGE from the shared sponsor banner; center the original SILKTREE logo in the existing card style. Preview, formatted copy and downloads resolve legacy ticket URLs to the new v2 asset. Preserve original assets for already-published posts. The current Busan single-poster manuscript remains unchanged and does not gain a sponsor banner.
 
 - 2026-11-11 경기십선 원고는 포스터 한 장과 본문만 포함한다. 같은 포스터를 카드 썸네일·미리보기·복사·다운로드에 사용하며, 이전 시즌 메인 포스터·전체 업체 보드·협찬 배너를 자동으로 덧붙이지 않는다. 이 원고의 업체 이미지 선택은 숨긴다. 기존 보관 원고의 구성은 유지한다.

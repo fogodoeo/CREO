@@ -6,7 +6,7 @@
  function imageURL(src){
   const url=new URL(src,location.origin);
   if(url.origin===location.origin&&/^\/promo-assets\/partners-20261007\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace('partners-20261007.','partners-20261007-v4.');
-  if(url.origin===location.origin&&/^\/promo-assets\/ticket(?:-seoul-incheon-v2|-wolssu-gamachi-v1|-wolssu-sponsors-v1)?\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace(/^\/promo-assets\/ticket(?:-seoul-incheon-v2|-wolssu-gamachi-v1|-wolssu-sponsors-v1)?\./,'/promo-assets/ticket-wolssu-sponsors-v2.');
+  if(url.origin===location.origin&&/^\/promo-assets\/ticket(?:-seoul-incheon-v2|-wolssu-gamachi-v1|-wolssu-sponsors-v[12])?\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace(/^\/promo-assets\/ticket(?:-seoul-incheon-v2|-wolssu-gamachi-v1|-wolssu-sponsors-v[12])?\./,'/promo-assets/ticket-wolssu-sponsors-v3.');
   if(url.origin===location.origin&&/^\/promo-assets\/hero-gyeongsang-20261026-28-v5\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace('-v5.','-v10.');
   if(url.origin===location.origin&&/^\/promo-assets\/(weekly|easy)\.(png|thumb\.webp)$/.test(url.pathname))url.pathname=url.pathname.replace(/\.(png|thumb\.webp)$/,'-v2.$1');
   if(url.origin===location.origin&&['/promo-assets/hero.jpg','/promo-assets/hero-seoul-incheon-v2.png','/promo-assets/hero-seoul-incheon-v3.png','/promo-assets/seoul-incheon-premiere-map-v7.png'].includes(url.pathname))url.pathname='/promo-assets/hero-wolssu-v1.png';
@@ -22,7 +22,7 @@
   return /시즌\s*2/.test(t.name||'')||/시즌\s*2/.test(t.title||'')?{type:'image',src:'/promo-assets/hero-season2-museum-v23.png',alt:'전국크레자랑 시즌 2 · 월요일도 수요일도 도파민이 터지는 축제 · 매주 월·수 밤 8시 네이버 밴드 라이브 경매'}:null;
  }
  function episodeHero(t){return t.blocks.find(b=>b.type==='image'&&new URL(b.src,location.origin).origin===location.origin&&['/promo-assets/hero-gyeongsang-20261026-28-v1.png','/promo-assets/hero-gyeongsang-20261026-28-v5.png','/promo-assets/hero-gyeongsang-20261026-28-v10.png'].includes(new URL(b.src,location.origin).pathname));}
- function isSharedAsset(b,kind){if(b.type!=='image')return false;const u=new URL(b.src,location.origin);return u.origin===location.origin&&(kind==='ticket'?/^\/promo-assets\/ticket(?:-seoul-incheon-v2|-wolssu-gamachi-v1|-wolssu-sponsors-v[12])?\.png$/:/^\/promo-assets\/partners-20261007(?:-v4)?\.png$/).test(u.pathname);}
+ function isSharedAsset(b,kind){if(b.type!=='image')return false;const u=new URL(b.src,location.origin);return u.origin===location.origin&&(kind==='ticket'?/^\/promo-assets\/ticket(?:-seoul-incheon-v2|-wolssu-gamachi-v1|-wolssu-sponsors-v[123])?\.png$/:/^\/promo-assets\/partners-20261007(?:-v4)?\.png$/).test(u.pathname);}
  function singlePoster(t){return t.blocks.find(b=>b.type==='image'&&/^\/promo-assets\/(?:gyeonggi-ten-20261111(?:-v[5678])?\.png|jeoncre-daegu-gyeongbuk-20261118-v1\.jpg|jeoncre-busan-20261123-v3\.jpg)$/.test(new URL(b.src,location.origin).pathname));}
  function postBlocks(t,images=[]){
   if(singlePoster(t)){
@@ -40,7 +40,7 @@
    // Insert once, immediately after the paragraph introducing the participating vendors.
    if(!hasBoard&&!inserted&&b.type==='text'&&(/다양한 크레들을 선보일 예정|다양한 크레들을 선보입니다|30여 곳의 전문|전국의 전문 브리더|여러 업체의 크레|여러 지역의 전문 업체|지역별 전문 업체가 돌아가며 참여|찾아가는 라이브 경매/.test(b.text))){blocks.push(...images.map(i=>({...i,type:'image'})));inserted=true;}
   }
-  if(!inserted&&images.length){const index=blocks.findIndex(b=>b.href);blocks.splice(index<0?blocks.length:index,0,...images.map(i=>({...i,type:'image'})));}const ticket={type:'image',src:'/promo-assets/ticket-wolssu-sponsors-v2.png',alt:'전국크레자랑 공식 후원 및 파트너 · 실크트리(SILKTREE)'};const linkIndex=blocks.findIndex(b=>b.href);blocks.splice(linkIndex<0?blocks.length:linkIndex,0,ticket);
+  if(!inserted&&images.length){const index=blocks.findIndex(b=>b.href);blocks.splice(index<0?blocks.length:index,0,...images.map(i=>({...i,type:'image'})));}const ticket={type:'image',src:'/promo-assets/ticket-wolssu-sponsors-v3.png',alt:'전국크레자랑 공식 후원 및 파트너 · 실크트리(SILKTREE) · 도도시(DoDoSi)'};const linkIndex=blocks.findIndex(b=>b.href);blocks.splice(linkIndex<0?blocks.length:linkIndex,0,ticket);
 
 
   const header=seasonTwoHero(t)||episodeHero(t)||{type:'image',src:'/promo-assets/hero-wolssu-v1.png',alt:'전국크레자랑 월쑤! 매주 월·수 밤 8시 네이버 밴드 LIVE 경매'};
@@ -157,7 +157,7 @@
  async function updatePartners(){
   const sequence=++partnerSequence,mode=partnerMode,regions=[...partnerRegions];partnerImages=[];partnerReady=mode==='none';$('copy-status').textContent='';$('partner-refresh').hidden=mode==='none';$('partner-retry').hidden=true;$('partner-status').removeAttribute('aria-busy');drawPost();
   const current=()=>sequence===partnerSequence&&$('detail').open;
-  if(mode==='none'){$('partner-status').textContent=singlePoster(template)?'포스터 1장과 원고를 복사합니다.':'업체 소개 이미지 없이 복사합니다. 하단 협찬 이벤트 배너는 항상 포함됩니다.';return;}
+  if(mode==='none'){$('partner-status').textContent=singlePoster(template)?`이미지 ${template.blocks.filter(b=>b.type==='image').length}장과 원고를 복사합니다.`:'업체 소개 이미지 없이 복사합니다. 하단 후원·파트너 배너는 포함됩니다.';return;}
   if(mode==='regions'&&!regions.length){$('partner-status').textContent='소개할 지역을 한 곳 이상 선택해 주세요.';return;}
   $('partner-status').textContent='최신 참여업체로 이미지를 준비하고 있어요';$('partner-status').setAttribute('aria-busy','true');
   try{
