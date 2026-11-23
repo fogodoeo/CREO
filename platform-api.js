@@ -6330,15 +6330,19 @@ function createPlatformApi({
                     if(body.action==='save-sender'){
                         const next={...saved,sender:Dispatch.sender(body),revision:saved.revision+1};
                         await repository.upsertRows([{key:channelKey(channelId,'setting',key),value:JSON.stringify(next)}]);replyJson(res,200,next);
-                    }else if(body.action==='prepare'){
+                    }else if(body.action==='prepare'||body.action==='prepare-many'){
+                        if(channel.status==='archived')throw buyerInputError('보관된 회차는 접수할 수 없습니다.',409);
                         if(!D.fresh(data))throw buyerInputError('도도시 일정을 먼저 갱신해 주세요.',409);
-                        const g=(await groups()).groups.find(g=>g.id===body.groupId);
-                        if(!g||!g.paid||g.schedule.status!=='estimated')throw buyerInputError('결제·배송정보가 바뀌었거나 일정을 확인해야 합니다. 새로고침해 주세요.',409);
+                        const many=body.action==='prepare-many',ids=many?body.groupIds:[body.groupId];
+                        if(!Array.isArray(ids)||!ids.length||ids.length>100||new Set(ids).size!==ids.length)throw buyerInputError('접수할 배송을 다시 선택해 주세요.');
+                        const current=(await groups()).groups,selected=ids.map(id=>current.find(g=>g.id===id));
+                        if(selected.some(g=>!g||!g.paid||g.schedule.status!=='estimated'))throw buyerInputError('결제·배송정보가 바뀌었거나 일정을 확인해야 합니다. 새로고침해 주세요.',409);
+                        if(many&&selected.some(g=>saved.prepared.some(r=>r.groupId===g.id)))throw buyerInputError('이미 입력을 시도한 배송이 포함돼 있습니다. 목록을 새로고침하고 해당 예약서를 먼저 확인해 주세요.',409);
                         const sender=Dispatch.sender(saved.sender);
-                        const plan={schema:'creo.dodosi.dispatch.v1',channelId,groupId:g.id,originId:data.origin,originName:cfg.dodosiOrigin,sender,...g,createdAt:new Date().toISOString()};
+                        const createdAt=new Date().toISOString(),plans=selected.map(g=>({schema:'creo.dodosi.dispatch.v1',channelId,groupId:g.id,originId:data.origin,originName:cfg.dodosiOrigin,sender,...g,createdAt}));
                         // Preparing is not booking or dispatch. Never changes shipment/payment/notification rows.
-                        const next={...saved,revision:saved.revision+1,prepared:[...saved.prepared.filter(r=>r.groupId!==g.id),{groupId:g.id,at:plan.createdAt}].slice(-500)};
-                        await repository.upsertRows([{key:channelKey(channelId,'setting',key),value:JSON.stringify(next)}]);replyJson(res,200,{plan,revision:next.revision});
+                        const next={...saved,revision:saved.revision+1,prepared:[...saved.prepared.filter(r=>!ids.includes(r.groupId)),...ids.map(groupId=>({groupId,at:createdAt}))].slice(-500)};
+                        await repository.upsertRows([{key:channelKey(channelId,'setting',key),value:JSON.stringify(next)}]);replyJson(res,200,{...(many?{plans}:{plan:plans[0]}),revision:next.revision});
                     }else throw buyerInputError('지원하지 않는 작업입니다.');
                 });
                 else replyJson(res,405,{error:'Method not allowed'});

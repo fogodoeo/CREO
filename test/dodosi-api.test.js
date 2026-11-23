@@ -49,3 +49,19 @@ test('buyer and vendor projections use official route dates without changing fro
  const groups=await f.service.enrichRates(channel,'dodosi',[{region:'수도권',shops:[{name:'가상점1',cost:28000}]}]);assert.equal(groups[0].shops[0].deliverySchedule.arrivalDate,schedule.arrivalDate);
  assert.equal((await f.repo.listRecords('alpha','shipment'))[0].cost,28000);
 });
+
+test('bulk preparation validates the entire selection, blocks repeats across restart and leaves money/shipping untouched',async t=>{
+ const f=await setup(t),route='channels/alpha/dodosi-dispatch';await f.call('PUT','shipping-rates/dodosi-routes',f.data,true);
+ await f.repo.upsertRecord('alpha','item',{id:'i2',vendorId:'v',status:'sold',name:'A02',soldPrice:100000,winnerName:'가상둘',winnerPhone:'01000000003'});
+ await f.repo.upsertRecord('alpha','shipment',{id:'s2',itemId:'i2',vendorId:'v',method:'delivery',destinationType:'dodosi',carrier:'도도시',recipientName:'가상둘',recipientPhone:'01000000003',pargeRegion:'수도권',pargeShop:'가상점2',paymentStatus:'paid',paymentMethod:'bank_transfer',cost:28000});
+ const before=await f.repo.listRecords('alpha','shipment');
+ await f.call('POST',route,{action:'save-sender',name:'가상발송인',phone:'01000000002',expectedRevision:0},true);
+ let state=(await f.call('GET',route,null,true)).json();const ids=state.groups.map(g=>g.id),body={action:'prepare-many',expectedRevision:1,groupIds:ids};assert.equal(ids.length,2);
+ assert.equal((await f.call('POST',route,{...body,groupIds:[ids[0],'missing']},true)).status,409);
+ assert.equal((await f.call('POST',route,{...body,groupIds:[ids[0],ids[0]]},true)).status,422);
+ assert.equal((await f.call('GET',route,null,true)).json().prepared.length,0);
+ const responses=await Promise.all([f.call('POST',route,body,true),f.call('POST',route,body,true)]);assert.deepEqual(responses.map(r=>r.status).sort(),[200,409]);assert.equal(responses.find(r=>r.status===200).json().plans.length,2);
+ await f.restart();state=(await f.call('GET',route,null,true)).json();assert.equal(state.prepared.length,2);
+ assert.equal((await f.call('POST',route,{...body,expectedRevision:state.revision},true)).status,409);
+ assert.deepEqual(await f.repo.listRecords('alpha','shipment'),before);assert.deepEqual(await f.repo.listRecords('alpha','notification'),[]);
+});
