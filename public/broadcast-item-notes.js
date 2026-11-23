@@ -15,6 +15,7 @@
     if(Number.isFinite(unit)&&unit>0&&unit<=999999)terms.push(`입찰단위 ${amount(unit)}만원`);
     return terms;
   }
+  function pricingMarkup(item,pricing){const value=text(...pricingTerms(item,pricing));return value?`<div class="broadcast-item-pricing"><span>${escape(value)}</span></div>`:'';}
   let current=null,observer=null;
   function measure(){
     if(!current?.isConnected)return;
@@ -29,7 +30,7 @@
     measure();
   }
   if(root.document)root.document.fonts?.ready.then(measure);
-  const api={text,markup,pricingTerms,hydrate};
+  const api={text,markup,pricingTerms,pricingMarkup,hydrate};
   if(typeof module==='object'&&module.exports)module.exports=api;
   root.CreoBroadcastItemNotes=api;
 })(typeof window==='object'?window:globalThis);
