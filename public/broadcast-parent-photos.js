@@ -16,7 +16,7 @@
     if(row.name){const name=document.createElement('span');name.className='parent-name';name.textContent=row.name;caption.append(name)}
     figure.append(img,caption);box.append(figure);
     const slide={element:figure,ready:false,failed:false};player.slides.push(slide);
-    img.onload=async()=>{try{await img.decode()}catch{}if(player.disposed||!box.isConnected)return;slide.ready=true;if(player.index<0)show(player.slides.indexOf(slide),Date.now())};
+    img.onload=async()=>{try{await img.decode()}catch{}if(player.disposed||!box.isConnected)return;if(img.naturalWidth>0&&img.naturalHeight>0)figure.style.setProperty('--parent-photo-aspect',String(img.naturalWidth/img.naturalHeight));slide.ready=true;if(player.index<0)show(player.slides.indexOf(slide),Date.now())};
     img.onerror=()=>{slide.failed=true;if(player.slides.every(s=>s.failed))box.dataset.photosFailed='1'};
     img.src=row.url;
    });

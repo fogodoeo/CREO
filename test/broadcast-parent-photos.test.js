@@ -14,7 +14,7 @@ test('parent caption follows ticker font scale and resets when the layout change
 function fixture(rows){
  let now=0,tick;
  class Element{
-  constructor(tag){this.tagName=tag;this.children=[];this.dataset={};this.isConnected=true;this.classList={add(){}};this.hidden=false}
+  constructor(tag){this.tagName=tag;this.children=[];this.dataset={};this.isConnected=true;this.classList={add(){}};this.hidden=false;this.style={setProperty(key,value){this[key]=value}}}
   append(...children){this.children.push(...children)}
   removeAttribute(name){if(name==='data-photos-failed')delete this.dataset.photosFailed}
   contains(target){return this.children.includes(target)}
@@ -57,4 +57,15 @@ test('a failed middle reference is skipped while sibling still rotates',async()=
  const f=fixture(['부','모','동배'].map((label,i)=>({label,url:'/p'+i+'.webp'})));
  await f.box.children[0].children[0].onload();f.box.children[1].children[0].onerror();await f.box.children[2].children[0].onload();
  f.advance(5000);assert.equal(f.box.children[2].hidden,false);f.advance(10000);assert.equal(f.box.children[0].hidden,false);
+});
+
+test('landscape and portrait references retain their own decoded aspect through rotation',async()=>{
+ const f=fixture([{label:'부',url:'/wide.webp'},{label:'모',url:'/tall.webp'}]);const [wide,tall]=f.box.children;
+ Object.assign(wide.children[0],{naturalWidth:1600,naturalHeight:900});
+ Object.assign(tall.children[0],{naturalWidth:900,naturalHeight:1600});
+ await wide.children[0].onload();await tall.children[0].onload();
+ assert.equal(wide.style['--parent-photo-aspect'],String(16/9));
+ assert.equal(tall.style['--parent-photo-aspect'],String(9/16));
+ f.advance(5000);assert.equal(tall.hidden,false);assert.equal(wide.hidden,true);
+ f.advance(10000);assert.equal(wide.hidden,false);assert.equal(wide.style['--parent-photo-aspect'],String(16/9));
 });
