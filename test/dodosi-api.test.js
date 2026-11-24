@@ -41,6 +41,24 @@ test('preparing a Dodosi form is isolated, concurrency guarded, cannot book, not
  await f.repo.upsertRecord('alpha','shipment',{...before[0],paymentStatus:'pending'});
  assert.equal((await f.call('POST',route,{...body,expectedRevision:state.revision},true)).status,409);
 });
+test('unpaid dispatch requires explicit per-group selection and never changes payment or sends notifications',async t=>{
+ const f=await setup(t),route='channels/alpha/dodosi-dispatch';await f.call('PUT','shipping-rates/dodosi-routes',f.data,true);
+ const shipment=(await f.repo.listRecords('alpha','shipment'))[0];await f.repo.upsertRecord('alpha','shipment',{...shipment,paymentStatus:'pending'});
+ const before=await f.repo.listRecords('alpha','shipment');
+ await f.call('POST',route,{action:'save-sender',name:'가상발송인',phone:'01000000002',expectedRevision:0},true);
+ let state=(await f.call('GET',route,null,true)).json();const id=state.groups[0].id;assert.equal(state.groups[0].paid,false);
+ const body={action:'prepare-many',groupIds:[id],expectedRevision:state.revision};
+ assert.equal((await f.call('POST',route,body,true)).status,409);
+ assert.equal((await f.call('POST',route,{...body,includeUnpaidGroupIds:['missing']},true)).status,422);
+ assert.equal((await f.call('POST',route,{...body,includeUnpaidGroupIds:[id,id]},true)).status,422);
+ assert.equal((await f.call('POST',route,{...body,includeUnpaidGroupIds:[id]})).status,401);
+ const prepared=await f.call('POST',route,{...body,includeUnpaidGroupIds:[id]},true);assert.equal(prepared.status,200,prepared.body);assert.equal(prepared.json().plans[0].paid,false);
+ await f.restart();state=(await f.call('GET',route,null,true)).json();assert.equal(state.prepared[0].unpaidManuallySelected,true);
+ const resumed=await f.call('POST',route,{...body,resume:true,includeUnpaidGroupIds:[id],expectedRevision:state.revision},true);assert.equal(resumed.status,200,resumed.body);
+ const single=await f.call('POST',route,{action:'prepare',groupId:id,includeUnpaidGroupIds:[id],expectedRevision:resumed.json().revision},true);assert.equal(single.status,200,single.body);
+ assert.deepEqual(await f.repo.listRecords('alpha','shipment'),before);assert.deepEqual(await f.repo.listRecords('alpha','notification'),[]);
+});
+
 test('buyer and vendor projections use official route dates without changing frozen fees',async t=>{
  const f=await setup(t);await f.call('PUT','shipping-rates/dodosi-routes',f.data,true);
  const channel=(await f.repo.getCatalog()).channels.find(c=>c.id==='alpha');

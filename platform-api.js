@@ -6336,14 +6336,16 @@ function createPlatformApi({
                         const many=body.action==='prepare-many',ids=many?body.groupIds:[body.groupId];
                         if(!Array.isArray(ids)||!ids.length||ids.length>100||new Set(ids).size!==ids.length)throw buyerInputError('접수할 배송을 다시 선택해 주세요.');
                         const current=(await groups()).groups,selected=ids.map(id=>current.find(g=>g.id===id));
-                        if(selected.some(g=>!g||!g.paid||g.schedule.status!=='estimated'))throw buyerInputError('결제·배송정보가 바뀌었거나 일정을 확인해야 합니다. 새로고침해 주세요.',409);
+                        const unpaid=body.includeUnpaidGroupIds||[];
+                        if(!Array.isArray(unpaid)||new Set(unpaid).size!==unpaid.length||unpaid.some(id=>!ids.includes(id)))throw buyerInputError('직접 선택한 배송을 다시 확인해 주세요.');
+                        if(selected.some(g=>!g||(!g.paid&&!unpaid.includes(g.id))||g.schedule.status!=='estimated'))throw buyerInputError('결제·배송정보가 바뀌었거나 일정을 확인해야 합니다. 새로고침해 주세요.',409);
                         const resume=many&&body.resume===true;
                         if(resume){const records=ids.map(id=>saved.prepared.find(r=>r.groupId===id));if(records.some(r=>!r)||new Set(records.map(r=>r.at)).size!==1||saved.prepared.filter(r=>r.at===records[0].at).length!==ids.length)throw buyerInputError('같은 일괄 작업만 이어서 입력할 수 있습니다.',409);}
                         if(many&&!resume&&selected.some(g=>saved.prepared.some(r=>r.groupId===g.id)))throw buyerInputError('이미 입력을 시도한 배송이 포함돼 있습니다. 목록을 새로고침하고 해당 예약서를 먼저 확인해 주세요.',409);
                         const sender=Dispatch.sender(saved.sender);
                         const createdAt=new Date().toISOString(),plans=selected.map(g=>({schema:'creo.dodosi.dispatch.v1',channelId,groupId:g.id,originId:data.origin,originName:cfg.dodosiOrigin,sender,...g,createdAt}));
                         // Preparing is not booking or dispatch. Never changes shipment/payment/notification rows.
-                        const next={...saved,revision:saved.revision+1,prepared:[...saved.prepared.filter(r=>!ids.includes(r.groupId)),...ids.map(groupId=>({groupId,at:createdAt}))].slice(-500)};
+                        const next={...saved,revision:saved.revision+1,prepared:[...saved.prepared.filter(r=>!ids.includes(r.groupId)),...ids.map(groupId=>({groupId,at:createdAt,...(unpaid.includes(groupId)?{unpaidManuallySelected:true}:{})}))].slice(-500)};
                         await repository.upsertRows([{key:channelKey(channelId,'setting',key),value:JSON.stringify(next)}]);replyJson(res,200,{...(many?{plans}:{plan:plans[0]}),revision:next.revision});
                     }else throw buyerInputError('지원하지 않는 작업입니다.');
                 });

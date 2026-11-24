@@ -11,9 +11,10 @@ const server=http.createServer(async(req,res)=>{
   res.setHeader('Content-Type','application/json');
   if(req.method==='POST'){
    let body='';for await(const chunk of req)body+=chunk;const b=JSON.parse(body);requests.push(b);
-   assert.equal(b.action,'prepare-many');assert.equal(b.expectedRevision,data.revision);data.revision++;
-   if(!b.resume){assert.deepEqual(b.groupIds,['g0','g1']);data.prepared.push(...b.groupIds.map(groupId=>({groupId,at:'2026-11-24T00:00:00Z'})));}
-   return res.end(JSON.stringify({plans:b.groupIds.map(groupId=>({groupId})),revision:data.revision}));
+   assert.ok(['prepare-many','prepare'].includes(b.action));assert.equal(b.expectedRevision,data.revision);data.revision++;
+   const ids=b.groupIds||[b.groupId];assert.deepEqual(b.includeUnpaidGroupIds,ids.filter(id=>id==='g2'));
+   if(!b.resume)data.prepared.push(...ids.map(groupId=>({groupId,at:'2026-11-24T00:00:00Z'})));
+   return res.end(JSON.stringify({plans:ids.map(groupId=>({groupId})),plan:{groupId:ids[0]},revision:data.revision}));
   }
   return res.end(JSON.stringify(u.pathname.endsWith('admin-check')?{authenticated:true}:u.pathname.endsWith('dodosi-dispatch')?data:{channels:[]}));
  }
@@ -28,12 +29,13 @@ const server=http.createServer(async(req,res)=>{
   await page.setRequestInterception(true);page.on('request',r=>r.url().startsWith(base)||r.url().startsWith('data:')?r.continue():r.abort());
   await page.evaluateOnNewDocument(()=>{window.helperActions=[];window.addEventListener('message',e=>{
    if(e.data?.type!=='creo-dodosi-command')return;const m=e.data;window.helperActions.push(m);
-   setTimeout(()=>window.postMessage({type:'creo-dodosi-result',requestId:m.requestId,result:m.action==='ping'?{version:'1.1.1'}:{filled:true,count:m.plan.plans.length,forms:[{}]}},location.origin),m.action==='ping'?0:100);
+   setTimeout(()=>window.postMessage({type:'creo-dodosi-result',requestId:m.requestId,result:m.action==='ping'?{version:'1.1.1'}:{filled:true,count:m.plan.plans?.length||1,forms:[{}]}},location.origin),m.action==='ping'?0:100);
   });});
   for(const width of [1440,390,320]){
    reset();await page.setViewport({width,height:900});await page.goto(base+'/dodosi-dispatch.html?channel=fixture');await page.waitForSelector('[data-select="g0"]');
    assert.equal(await page.$$eval('[data-select]:checked',els=>els.length),2);
-   assert.equal(await page.$eval('[data-select="g2"]',e=>e.disabled),true);
+   assert.equal(await page.$eval('[data-select="g2"]',e=>e.disabled),false);
+   assert.equal(await page.$eval('[data-fill="g2"]',e=>e.disabled),false);
    assert.equal(await page.$eval('[data-select="g3"]',e=>e.disabled),false);
    await page.click('[data-select="g3"]');assert.equal(await page.$$eval('[data-select]:checked',els=>els.length),3);await page.click('[data-select="g3"]');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
@@ -47,6 +49,17 @@ const server=http.createServer(async(req,res)=>{
    await page.click('#fill-many');await page.waitForFunction(()=>document.getElementById('sender-status').textContent.includes('3명 입력 완료'));
    assert.deepEqual(requests.slice(1).map(r=>({ids:r.groupIds,resume:r.resume})),[{ids:['g0','g1'],resume:true},{ids:['g3'],resume:true}]);
    assert.deepEqual(await page.evaluate(()=>window.helperActions.filter(m=>m.action==='fill-many').map(m=>m.plan.resume)),[true,true]);
+   reset();await page.reload();await page.waitForSelector('[data-select="g0"]');
+   await page.click('#select-all');assert.equal(await page.$eval('[data-select="g2"]',e=>e.checked),false);
+   await page.click('[data-select="g2"]');assert.equal(await page.$$eval('[data-select]:checked',els=>els.length),4);
+   await page.click('#select-all');assert.deepEqual(await page.$$eval('[data-select]:checked',els=>els.map(e=>e.dataset.select)),['g2']);
+   assert.match(await page.$eval('#selection-count',e=>e.textContent),/결제 미확인 1건 포함/);
+   await page.screenshot({path:path.join(out,'manual-unpaid-'+width+'.png'),fullPage:true});
+   await page.click('#fill-many');await page.waitForFunction(()=>document.getElementById('sender-status').textContent.includes('입력 완료'));
+   assert.deepEqual(requests[0].includeUnpaidGroupIds,['g2']);assert.equal(groups[2].paid,false);
+   reset();await page.reload();await page.waitForSelector('[data-fill="g2"]');
+   await page.click('[data-fill="g2"]');await page.waitForFunction(()=>document.getElementById('sender-status').textContent.includes('입력 완료'));
+   assert.equal(requests[0].action,'prepare');assert.deepEqual(requests[0].includeUnpaidGroupIds,['g2']);
   }
   assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,widths:[1440,390,320],attemptedSelectable:true,originalBatchReused:true,noAutoSync:true,reloadNoReplay:true,screenshots:out}));
  }finally{await browser?.close();await new Promise(r=>server.close(r));}
