@@ -12,18 +12,43 @@ const server=http.createServer(async(req,res)=>{
  await page.setRequestInterception(true);page.on('request',r=>r.url().startsWith(base)||r.url().startsWith('data:')?r.continue():r.abort());
  await page.evaluateOnNewDocument(()=>{window.fakeReceipts=[];window.helperCalls=[];window.addEventListener('message',e=>{const m=e.data;if(m?.type!=='creo-dodosi-command')return;window.helperCalls.push(m);const result=m.action==='ping'?{version:'1.2.0'}:m.action==='receipts'?{source:'https://www.dodosi.co.kr/deliveries',complete:true,checkedAt:new Date().toISOString(),records:window.fakeReceipts}:{filled:true,stage:'review',count:m.plan.plans.length,forms:[{groupIds:m.plan.plans.map(p=>p.groupId)}]};setTimeout(()=>window.postMessage({type:'creo-dodosi-result',requestId:m.requestId,result},location.origin),20);});});
  for(const width of [1440,390,320]){reset();await page.setViewport({width,height:900});await page.goto(base+'/dodosi-dispatch.html?channel=fixture');await page.waitForSelector('[data-select]');
-  assert.equal(await page.$eval('#next-ten',e=>e.disabled),true);await page.click('#verify');await page.waitForFunction(()=>!document.getElementById('next-ten').disabled);
-  assert.equal(await page.$$eval('[data-select]:checked',els=>els.length),0);await page.click('#next-ten');assert.equal(await page.$$eval('[data-select]:checked',els=>els.length),10);assert.equal(await page.$eval('[data-select="g2"]',e=>e.checked),false);
+  // Unchecked receipt history must not block drafting a selection.
+  assert.equal(await page.$eval('#next-ten',e=>e.disabled),false);
+  assert.equal(await page.$$eval('[data-select]:checked',els=>els.length),0);
+  await page.click('[data-row="g0"] td:nth-child(2)');assert.equal(await page.$eval('[data-select="g0"]',e=>e.checked),true);
+  await page.focus('[data-select="g0"]');await page.keyboard.press('Space');assert.equal(await page.$eval('[data-select="g0"]',e=>e.checked),false);
+  assert.equal(await page.$eval('[data-select="g0"]',e=>e===document.activeElement),true);
+  await page.click('#next-ten');assert.equal(await page.$$eval('[data-select]:checked',els=>els.length),10);assert.equal(await page.$eval('[data-select="g2"]',e=>e.checked),false);
   await page.click('[data-select="g2"]');assert.equal(await page.$eval('[data-select="g2"]',e=>e.checked),false);
   await page.click('[data-select="g1"]');await page.click('[data-select="g2"]');assert.equal(await page.$$eval('[data-select]:checked',els=>els.length),10);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:path.join(out,'selected-'+width+'.png'),fullPage:true});
   await page.click('#fill-many');await page.waitForFunction(()=>document.getElementById('progress').textContent.includes('10명 입력 완료'));
+  await page.waitForFunction(()=>!document.getElementById('next-ten').disabled);
   assert.equal(data.batches.length,1);assert.equal(data.batches[0].status,'review');assert.ok(data.batches[0].plans.some(p=>p.groupId==='g2'&&!p.paid));
   await page.reload();await page.waitForSelector('[data-resume]');assert.equal(await page.$$eval('[data-select]:checked',els=>els.length),0);
+  // An open first batch does not disable selecting the next unattempted recipients.
+  await page.click('#next-ten');assert.equal(await page.$$eval('[data-select]:checked',els=>els.length),7);
   const receipts=data.batches[0].plans.map(p=>({id:'r'+p.groupId,status:'paid',originId:p.originId,destinationId:p.destinationId,name:p.name,phone:p.phone,quantity:p.quantity,dropoffDate:p.schedule.dropoffDate,arrivalDate:p.schedule.arrivalDate}));await page.evaluate(r=>window.fakeReceipts=r,receipts);
   await page.click('#verify');await page.waitForFunction(()=>document.getElementById('count').textContent.includes('완료 10명'));assert.equal(data.batches[0].status,'confirmed');
+  assert.equal(await page.$$('tr.is-confirmed').then(r=>r.length),10);
+  assert.equal(await page.$eval('tr.is-confirmed',e=>getComputedStyle(e.cells[0]).backgroundColor),'rgb(232, 245, 236)');
   await page.click('#next-ten');assert.equal(await page.$$eval('[data-select]:checked',els=>els.length),7);await page.screenshot({path:path.join(out,'confirmed-'+width+'.png'),fullPage:true});
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  // Actually complete the second batch, checking receipt reconciliation precedes input.
+  await page.click('#fill-many');await page.waitForFunction(()=>document.getElementById('progress').textContent.includes('7명 입력 완료'));
+  assert.equal(data.batches.length,2);assert.equal(data.batches[1].plans.length,7);
+  assert.ok(!data.batches[1].plans.some(p=>data.batches[0].plans.some(a=>a.groupId===p.groupId)));
+  await page.waitForFunction(()=>!document.getElementById('verify').disabled);
  }
+ // A receipt discovered between choosing a row and submitting must be skipped.
+ reset();await page.setViewport({width:1440,height:900});await page.goto(base+'/dodosi-dispatch.html?channel=fixture');await page.waitForSelector('[data-select]');
+ await page.click('#next-ten');const g=groups[0];const known={id:'already',status:'paid',originId:'origin',destinationId:g.destinationId,name:g.name,phone:g.phone,quantity:g.quantity,dropoffDate:g.schedule.dropoffDate,arrivalDate:g.schedule.arrivalDate};
+ await page.evaluate(r=>window.fakeReceipts=[r],known);await page.click('#fill-many');await page.waitForFunction(()=>document.getElementById('progress').textContent.includes('9명 입력 완료'));
+ assert.equal(data.batches[0].plans.length,9);assert.ok(data.batches[0].plans.every(p=>p.groupId!=='g0'));await page.waitForFunction(()=>!document.getElementById('verify').disabled);
+ // Incomplete readback must fail closed, without any fill request.
+ reset();await page.goto(base+'/dodosi-dispatch.html?channel=fixture');await page.waitForSelector('[data-select]');await page.click('#next-ten');
+ await page.evaluate(()=>window.fakeReceipts=[{id:'invalid'}]);await page.click('#fill-many');await page.waitForFunction(()=>document.getElementById('error').textContent.length>0);
+ assert.equal(data.batches.length,0);assert.equal(await page.evaluate(()=>window.helperCalls.filter(c=>c.action==='fill-many').length),0);
+ await page.waitForFunction(()=>!document.getElementById('verify').disabled);
  assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,widths:[1440,390,320],batchSize:10,unpaidManual:true,receiptDoubleCheck:true,reloadPreserved:true}));
 }finally{await browser?.close();await new Promise(r=>server.close(r));}})().catch(e=>{console.error(e);process.exitCode=1});
