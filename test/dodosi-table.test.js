@@ -26,11 +26,11 @@ test('an input-only batch is not green and does not block the next recipients',a
  assert.equal(p.document.querySelectorAll('tr.is-confirmed').length,0);assert.ok(p.document.querySelector('[data-row="g0"] [data-resume]'));
  p.$('next-ten').onclick();assert.match(p.$('selection-count').textContent,/7\/10명/);assert.equal(p.document.querySelector('[data-select="g0"]').disabled,true);
 });
-test('conflicting or pending receipts and invalid schedules cannot be selected; different days cannot mix',async()=>{
+test('conflicting or pending receipts and invalid schedules cannot be selected; different valid days can mix',async()=>{
  const gs=groups();gs[3].schedule.status='review';gs[4].schedule.dropoffDate='2026-11-25';
  const p=await page({groups:gs,checks:[{bookingKey:'k0',status:'payment_pending'},{bookingKey:'k1',status:'conflict'}]});
  for(const id of ['g0','g1','g3'])assert.equal(p.document.querySelector(`[data-select="${id}"]`).disabled,true);
- p.select('g2',true);p.select('g4',true);assert.match(p.$('error').textContent,/같은 맡김일/);assert.match(p.$('selection-count').textContent,/1\/10명/);
+ p.select('g2',true);p.select('g4',true);assert.equal(p.$('error').textContent,'');assert.match(p.$('selection-count').textContent,/2\/10명/);assert.match(p.$('selection-count').textContent,/11\/24 · 11\/25 맡김 · 날짜별 2묶음/);assert.equal(p.writes(),0);
 });
 test('next ten uses the earliest dropoff date, not a later single recipient at the front',async()=>{
  const gs=groups();gs[0].schedule.dropoffDate='2026-11-28';

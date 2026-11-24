@@ -27,7 +27,8 @@
   $('count').textContent=`전체 ${state.groups.length}명 · 배송예약 완료 ${done}명 · 남은 ${state.groups.length-done}명`;
   $('check-status').textContent=state.checks?.length?`접수 대조 ${new Date(state.checks[0].checkedAt).toLocaleString('ko-KR')}`:'먼저 도도시 접수 내역을 확인해 주세요.';
   const chosen=state.groups.filter(g=>selected.has(g.id)),unpaid=chosen.filter(g=>!g.paid).length;
-  $('selection-count').textContent=`${chosen.length?`${date(chosen[0].schedule.dropoffDate)} 맡김 · `:''}${chosen.length}/10명 · ${chosen.reduce((n,g)=>n+g.quantity,0)}마리${unpaid?` · 결제 미확인 ${unpaid}명 포함`:''}`;
+  const days=[...new Set(chosen.map(g=>g.schedule.dropoffDate))].sort();
+  $('selection-count').textContent=`${days.length?`${days.map(date).join(' · ')} 맡김${days.length>1?` · 날짜별 ${days.length}묶음`:''} · `:''}${chosen.length}/10명 · ${chosen.reduce((n,g)=>n+g.quantity,0)}마리${unpaid?` · 결제 미확인 ${unpaid}명 포함`:''}`;
   const row=g=>{const status=check(g),batch=active(g),valid=g.schedule.status==='estimated',text=!valid?'일정 확인 필요':status==='confirmed'?'✓ 배송예약 완료':status==='payment_pending'||status==='conflict'?labels[status]:batch?'입력됨 · 접수 확인':status==='unchecked'?'미확인 · 선택 가능':labels[status];
    const receipt=state.checks?.find(c=>c.bookingKey===g.bookingKey)?.receiptId;
    const cls=status==='confirmed'?'is-confirmed':selected.has(g.id)?'is-selected':status==='conflict'?'is-conflict':batch||status==='payment_pending'?'is-review':'';
@@ -43,16 +44,21 @@
  }
  async function verify(){await version();$('progress').textContent='도도시 예약 내역 대조 중…';const snapshot=await helper('receipts');await post({action:'reconcile',snapshot});await load();$('progress').textContent='접수 내역 대조 완료';}
  function senderCheck(){if($('sender-name').value!==state.sender.name||$('sender-phone').value!==state.sender.phone)throw Error('변경한 보내는 분 정보를 먼저 저장해 주세요.');}
- async function fill(ids){senderCheck();await version();await verify();const requested=ids.map(id=>state.groups.find(g=>g.id===id));if(requested.some(g=>!g||!['missing','confirmed','payment_pending'].includes(check(g))))throw Error('배송 정보 대조가 필요합니다. 목록의 접수 상태를 확인해 주세요.');
+ async function fill(ids){
+  const days=[...new Set(ids.map(id=>state.groups.find(g=>g.id===id)?.schedule.dropoffDate))].sort(),parts=days.map(day=>ids.filter(id=>state.groups.find(g=>g.id===id)?.schedule.dropoffDate===day)),completed=[];
+  try{for(const part of parts){const result=await fillOne(part);if(result)completed.push(result);}}
+  finally{if(completed.length)$('progress').textContent=completed.join(' / ')+'. 도도시에서 결제한 뒤 ‘접수 결과 확인’을 눌러 주세요.';}
+ }
+ async function fillOne(ids){senderCheck();await version();await verify();const requested=ids.map(id=>state.groups.find(g=>g.id===id));if(requested.some(g=>!g||!['missing','confirmed','payment_pending'].includes(check(g))))throw Error('배송 정보 대조가 필요합니다. 목록의 접수 상태를 확인해 주세요.');
   const available=requested.filter(g=>check(g)==='missing'),skipped=requested.length-available.length;ids=available.map(g=>g.id);
   if(!ids.length){$('progress').textContent='선택한 사람은 이미 접수되어 있어요. 다음 10명을 선택해 주세요.';return;}
   if(!state.fresh)throw Error('정거샵·일정을 갱신한 뒤 다시 입력해 주세요.');
   const result=await post({action:'prepare-batch',groupIds:ids,includeUnpaidGroupIds:available.filter(g=>!g.paid).map(g=>g.id)}),batch=result.batch;
-  try{const result=await helper('fill-many',{plans:batch.plans,resume:true});await post({action:'record-fill',batchId:batch.id,result:{filled:result.filled,stage:result.stage,groupIds:result.forms?.flatMap(f=>f.groupIds)||[],count:result.count}});$('progress').textContent=`${batch.plans.length}명 입력 완료${skipped?` · 이미 접수된 ${skipped}명 제외`:''}. 도도시에서 결제한 뒤 ‘접수 결과 확인’을 눌러 주세요.`;}finally{await load();}
+  try{const result=await helper('fill-many',{plans:batch.plans,resume:true});await post({action:'record-fill',batchId:batch.id,result:{filled:result.filled,stage:result.stage,groupIds:result.forms?.flatMap(f=>f.groupIds)||[],count:result.count}});return `${date(batch.plans[0].schedule.dropoffDate)} 맡김 · ${batch.plans.length}명 입력 완료 · ${[...new Set(batch.plans.map(p=>p.schedule.arrivalDate))].sort().map(date).join(', ')} 도착 예정${skipped?` · 이미 접수된 ${skipped}명 제외`:''}`;}finally{await load();}
  }
  $('next-ten').onclick=()=>{const candidates=state.groups.filter(g=>eligible(g)&&g.paid).sort((a,b)=>a.schedule.dropoffDate.localeCompare(b.schedule.dropoffDate)),day=candidates[0]?.schedule.dropoffDate;selected=new Set(candidates.filter(g=>g.schedule.dropoffDate===day).slice(0,10).map(g=>g.id));$('error').textContent='';render();};
  $('clear-selection').onclick=()=>{selected.clear();render();};
- function toggle(id,checked){const g=state.groups.find(g=>g.id===id);if(busy||!g||!eligible(g))return;if(checked){const first=state.groups.find(g=>selected.has(g.id));if(selected.size>=10||first&&first.schedule.dropoffDate!==g.schedule.dropoffDate){$('error').textContent='같은 맡김일의 받는 분을 최대 10명 선택해 주세요.';render();return;}selected.add(id);}else selected.delete(id);$('error').textContent='';render();}
+ function toggle(id,checked){const g=state.groups.find(g=>g.id===id);if(busy||!g||!eligible(g))return;if(checked){if(selected.size>=10){$('error').textContent='받는 분을 최대 10명 선택해 주세요.';render();return;}selected.add(id);}else selected.delete(id);$('error').textContent='';render();}
  $('rows').onchange=e=>{if(e.target.dataset.select)toggle(e.target.dataset.select,e.target.checked);};
  function resume(id){const b=state.batches.find(b=>b.id===id);if(!b)return;const ids=b.plans.map(p=>state.groups.find(g=>g.bookingKey===p.bookingKey)).filter(g=>g&&['missing','unchecked'].includes(check(g))).map(g=>g.id);task(()=>fill(ids));}
  $('rows').onclick=e=>{const btn=e.target.closest('button');if(btn?.dataset.resume){resume(btn.dataset.resume);return;}if(e.target.closest('input,label,a,button')||window.getSelection()?.toString())return;const id=e.target.closest('[data-row]')?.dataset.row;if(id)toggle(id,!selected.has(id));};

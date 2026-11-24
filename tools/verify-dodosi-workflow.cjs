@@ -52,5 +52,21 @@ const server=http.createServer(async(req,res)=>{
  await page.evaluate(()=>window.fakeReceipts=[{id:'invalid'}]);await page.click('#fill-many');await page.waitForFunction(()=>document.getElementById('error').textContent.length>0);
  assert.equal(data.batches.length,0);assert.equal(await page.evaluate(()=>window.helperCalls.filter(c=>c.action==='fill-many').length),0);
  await page.waitForFunction(()=>!document.getElementById('verify').disabled);
- assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,widths:[1440,390,320],batchSize:10,unpaidManual:true,receiptDoubleCheck:true,reloadPreserved:true}));
+ // Different dropoff dates remain individually selectable, then become separate durable batches.
+ for(const failSecond of [false,true]){
+  reset();const original={...groups[16].schedule};groups[16].schedule={...original,dropoffDate:'2026-11-28',dispatchDate:'2026-11-29',arrivalDate:'2026-12-01'};
+  await page.goto(base+'/dodosi-dispatch.html?channel=fixture');await page.waitForSelector('[data-select]');
+  if(failSecond)await page.evaluate(()=>{window.addEventListener('message',e=>{const m=e.data;if(m?.type==='creo-dodosi-command'&&m.action==='fill-many'&&m.plan.plans[0].schedule.dropoffDate==='2026-11-28')window.postMessage({type:'creo-dodosi-result',requestId:m.requestId,result:{error:'가상 두 번째 입력 실패'}},location.origin);});});
+  await page.click('[data-select="g0"]');await page.click('[data-select="g16"]');assert.equal(await page.$$eval('[data-select]:checked',els=>els.length),2);
+  assert.match(await page.$eval('#selection-count',e=>e.textContent),/날짜별 2묶음/);await page.screenshot({path:path.join(out,'mixed-dates.png'),fullPage:true});
+  await page.click('#fill-many');await page.waitForFunction(()=>!document.getElementById('verify').disabled);
+  assert.equal(data.batches.length,2);assert.deepEqual(data.batches.map(b=>b.plans.length),[1,1]);assert.deepEqual(data.batches.map(b=>b.status),['review',failSecond?'prepared':'review']);
+  assert.deepEqual(data.batches.map(b=>b.plans[0].schedule.dropoffDate),['2026-11-24','2026-11-28']);
+  assert.match(await page.$eval('#progress',e=>e.textContent),/11\/24 맡김 · 1명 입력 완료/);
+  if(failSecond)assert.match(await page.$eval('#error',e=>e.textContent),/두 번째 입력 실패/);
+  else assert.match(await page.$eval('#progress',e=>e.textContent),/11\/28 맡김 · 1명 입력 완료 · 12\/1 도착 예정/);
+  await page.reload();await page.waitForSelector('[data-resume]');assert.equal(await page.$eval('[data-select="g16"]',e=>e.disabled),true);assert.equal(data.batches.length,2);
+  groups[16].schedule=original;
+ }
+ assert.deepEqual(errors,[]);console.log(JSON.stringify({passed:true,widths:[1440,390,320],batchSize:10,unpaidManual:true,receiptDoubleCheck:true,reloadPreserved:true,mixedDates:true,partialFailurePreserved:true}));
 }finally{await browser?.close();await new Promise(r=>server.close(r));}})().catch(e=>{console.error(e);process.exitCode=1});
