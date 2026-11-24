@@ -32,3 +32,9 @@ test('conflicting or pending receipts and invalid schedules cannot be selected; 
  for(const id of ['g0','g1','g3'])assert.equal(p.document.querySelector(`[data-select="${id}"]`).disabled,true);
  p.select('g2',true);p.select('g4',true);assert.match(p.$('error').textContent,/같은 맡김일/);assert.match(p.$('selection-count').textContent,/1\/10명/);
 });
+test('next ten uses the earliest dropoff date, not a later single recipient at the front',async()=>{
+ const gs=groups();gs[0].schedule.dropoffDate='2026-11-28';
+ const p=await page({groups:gs});p.$('next-ten').onclick();
+ assert.equal(p.document.querySelector('[data-select="g0"]').hasAttribute('checked'),false);
+ assert.match(p.$('selection-count').textContent,/11\/24 맡김 · 10\/10명/);
+});
