@@ -2,6 +2,7 @@
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),assert=require('node:assert/strict'),puppeteer=require('puppeteer'),W=require('../dodosi-booking-workflow');
 const root=path.resolve(__dirname,'../public'),out=path.resolve('outputs/dodosi-workflow');fs.mkdirSync(out,{recursive:true});
 const groups=Array.from({length:17},(_,i)=>({id:'g'+i,bookingKey:'k'+i,name:'가상 낙찰자 '+(i+1),phone:'010'+String(i).padStart(8,'0'),shop:'[서울/강동] 테스트 정거샵',destinationId:'dest'+i,quantity:i===0?6:1,paid:i!==2,items:[{lot:'A'+i}],schedule:{status:'estimated',dropoffDate:'2026-11-24',dispatchDate:'2026-11-25',arrivalDate:'2026-11-28'}}));
+for(const g of groups)g.cachedQuote={status:'ready',checkedAt:new Date().toISOString(),quote:{base:28000,zoneSurcharge:0,petSurcharge:g.quantity===6?21000:0,total:g.quantity===6?49000:28000}};
 let data,requests=[];const reset=()=>{data={revision:0,sender:{name:'가상 발송인',phone:'01000000000'},groups,excluded:[],prepared:[],batches:[],checks:[],originName:'크레용(대구)',originId:'origin',checkedAt:new Date().toISOString(),fresh:true,discountBp:5000};requests=[];};reset();
 const server=http.createServer(async(req,res)=>{
  const u=new URL(req.url,'http://local');if(u.pathname.startsWith('/api/')){res.setHeader('Content-Type','application/json');if(req.method==='POST'){let raw='';for await(const x of req)raw+=x;const b=JSON.parse(raw);requests.push(b);try{assert.equal(b.expectedRevision,data.revision);const r=W.command(data,b,groups,{originId:'origin',originName:data.originName,channelId:'fixture',sender:data.sender,fresh:true});data=r.next;return res.end(JSON.stringify({...data,batch:r.batch}));}catch(e){res.statusCode=e.statusCode||409;return res.end(JSON.stringify({error:e.message}));}}return res.end(JSON.stringify(u.pathname.endsWith('admin-check')?{authenticated:true}:u.pathname.endsWith('dodosi-dispatch')?data:{channels:[]}));}
@@ -14,6 +15,7 @@ const server=http.createServer(async(req,res)=>{
  for(const width of [1440,390,320]){reset();await page.setViewport({width,height:900});await page.goto(base+'/dodosi-dispatch.html?channel=fixture');await page.waitForSelector('[data-select]');
   // Unchecked receipt history must not block drafting a selection.
   assert.equal(await page.$eval('#next-ten',e=>e.disabled),false);
+  assert.equal(await page.$$eval('[data-quote]',els=>els.length),0);assert.match(await page.$eval('[data-row="g0"] .quote-cell',e=>e.textContent),/24,500원/);
   assert.equal(await page.$$eval('[data-select]:checked',els=>els.length),0);
   await page.click('[data-row="g0"] td:nth-child(2)');assert.equal(await page.$eval('[data-select="g0"]',e=>e.checked),true);
   await page.focus('[data-select="g0"]');await page.keyboard.press('Space');assert.equal(await page.$eval('[data-select="g0"]',e=>e.checked),false);

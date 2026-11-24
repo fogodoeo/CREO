@@ -157,6 +157,10 @@ function createSourceReader(fetchImpl = globalThis.fetch) {
         if (!origins.length) throw new Error('DODOSI departure schedule unavailable');
         return { origins, ...(rateItems.length ? { ratePayload: { updated: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }), source: 'dodosi-public-options', items: rateItems } } : {}) };
     }
-    return { parge, dodosi };
+    async function dodosiQuotes(requests, options = {}) {
+        const get=budget(180000,options.signal),html=await get.text('https://www.dodosi.co.kr/estimate');
+        return require('./dodosi-public-reader').readQuotes(get,html,requests);
+    }
+    return { parge, dodosi, dodosiQuotes };
 }
 module.exports = { createSourceReader };

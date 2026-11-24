@@ -23,7 +23,7 @@ function rateItem(shop, price) {
     const [region, ...sub] = area.split('/');
     return { shop: shopName(shop.label), region, sub: sub.join(' '), route: shop.region, price, day: '', providerShopId: shop.id };
 }
-async function readModern(get, html, originNames) {
+async function createClient(get, html) {
     const shops = shopsFrom(html), actions = {};
     const paths = [...new Set([...html.matchAll(/src="(\/_next\/static\/chunks\/[a-zA-Z0-9_.-]+\.js)"/g)].map(m => m[1]))];
     if (!paths.length || paths.length > 30) throw Error('DODOSI estimate scripts changed');
@@ -43,6 +43,20 @@ async function readModern(get, html, originNames) {
         if (rows.length !== 1 || !rows[0].ok) throw Error('DODOSI public estimate unavailable');
         return rows[0];
     }
+    return { shops, call };
+}
+function validQuote(q) {
+    return q && ['base','zoneSurcharge','petSurcharge','total'].every(k=>Number.isSafeInteger(q[k])&&q[k]>=0&&q[k]<=1000000) && q.total>0 && q.total===q.base+q.zoneSurcharge+q.petSurcharge;
+}
+async function readQuotes(get, html, requests) {
+    const {shops,call}=await createClient(get,html),ids=new Set(shops.map(s=>s.id));
+    if(!Array.isArray(requests)||requests.length>2000||requests.some(r=>!ids.has(r.from)||!ids.has(r.to)||r.from===r.to||!Number.isInteger(r.quantity)||r.quantity<1||r.quantity>99))throw Error('Invalid DODOSI quote requests');
+    const results=new Array(requests.length);let next=0;
+    await Promise.all(Array.from({length:3},async()=>{while(next<requests.length){const index=next++,request=requests[index];try{const result=await call('quoteAction',[request.from,request.to,request.quantity]);if(!validQuote(result.quote))throw Error('Invalid DODOSI quote');results[index]={...request,quote:Object.fromEntries(['base','zoneSurcharge','petSurcharge','total'].map(k=>[k,result.quote[k]]))};}catch{results[index]={...request,error:'견적 갱신 실패'};}}}));
+    return results;
+}
+async function readModern(get, html, originNames) {
+    const {shops,call}=await createClient(get,html);
     const names = [...new Set(originNames)];
     if (!names.length || names.length > 8) throw Error('Invalid DODOSI origins');
     const origins = [];
@@ -69,4 +83,4 @@ async function readModern(get, html, originNames) {
     // weekday tables into freshly verified delivery promises.
     return { origins, scheduleUnavailable: true, ratePayload: { updated: new Date().toISOString(), source: 'dodosi-public-estimate', items: main.rateItems, origins: origins.map(o => ({ name: o.name, items: o.rateItems })) } };
 }
-module.exports = { readModern, flight, records, shopsFrom, rateItem };
+module.exports = { readModern, readQuotes, validQuote, flight, records, shopsFrom, rateItem };

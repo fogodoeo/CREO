@@ -3,19 +3,27 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {SQLitePlatformRepository}=require('../sqlite-platform-repository'),{createPlatformApi}=require('../platform-api'),{normalizeChannel}=require('../platform-core'),{createDeliveryScheduleService}=require('../delivery-schedule-service');
 const add=(d,n)=>new Date(Date.parse(d+'T00:00:00Z')+n*86400000).toISOString().slice(0,10);
 async function setup(t){
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'creo-dodosi-test-')),now=Date.now(),today=require('../dodosi-routes').today(now);let repo,service,api;
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'creo-dodosi-test-')),now=Date.now(),today=require('../dodosi-routes').today(now);let repo,service,api,quoteReads=0;
  const shops=Array.from({length:20},(_,i)=>({id:`00000000-0000-0000-0000-${String(i).padStart(12,'0')}`,label:i?'[서울/강동] 가상점'+i:'[대구/북구] 크레용(대구)',region:i?'수도권':'경상A'}));
  const quote={base:28000,zoneSurcharge:0,petSurcharge:0,total:28000},slots=[{dropoff:add(today,1),pickup:add(today,2),arrival:add(today,5)}];
  const data={schema:'creo.dodosi.routes.v1',checkedAt:new Date(now).toISOString(),origin:shops[0].id,shops,discountBp:5000,routes:shops.slice(1).flatMap(s=>[[shops[0].id,s.id],[s.id,shops[0].id]].map(([from,to])=>({from,to,available:true,slots,quote,quantity:1})))};
- function start(){repo=new SQLitePlatformRepository({dbPath:path.join(dir,'test.sqlite'),startWorker:false,adminSecret:'test'});service=createDeliveryScheduleService({repository:repo,now:()=>now,reader:{async parge(){throw Error('offline')},async dodosi(){throw Error('offline')}},logger:{warn(){}}});api=createPlatformApi({repository:repo,deliverySchedules:service,adminSessionSecret:'test-dodosi',logger:{warn(){},error(){}}});}start();
+ function start(){repo=new SQLitePlatformRepository({dbPath:path.join(dir,'test.sqlite'),startWorker:false,adminSecret:'test'});service=createDeliveryScheduleService({repository:repo,now:()=>now,reader:{async parge(){throw Error('offline')},async dodosi(){throw Error('offline')},async dodosiQuotes(requests){quoteReads++;return requests.map(r=>({...r,quote:{base:28000,zoneSurcharge:0,petSurcharge:Math.min(r.quantity-1,3)*7000,total:28000+Math.min(r.quantity-1,3)*7000}}));}},logger:{warn(){}}});api=createPlatformApi({repository:repo,deliverySchedules:service,adminSessionSecret:'test-dodosi',logger:{warn(){},error(){}}});}start();
  t.after(async()=>{await service.stop();repo.close();if(path.dirname(path.resolve(dir))!==path.resolve(os.tmpdir())||!path.basename(dir).startsWith('creo-dodosi-test-'))throw Error('Unsafe cleanup');fs.rmSync(dir,{recursive:true,force:true});});
  await repo.saveCatalog(['alpha','beta'].map(id=>normalizeChannel({id,name:id,status:'active',shippingDefaults:{enabledCarriers:['dodosi'],deliverySchedule:{enabled:true,auctionDate:today,dodosiOrigin:'크레용(대구)'}}})));
  await repo.upsertRecord('alpha','vendor',{id:'v',name:'가상업체'});
  await repo.upsertRecord('alpha','item',{id:'i',vendorId:'v',status:'sold',name:'A01',soldPrice:100000,winnerName:'가상낙찰자',winnerPhone:'01000000001'});
  await repo.upsertRecord('alpha','shipment',{id:'s',itemId:'i',vendorId:'v',method:'delivery',destinationType:'dodosi',carrier:'도도시',recipientName:'가상낙찰자',recipientPhone:'01000000001',pargeRegion:'수도권',pargeShop:'가상점1',paymentStatus:'paid',paymentMethod:'bank_transfer',cost:28000});
  async function call(method,route,body,admin=false){const req=Readable.from(body?[Buffer.from(JSON.stringify(body))]:[]);req.method=method;req.headers={host:'test.invalid',...(admin?{'x-creo-admin':'test'}:{})};const res={writeHead(status){this.status=status},end(body=''){this.body=String(body)},json(){return JSON.parse(this.body||'{}')}};await api.handle(req,res,new URL('https://test.invalid/api/platform/'+route));return res;}
- return{call,data,today,get repo(){return repo},get service(){return service},async restart(){await service.stop();repo.close();start();}};
+ return{call,data,today,get quoteReads(){return quoteReads},get repo(){return repo},get service(){return service},async restart(){await service.stop();repo.close();start();}};
 }
+test('dispatch page automatically reads durable quotes without changing shipment money or booking revision',async t=>{
+ const f=await setup(t);await f.call('PUT','shipping-rates/dodosi-routes',f.data,true);const route='channels/alpha/dodosi-dispatch',before=await f.repo.listRecords('alpha','shipment');
+ assert.equal((await f.call('GET',route)).status,401);assert.equal(f.quoteReads,0);
+ const a=(await f.call('GET',route,null,true)).json();assert.equal(a.groups[0].cachedQuote.quote.total,28000);assert.equal(a.groups[0].cachedQuote.status,'ready');assert.ok(a.quoteRefreshAt);
+ const b=(await f.call('GET',route,null,true)).json();assert.equal(f.quoteReads,1);assert.equal(a.revision,b.revision);assert.equal(a.groups[0].id,b.groups[0].id);
+ await f.restart();assert.equal((await f.call('GET',route,null,true)).json().groups[0].cachedQuote.quote.total,28000);assert.equal(f.quoteReads,1);assert.deepEqual(await f.repo.listRecords('alpha','shipment'),before);
+ assert.deepEqual(await f.repo.listRecords('alpha','notification'),[]);
+});
 test('Dodosi import is admin-only, strips account discount publicly, duplicate/stale writes remain safe',async t=>{
  const f=await setup(t),route='shipping-rates/dodosi-routes';
  assert.equal((await f.call('PUT',route,f.data)).status,401);

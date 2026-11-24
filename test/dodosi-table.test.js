@@ -38,3 +38,10 @@ test('next ten uses the earliest dropoff date, not a later single recipient at t
  assert.equal(p.document.querySelector('[data-select="g0"]').hasAttribute('checked'),false);
  assert.match(p.$('selection-count').textContent,/11\/24 맡김 · 10\/10명/);
 });
+test('cached prices render automatically with discount and stale markers; no per-person quote buttons',async()=>{
+ const gs=groups();gs[0].cachedQuote={status:'ready',checkedAt:'2026-11-24T00:00:00Z',quote:{total:49000}};gs[1].cachedQuote={status:'stale',checkedAt:'2026-11-23T00:00:00Z',quote:{total:28000}};
+ const p=await page({groups:gs,discountBp:5000});
+ assert.equal(p.document.querySelectorAll('[data-quote]').length,0);assert.match(p.document.querySelector('[data-row="g0"] .quote-cell').textContent,/24,500원/);
+ assert.match(p.document.querySelector('[data-row="g1"] .quote-cell').textContent,/이전 견적/);assert.match(p.document.querySelector('[data-row="g2"] .quote-cell').textContent,/갱신 대기/);
+ assert.match(p.$('price-status').textContent,/오전 8시/);
+});

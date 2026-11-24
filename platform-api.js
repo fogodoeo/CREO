@@ -6323,7 +6323,13 @@ function createPlatformApi({
                 const data=await deliverySchedules.dodosiRoutes.get(cfg.dodosiOrigin),key='dodosi-dispatch';
                 const state=async()=>await repository.getRecord(channelId,'setting',key)||{id:key,channelId,revision:0,sender:{name:'',phone:''},prepared:[]};
                 const groups=async()=>Dispatch.build(await workspace(channelId),channelId,data,cfg);
-                if(method==='GET')replyJson(res,200,{...(await groups()),...(await state()),labelSenderDefault:/^national-cre(?:-|$)/.test(channelId)?{name:'전크자',phone:'01049278600'}:null,broadcastDate:cfg.auctionDate||'',originName:cfg.dodosiOrigin,originId:data?.origin||'',checkedAt:data?.checkedAt||'',fresh:D.fresh(data),discountBp:data?.discountBp??null});
+                if(method==='GET'){
+                    const list=await groups();
+                    let prices=[];
+                    if(data?.origin&&deliverySchedules.dodosiQuotes){try{prices=await deliverySchedules.dodosiQuotes.getMany(list.groups.filter(g=>g.quantity<=99).map(g=>({from:data.origin,to:g.destinationId,quantity:g.quantity})));}catch{/* Keep the work table available when rate storage is offline. */}}
+                    const priced=list.groups.map(g=>{const p=prices.find(p=>p.to===g.destinationId&&p.quantity===g.quantity);return {...g,cachedQuote:p||null};});
+                    replyJson(res,200,{...list,groups:priced,...(await state()),quoteRefreshAt:deliverySchedules.dodosiQuotes?.nextRefreshAt()||'',labelSenderDefault:/^national-cre(?:-|$)/.test(channelId)?{name:'전크자',phone:'01049278600'}:null,broadcastDate:cfg.auctionDate||'',originName:cfg.dodosiOrigin,originId:data?.origin||'',checkedAt:data?.checkedAt||'',fresh:D.fresh(data),discountBp:data?.discountBp??null});
+                }
                 else if(method==='POST')await withMutationLock(`channel:${channelId}`,async()=>{
                     const body=await readJson(req),saved=await state();
                     if(body.expectedRevision!==saved.revision)throw buyerInputError('다른 창에서 변경됐습니다. 새로고침해 주세요.',409);

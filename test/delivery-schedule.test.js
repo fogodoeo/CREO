@@ -134,6 +134,13 @@ test('concurrent refresh and 80 page reads share data; reload uses durable data 
     assert.deepEqual(await restarted.estimate(channel,selection),values[0]);assert.equal(calls,2);assert.equal(restarted.revision(),service.revision());
     await service.stop();await restarted.stop();
 });
+test('Dodosi shared base-rate refresh follows KST 08:00 rather than last fetch plus 24 hours',async()=>{
+ const repo=repository();let clock=Date.parse('2026-11-24T07:59:00+09:00'),count=0;
+ const service=createDeliveryScheduleService({repository:repo,now:()=>clock,reader:{async parge(){return parge()},async dodosi(origins){count++;return {...dodosi(),origins:origins.map(name=>({...dodosi().origins[0],name}))}}}});
+ await service.refresh();assert.equal(count,1);clock+=60000;await service.refresh();assert.equal(count,2);
+ clock+=60000;await service.refresh();assert.equal(count,2);assert.equal((await service.status()).providers.dodosi.nextAttempt,Date.parse('2026-11-25T08:00:00+09:00'));
+ await service.stop();
+});
 test('source/storage failure preserves last good schedule and respects backoff', async () => {
     const repo=repository();let clock=now,calls=0,fail=false;
     const reader={async parge(){calls++;if(fail)throw Error('offline');return parge()},async dodosi(){calls++;if(fail)throw Error('offline');return dodosi()}};

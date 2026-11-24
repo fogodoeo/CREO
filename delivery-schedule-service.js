@@ -2,6 +2,7 @@
 const crypto = require('node:crypto');
 const Core = require('./delivery-schedule-core');
 const Dodosi = require('./dodosi-routes');
+const Quotes = require('./dodosi-quote-cache');
 const { channelKey } = require('./platform-core');
 const { createSourceReader } = require('./delivery-schedule-source');
 const KEY = 'creo_v2::delivery_schedule_sources';
@@ -15,6 +16,7 @@ function createDeliveryScheduleService({ repository, notificationService = null,
     let snapshot = {}, rates = {}, health = { providers: {} }, settings = { enabled: true, alertPhone: '' };
     let loaded, running, timer, interval, stopped = false, nextAttempt = 0;
     const controller = new AbortController(), configurations = new Map();
+    const dodosiQuotes = typeof reader.dodosiQuotes === 'function' ? Quotes.createCache({repository,read:reader.dodosiQuotes,now,signal:controller.signal}) : null;
     async function load() {
         if (!loaded) loaded = (async () => {
             const rows = new Map((await repository.getRowsByKeys([KEY, SETTINGS_KEY, STATUS_KEY, ...carriers.map(c => 'shipping_rate_' + c)])).map(r => [r.key, r.value]));
@@ -67,8 +69,9 @@ function createDeliveryScheduleService({ repository, notificationService = null,
                 const covered = carrier === 'parge' || origins.every(name => prior?.origins?.some(o => Core.compact(o.name) === Core.compact(name)));
                 const age = now() - Date.parse(prior?.checkedAt);
                 const forced = forceCarrier === carrier;
-                if (prior && rates[carrier] && covered && age >= 0 && age < (forced ? 60000 : Core.DAY) && !status.failures) continue;
-                if (!forced && (status.failures || covered) && Number(status.nextAttempt) > now()) continue;
+                const withinWindow=carrier==='dodosi'&&!forced?Date.parse(prior?.checkedAt)>=Quotes.cycle(now()):age<(forced?60000:Core.DAY);
+                if (prior && rates[carrier] && covered && age >= 0 && withinWindow && !status.failures) continue;
+                if (!forced && (status.failures || covered&&carrier!=='dodosi') && Number(status.nextAttempt) > now()) continue;
                 attempted = true;
                 try {
                     const { ratePayload, ...data } = await reader[carrier](origins, { signal: controller.signal });
@@ -79,7 +82,7 @@ function createDeliveryScheduleService({ repository, notificationService = null,
                     if (previousCount >= 20 && count < previousCount * 0.75) throw new Error('Shipping directory unexpectedly shrank');
                     const record = { ...data, checkedAt: new Date(now()).toISOString(), revision: hash({ data, ratePayload }) };
                     const next = { ...snapshot, [carrier]: record };
-                    const nextHealth = { ...health, providers: { ...health.providers, [carrier]: { failures: 0, checkedAt: record.checkedAt, nextAttempt: now() + Core.DAY } } };
+                    const nextHealth = { ...health, providers: { ...health.providers, [carrier]: { failures: 0, checkedAt: record.checkedAt, nextAttempt: carrier==='dodosi'?Date.parse(Quotes.nextRefresh(now())):now() + Core.DAY } } };
                     // Rates and schedule are accepted together; existing customer fees are untouched.
                     await repository.upsertRows([
                         { key: KEY, value: JSON.stringify({ version: 1, sources: next }) },
@@ -174,9 +177,10 @@ function createDeliveryScheduleService({ repository, notificationService = null,
     }
     function start() {
         if (interval || stopped) return;
-        refreshSoon(); interval = setInterval(() => void refresh(), 60000); interval.unref?.();
+        const refreshQuotes=()=>load().then(()=>settings.enabled&&!stopped?dodosiQuotes?.refresh():null).catch(()=>logger.warn?.('[shipping-refresh] saved quote refresh unavailable'));
+        refreshSoon();void refreshQuotes();interval = setInterval(() => {void refresh();void refreshQuotes();}, 60000); interval.unref?.();
     }
-    async function stop() { stopped = true; clearInterval(interval); clearTimeout(timer); controller.abort(); if (running) await running; }
-    return { load, refresh, refreshSoon, refreshCarrier, configure, status, assertAlertCurrent, isEnabled, estimate, enrichRates, revision, start, stop, dodosiRoutes };
+    async function stop() { stopped = true; clearInterval(interval); clearTimeout(timer); controller.abort(); if (running) await running;await dodosiQuotes?.idle(); }
+    return { load, refresh, refreshSoon, refreshCarrier, configure, status, assertAlertCurrent, isEnabled, estimate, enrichRates, revision, start, stop, dodosiRoutes, dodosiQuotes };
 }
 module.exports = { KEY, SETTINGS_KEY, STATUS_KEY, SYSTEM_CHANNEL, createDeliveryScheduleService };

@@ -38,9 +38,9 @@ h2{font-size:20px;margin:0}
 .dispatch-table strong{font-weight:650}
 .dispatch-table .check{justify-content:center;min-width:44px;margin:0}
 .dispatch-table button{font-size:14px;padding:8px 12px;margin-top:6px;min-height:44px}
-.quote-cell{display:flex;align-items:center;gap:12px}
-.quote-cell small{flex:1;margin:0}
-.quote-cell button{flex-shrink:0;margin:0}
+.quote-cell{font-variant-numeric:tabular-nums}
+#price-status{margin-block:4px 12px}
+.dispatch-table small.attention{color:#9b3810}
 .dispatch-table .is-selected td{background:var(--booking-selected-bg)}
 .dispatch-table .is-confirmed td{background:var(--booking-done-bg)}
 .dispatch-table .is-confirmed .booking-state{color:var(--booking-done-ink)}
