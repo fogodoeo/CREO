@@ -1,17 +1,26 @@
 'use strict';
-importScripts('provider.js','form.js');
+importScripts('provider.js','form.js','receipts.js');
 let busy=false;
 const uuid=s=>/^[a-f\d-]{36}$/.test(s||'');
 function validPlan(p){return p?.schema==='creo.dodosi.dispatch.v1'&&uuid(p.originId)&&uuid(p.destinationId)&&Number.isInteger(p.quantity)&&p.quantity>=1&&p.quantity<=99&&/^010\d{8}$/.test(p.phone||'')&&p.name&&p.sender?.name&&/^0\d{8,10}$/.test(p.sender.phone||'')&&/^\d{4}-\d{2}-\d{2}$/.test(p.schedule?.dropoffDate||'')&&typeof p.groupId==='string';}
 function readTab(tabs){return [...tabs].filter(t=>{const u=new URL(t.url);return u.origin==='https://www.dodosi.co.kr'&&u.pathname==='/order';}).sort((a,b)=>Number(b.active)-Number(a.active)||b.id-a.id)[0];}
 async function ready(id){await new Promise((resolve,reject)=>{const finish=error=>{clearTimeout(timer);chrome.tabs.onUpdated.removeListener(listener);error?reject(error):resolve();},timer=setTimeout(()=>finish(Error('예약 화면을 열지 못했습니다.')),25000);function listener(tabId,info){if(tabId===id&&info.status==='complete')finish();}chrome.tabs.onUpdated.addListener(listener);chrome.tabs.get(id).then(t=>{if(t.status==='complete')finish();},finish);});}
 async function run(action,plan,progress=()=>{}){
- if(action==='ping')return{version:'1.1.1'};
+ if(action==='ping')return{version:'1.2.0'};
+ if(action==='receipts'){
+  const tabs=await chrome.tabs.query({url:'https://www.dodosi.co.kr/*'});
+  const tab=tabs.find(t=>['/order','/deliveries'].includes(new URL(t.url).pathname));
+  if(!tab)throw Error('로그인한 도도시 예약 또는 배송 내역 탭을 열어 주세요.');
+  const result=(await chrome.scripting.executeScript({target:{tabId:tab.id},world:'MAIN',func:creoDodosiReceipts}))[0]?.result;
+  if(!result?.complete)throw Error('전체 접수 내역을 확인하지 못했습니다.');return result;
+ }
  if(action==='fill'||action==='fill-many'){
   const plans=action==='fill'?[plan]:plan?.plans;
   if(!Array.isArray(plans)||!plans.length||plans.length>100||plans.some(p=>!validPlan(p))||new Set(plans.map(p=>p.groupId)).size!==plans.length)throw Error('CREO 배송정보를 다시 불러와 주세요.');
   const first=plans[0];
   if(plans.some(p=>p.channelId!==first.channelId||p.originId!==first.originId||p.sender.name!==first.sender.name||p.sender.phone!==first.sender.phone))throw Error('같은 회차·출발지·보내는 분만 함께 입력할 수 있어요.');
+  const receipts=await run('receipts');
+  if(plans.some(p=>receipts.records.some(r=>r.status!=='cancelled'&&r.originId===p.originId&&r.phone===p.phone&&r.dropoffDate===p.schedule.dropoffDate)))throw Error('이미 접수된 받는 분이 있어요. 접수 결과를 다시 확인해 주세요.');
   const quotes=[];
   for(const [i,p] of plans.entries()){
    progress(`일정·요금 확인 ${i+1}/${plans.length}`);
@@ -19,15 +28,16 @@ async function run(action,plan,progress=()=>{}){
    if(!q.available||!slot)throw Error('일정이 변경되었습니다. 정거샵·일정을 갱신한 뒤 다시 확인해 주세요.');
    quotes.push(q);
   }
-  const dates=[...new Set(plans.map(p=>p.schedule.dropoffDate))],completed=[];
-  for(const [i,date] of dates.entries()){
-   const batch=plans.filter(p=>p.schedule.dropoffDate===date),p=batch[0];
+ const dates=[...new Set(plans.map(p=>p.schedule.dropoffDate))],completed=[],batches=[];
+  for(const date of dates){const sameDate=plans.filter(p=>p.schedule.dropoffDate===date);for(let i=0;i<sameDate.length;i+=10)batches.push(sameDate.slice(i,i+10));}
+  for(const [i,batch] of batches.entries()){
+   const p=batch[0];
    // Stable, non-personal fingerprint survives worker restart and avoids duplicate tabs.
-   const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(batch.map(p=>[p.channelId,p.groupId,p.sender,p.schedule]))));
+   const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(batch.map(p=>[p.channelId,p.bookingKey||p.groupId,p.sender,p.schedule]))));
    const key=[...new Uint8Array(bytes)].map(b=>b.toString(16).padStart(2,'0')).join('');
    const old=(await chrome.tabs.query({url:'https://www.dodosi.co.kr/order*'})).find(t=>new URL(t.url).searchParams.get('creoBatch')===key);
    if(old&&!plan?.resume){await chrome.tabs.update(old.id,{active:true});throw Error('같은 배송의 예약서가 이미 열려 있어요. 열린 예약서를 먼저 확인해 주세요.');}
-   progress(`예약서 입력 ${i+1}/${dates.length} · ${batch.length}명`);
+   progress(`예약서 입력 ${i+1}/${batches.length} · ${batch.length}/10명`);
    const opened=old||await chrome.tabs.create({url:'https://www.dodosi.co.kr/order?'+new URLSearchParams({myShop:p.originId,shop:p.destinationId,qty:String(p.quantity),creoBatch:key}),active:true});
    if(old)await chrome.tabs.update(old.id,{active:true});
    await ready(opened.id);
@@ -51,7 +61,7 @@ async function run(action,plan,progress=()=>{}){
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{
  let url;try{url=new URL(sender.tab?.url);}catch{return;}
  if(url.origin!=='https://creok.onrender.com'||url.pathname!=='/dodosi-dispatch.html')return;
- if(!['ping','sync','quote','fill','fill-many'].includes(message.action))return;
+ if(!['ping','sync','quote','fill','fill-many','receipts'].includes(message.action))return;
  if(busy&&message.action!=='ping'){reply({error:'앞선 도도시 작업이 진행 중입니다.'});return;}
  if(message.action!=='ping')busy=true;
  const progress=text=>chrome.tabs.sendMessage(sender.tab.id,{type:'creo-dodosi-progress',requestId:message.requestId,text}).catch(()=>{});

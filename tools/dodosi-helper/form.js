@@ -1,6 +1,7 @@
 async function creoDodosiFill(plan, plans = [plan]) {
  let stage='예약 화면';
  try {
+  if(!Array.isArray(plans)||!plans.length||plans.length>10)throw Error('예약서 하나에는 받는 분을 10명까지 입력할 수 있습니다.');
   const wait = async fn => { for (let i=0;i<100;i++) { const v=fn();if(v)return v;await new Promise(r=>setTimeout(r,150)); } throw Error('도도시 화면이 바뀌었거나 응답이 늦습니다. 화면을 확인해 주세요.'); };
   const visible = e => !!(e && e.getClientRects().length && !e.closest('[aria-hidden="true"]'));
   const button = text => [...document.querySelectorAll('button')].find(b=>visible(b)&&b.textContent.trim()===text&&!b.disabled);
@@ -47,7 +48,17 @@ async function creoDodosiFill(plan, plans = [plan]) {
       const search=dialog.querySelector('input');if(!search)throw Error('정거샵 검색창을 찾지 못했습니다.');
       await setInput(search,p.shop.replace(/^\[[^\]]+\]\s*/,''));
       const choices=await wait(()=>{const found=[...dialog.querySelectorAll('button')].filter(b=>visible(b)&&!b.disabled&&norm(b.textContent).startsWith(norm(p.shop)));return found.length===1?found:null;});
-      choices[0].click();await wait(()=>!visible(dialog));
+      choices[0].click();
+      // Dodosi deliberately confirms duplicate shop names even after an exact pick.
+      const outcome=await wait(()=>!visible(dialog)?'closed':[...document.querySelectorAll('[role="dialog"]')].find(e=>visible(e)&&e.textContent.includes('같은 이름의 지점이 있어요')));
+      if(outcome!=='closed'){
+       const matches=[...outcome.querySelectorAll('button[role="radio"]')].filter(b=>norm(b.querySelector('span span')?.textContent||'')===norm(p.shop));
+       if(matches.length!==1)throw Error('같은 이름의 지점 중 정확한 지역을 확인하지 못했습니다.');
+       matches[0].click();await wait(()=>matches[0].getAttribute('aria-checked')==='true');
+       const confirm=[...outcome.querySelectorAll('button')].find(b=>b.textContent.trim()==='선택'&&!b.disabled);
+       if(!confirm)throw Error('정거샵 확인 버튼을 찾지 못했습니다.');confirm.click();
+      }
+      await wait(()=>!visible(dialog));
     }
     stage=`받는 분 ${i+1} · 마릿수`;
     await wait(()=>row(i));

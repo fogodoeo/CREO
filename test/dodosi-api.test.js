@@ -68,6 +68,23 @@ test('buyer and vendor projections use official route dates without changing fro
  assert.equal((await f.repo.listRecords('alpha','shipment'))[0].cost,28000);
 });
 
+test('managed booking batches guard concurrent creation, survive restart and confirm only from receipt data',async t=>{
+ const f=await setup(t),route='channels/alpha/dodosi-dispatch';await f.call('PUT','shipping-rates/dodosi-routes',f.data,true);
+ await f.call('POST',route,{action:'save-sender',name:'가상발송인',phone:'01000000002',expectedRevision:0},true);
+ const before=await f.repo.listRecords('alpha','shipment');let state=(await f.call('GET',route,null,true)).json(),g=state.groups[0];
+ const snapshot={source:'https://www.dodosi.co.kr/deliveries',complete:true,checkedAt:new Date().toISOString(),records:[]};
+ let r=await f.call('POST',route,{action:'reconcile',snapshot,expectedRevision:state.revision},true);assert.equal(r.status,200,r.body);
+ const body={action:'prepare-batch',groupIds:[g.id],expectedRevision:r.json().revision};
+ const results=await Promise.all([f.call('POST',route,body,true),f.call('POST',route,body,true)]);assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);
+ await f.restart();state=(await f.call('GET',route,null,true)).json();assert.equal(state.batches.length,1);assert.equal(state.batches[0].status,'prepared');
+ r=await f.call('POST',route,{action:'record-fill',batchId:state.batches[0].id,expectedRevision:state.revision,result:{filled:true,stage:'review',count:1,groupIds:[g.id]}},true);assert.equal(r.status,200,r.body);assert.equal(r.json().batches[0].status,'review');
+ const receipt={id:'fixture-order',status:'paid',originId:f.data.origin,destinationId:g.destinationId,name:g.name,phone:g.phone,quantity:g.quantity,dropoffDate:g.schedule.dropoffDate,arrivalDate:g.schedule.arrivalDate};
+ r=await f.call('POST',route,{action:'reconcile',expectedRevision:r.json().revision,snapshot:{...snapshot,checkedAt:new Date().toISOString(),records:[receipt]}},true);assert.equal(r.status,200,r.body);assert.equal(r.json().batches[0].status,'confirmed');
+ assert.equal((await f.call('POST',route,{...body,expectedRevision:r.json().revision},true)).status,409);
+ assert.deepEqual(await f.repo.listRecords('alpha','shipment'),before);assert.deepEqual(await f.repo.listRecords('alpha','notification'),[]);
+ assert.equal((await f.call('GET','channels/beta/dodosi-dispatch',null,true)).json().batches,undefined);
+});
+
 test('bulk preparation validates the entire selection, blocks repeats across restart and leaves money/shipping untouched',async t=>{
  const f=await setup(t),route='channels/alpha/dodosi-dispatch';await f.call('PUT','shipping-rates/dodosi-routes',f.data,true);
  await f.repo.upsertRecord('alpha','item',{id:'i2',vendorId:'v',status:'sold',name:'A02',soldPrice:100000,winnerName:'가상둘',winnerPhone:'01000000003'});

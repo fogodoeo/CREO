@@ -6330,6 +6330,12 @@ function createPlatformApi({
                     if(body.action==='save-sender'){
                         const next={...saved,sender:Dispatch.sender(body),revision:saved.revision+1};
                         await repository.upsertRows([{key:channelKey(channelId,'setting',key),value:JSON.stringify(next)}]);replyJson(res,200,next);
+                    }else if(['prepare-batch','record-fill','reconcile'].includes(body.action)){
+                        const Workflow=require('./dodosi-booking-workflow');
+                        let result;
+                        try{result=Workflow.command(saved,body,(await groups()).groups,{originId:data?.origin,originName:cfg.dodosiOrigin,channelId,sender:body.action==='prepare-batch'?Dispatch.sender(saved.sender):saved.sender,fresh:D.fresh(data),archived:channel.status==='archived'});}
+                        catch(error){throw buyerInputError(error.message,error.statusCode||409);}
+                        await repository.upsertRows([{key:channelKey(channelId,'setting',key),value:JSON.stringify(result.next)}]);replyJson(res,200,{...result.next,batch:result.batch});
                     }else if(body.action==='prepare'||body.action==='prepare-many'){
                         if(channel.status==='archived')throw buyerInputError('보관된 회차는 접수할 수 없습니다.',409);
                         if(!D.fresh(data))throw buyerInputError('도도시 일정을 먼저 갱신해 주세요.',409);

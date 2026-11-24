@@ -30,7 +30,8 @@ function build(workspace, channelId, data, config, now = Date.now()) {
     const id=crypto.createHash('sha256').update(JSON.stringify(g)).digest('hex');
     const route=data?.routes.find(r=>r.from===data.origin&&r.to===g.destinationId);
     const schedule=config?.auctionDate?D.outbound(data,config,{providerShopId:g.destinationId},'',now):{status:'review',reason:'auction_date'};
-    return {...g,id,schedule,basePrice:route?.quote?.total??null};
+    const bookingKey=crypto.createHash('sha256').update(JSON.stringify([g.key,g.items.map(i=>[i.id,i.buyerSaleId]),data?.origin,schedule.dropoffDate,schedule.arrivalDate])).digest('hex');
+    return {...g,id,bookingKey,schedule,basePrice:route?.quote?.total??null};
   }), excluded };
 }
 function sender(input) { return { name:Sender.senderName(input.name),phone:Sender.senderPhone(input.phone) }; }
