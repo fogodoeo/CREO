@@ -85,6 +85,17 @@ test('managed booking batches guard concurrent creation, survive restart and con
  assert.equal((await f.call('GET','channels/beta/dodosi-dispatch',null,true)).json().batches,undefined);
 });
 
+test('operator reset is revision guarded, durable, isolated and does not alter shipments or notifications',async t=>{
+ const f=await setup(t),route='channels/alpha/dodosi-dispatch',before=await f.repo.listRecords('alpha','shipment');
+ await f.repo.upsertRecord('alpha','setting',{id:'dodosi-dispatch',revision:4,sender:{name:'발송인',phone:'01000000002'},prepared:[{groupId:'g1'}],batches:[{id:'b1',status:'review',plans:[{groupId:'g1'}]}],checks:[{bookingKey:'k1',status:'missing',receiptId:''}]});
+ const body={action:'reset-input',reason:'입력하지 않았음',expectedRevision:4};
+ assert.equal((await f.call('POST',route,body)).status,401);
+ const results=await Promise.all([f.call('POST',route,body,true),f.call('POST',route,body,true)]);assert.deepEqual(results.map(r=>r.status).sort(),[200,409]);
+ await f.restart();const saved=(await f.call('GET',route,null,true)).json();assert.deepEqual(saved.batches,[]);assert.deepEqual(saved.prepared,[]);assert.equal(saved.inputResets.length,1);
+ assert.equal((await f.call('POST',route,{...body,expectedRevision:saved.revision},true)).status,200);
+ assert.deepEqual(await f.repo.listRecords('alpha','shipment'),before);assert.deepEqual(await f.repo.listRecords('alpha','notification'),[]);assert.equal((await f.call('GET','channels/beta/dodosi-dispatch',null,true)).json().revision,0);
+});
+
 test('bulk preparation validates the entire selection, blocks repeats across restart and leaves money/shipping untouched',async t=>{
  const f=await setup(t),route='channels/alpha/dodosi-dispatch';await f.call('PUT','shipping-rates/dodosi-routes',f.data,true);
  await f.repo.upsertRecord('alpha','item',{id:'i2',vendorId:'v',status:'sold',name:'A02',soldPrice:100000,winnerName:'가상둘',winnerPhone:'01000000003'});

@@ -21,6 +21,15 @@ function reconcile(groups,originId,payload,now=Date.now()){
 }
 function command(saved,body,groups,{originId,originName,channelId,sender,fresh,archived},now=Date.now()){
  const next={...saved,revision:saved.revision+1,batches:saved.batches||[],checks:saved.checks||[]};
+ if(body.action==='reset-input'){
+  if(archived)fail('보관된 회차는 변경할 수 없습니다.');
+  if(next.checks.some(c=>c.status!=='missing'||c.receiptId)||next.batches.some(b=>b.status==='confirmed'))fail('예약번호가 있거나 대조가 필요한 배송은 입력 기록만 초기화할 수 없습니다.');
+  if(!next.batches.length&&!saved.prepared?.length)return {next:saved};
+  const reason=String(body.reason||'').trim();if(!reason||reason.length>300)fail('대기로 되돌리는 이유를 입력해 주세요.',422);
+  next.inputResets=[...(saved.inputResets||[]),{at:new Date(now).toISOString(),reason,batches:next.batches,prepared:saved.prepared||[]}];
+  next.batches=[];next.prepared=[];
+  return {next};
+ }
  if(body.action==='reconcile'){
   next.checks=reconcile(groups,originId,body.snapshot,now);next.checkedAt=body.snapshot.checkedAt;
   next.batches=next.batches.map(b=>({...b,status:b.plans.every(p=>next.checks.some(c=>c.bookingKey===p.bookingKey&&c.status==='confirmed'))?'confirmed':b.status==='confirmed'?'review':b.status}));

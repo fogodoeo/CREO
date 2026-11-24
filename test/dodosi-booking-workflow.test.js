@@ -6,6 +6,21 @@ const groups=Array.from({length:12},(_,i)=>group(i+1)),config={originId:'origin'
 const snapshot=records=>({source:'https://www.dodosi.co.kr/deliveries',checkedAt,complete:true,records});
 const receipt=(g,extra={})=>({id:'receipt'+g.id,status:'paid',originId:'origin',destinationId:g.destinationId,name:g.name,phone:g.phone,quantity:g.quantity,dropoffDate:g.schedule.dropoffDate,arrivalDate:g.schedule.arrivalDate,...extra});
 const initial=()=>W.command({revision:0},{action:'reconcile',snapshot:snapshot([])},groups,config,now).next;
+
+test('reset input returns unbooked groups to waiting, preserves history, and rejects late fill results',()=>{
+ const r=W.command(initial(),{action:'prepare-batch',groupIds:['g1']},groups,config,now);
+ const filled=W.command(r.next,{action:'record-fill',batchId:r.batch.id,result:{filled:true,stage:'review',groupIds:['g1'],count:1}},groups,config,now).next;
+ const saved={...filled,prepared:[{groupId:'g1'}],sender:{name:'sender',phone:'01000000000'}};
+ const body={action:'reset-input',reason:'Operator confirmed no input was submitted'};
+ const reset=W.command(saved,body,groups,config,now).next;
+ assert.deepEqual(reset.batches,[]);assert.deepEqual(reset.prepared,[]);assert.deepEqual(reset.checks,saved.checks);assert.deepEqual(reset.sender,saved.sender);
+ assert.deepEqual(reset.inputResets[0].batches,saved.batches);assert.deepEqual(reset.inputResets[0].prepared,saved.prepared);
+ const restarted=JSON.parse(JSON.stringify(reset));assert.deepEqual(W.command(restarted,body,groups,config,now).next,restarted);
+ assert.throws(()=>W.command(reset,{action:'record-fill',batchId:r.batch.id},groups,config,now),/찾지 못/);
+ assert.equal(W.command(reset,{action:'prepare-batch',groupIds:['g1']},groups,config,now).batch.status,'prepared');
+ for(const status of ['confirmed','payment_pending','conflict'])assert.throws(()=>W.command({...saved,checks:[{status,receiptId:'r1'}]},body,groups,config,now),/예약번호/);
+ assert.throws(()=>W.command(saved,body,groups,{...config,archived:true},now),/보관/);
+});
 test('10 recipient limit counts a six-animal combined shipment as one person; retry persists one batch',()=>{
  const saved=initial(),body={action:'prepare-batch',groupIds:groups.slice(0,10).map(g=>g.id)};
  const r=W.command(saved,body,groups,config,now);assert.equal(r.batch.plans.length,10);assert.equal(r.batch.plans[0].quantity,6);

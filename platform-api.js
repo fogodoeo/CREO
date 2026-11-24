@@ -6330,7 +6330,7 @@ function createPlatformApi({
                     if(body.action==='save-sender'){
                         const next={...saved,sender:Dispatch.sender(body),revision:saved.revision+1};
                         await repository.upsertRows([{key:channelKey(channelId,'setting',key),value:JSON.stringify(next)}]);replyJson(res,200,next);
-                    }else if(['prepare-batch','record-fill','reconcile'].includes(body.action)){
+                    }else if(['prepare-batch','record-fill','reconcile','reset-input'].includes(body.action)){
                         const Workflow=require('./dodosi-booking-workflow');
                         let result;
                         try{result=Workflow.command(saved,body,(await groups()).groups,{originId:data?.origin,originName:cfg.dodosiOrigin,channelId,sender:body.action==='prepare-batch'?Dispatch.sender(saved.sender):saved.sender,fresh:D.fresh(data),archived:channel.status==='archived'});}
