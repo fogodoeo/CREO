@@ -11,7 +11,7 @@ const server=http.createServer(async(req,res)=>{
 (async()=>{await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port;let browser;try{
  browser=await puppeteer.launch({headless:true,executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe'});const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.setRequestInterception(true);page.on('request',r=>r.url().startsWith(base)||r.url().startsWith('data:')?r.continue():r.abort());
- await page.evaluateOnNewDocument(()=>{window.fakeReceipts=[];window.helperCalls=[];window.addEventListener('message',e=>{const m=e.data;if(m?.type!=='creo-dodosi-command')return;window.helperCalls.push(m);const result=m.action==='ping'?{version:'1.2.0'}:m.action==='receipts'?{source:'https://www.dodosi.co.kr/deliveries',complete:true,checkedAt:new Date().toISOString(),records:window.fakeReceipts}:{filled:true,stage:'review',count:m.plan.plans.length,forms:[{groupIds:m.plan.plans.map(p=>p.groupId)}]};setTimeout(()=>window.postMessage({type:'creo-dodosi-result',requestId:m.requestId,result},location.origin),20);});});
+ await page.evaluateOnNewDocument(()=>{window.fakeReceipts=[];window.helperCalls=[];window.addEventListener('message',e=>{const m=e.data;if(m?.type!=='creo-dodosi-command')return;window.helperCalls.push(m);const result=m.action==='ping'?{version:'1.2.1'}:m.action==='receipts'?{source:'https://www.dodosi.co.kr/deliveries',complete:true,checkedAt:new Date().toISOString(),records:window.fakeReceipts,...(m.plan?.scope?{scope:m.plan.scope}:{})}:{filled:true,stage:'review',count:m.plan.plans.length,forms:[{groupIds:m.plan.plans.map(p=>p.groupId)}]};setTimeout(()=>window.postMessage({type:'creo-dodosi-result',requestId:m.requestId,result},location.origin),20);});});
  for(const width of [1440,390,320]){reset();await page.setViewport({width,height:900});await page.goto(base+'/dodosi-dispatch.html?channel=fixture');await page.waitForSelector('[data-select]');
   // Unchecked receipt history must not block drafting a selection.
   assert.equal(await page.$eval('#next-ten',e=>e.disabled),false);
@@ -27,6 +27,7 @@ const server=http.createServer(async(req,res)=>{
   await page.click('#fill-many');await page.waitForFunction(()=>document.getElementById('progress').textContent.includes('10명 입력 완료'));
   await page.waitForFunction(()=>!document.getElementById('next-ten').disabled);
   assert.equal(data.batches.length,1);assert.equal(data.batches[0].status,'review');assert.ok(data.batches[0].plans.some(p=>p.groupId==='g2'&&!p.paid));
+  assert.equal(await page.evaluate(()=>window.helperCalls.find(c=>c.action==='receipts').plan.scope.length),10);
   await page.reload();await page.waitForSelector('[data-resume]');assert.equal(await page.$$eval('[data-select]:checked',els=>els.length),0);
   // An open first batch does not disable selecting the next unattempted recipients.
   await page.click('#next-ten');assert.equal(await page.$$eval('[data-select]:checked',els=>els.length),7);

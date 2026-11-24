@@ -6,20 +6,20 @@ function validPlan(p){return p?.schema==='creo.dodosi.dispatch.v1'&&uuid(p.origi
 function readTab(tabs){return [...tabs].filter(t=>{const u=new URL(t.url);return u.origin==='https://www.dodosi.co.kr'&&u.pathname==='/order';}).sort((a,b)=>Number(b.active)-Number(a.active)||b.id-a.id)[0];}
 async function ready(id){await new Promise((resolve,reject)=>{const finish=error=>{clearTimeout(timer);chrome.tabs.onUpdated.removeListener(listener);error?reject(error):resolve();},timer=setTimeout(()=>finish(Error('예약 화면을 열지 못했습니다.')),25000);function listener(tabId,info){if(tabId===id&&info.status==='complete')finish();}chrome.tabs.onUpdated.addListener(listener);chrome.tabs.get(id).then(t=>{if(t.status==='complete')finish();},finish);});}
 async function run(action,plan,progress=()=>{}){
- if(action==='ping')return{version:'1.2.0'};
+ if(action==='ping')return{version:'1.2.1'};
  if(action==='receipts'){
   const tabs=await chrome.tabs.query({url:'https://www.dodosi.co.kr/*'});
-  const tab=tabs.find(t=>['/order','/deliveries'].includes(new URL(t.url).pathname));
+  const tab=tabs.find(t=>/^\/(?:order|deliveries(?:\/[a-f0-9-]{36})?)$/.test(new URL(t.url).pathname));
   if(!tab)throw Error('로그인한 도도시 예약 또는 배송 내역 탭을 열어 주세요.');
-  const result=(await chrome.scripting.executeScript({target:{tabId:tab.id},world:'MAIN',func:creoDodosiReceipts}))[0]?.result;
-  if(!result?.complete)throw Error('전체 접수 내역을 확인하지 못했습니다.');return result;
+  const result=(await chrome.scripting.executeScript({target:{tabId:tab.id},world:'MAIN',func:creoDodosiReceipts,args:[{scope:plan?.scope}]}))[0]?.result;
+  if(!result?.complete)throw Error(result?.error||'전체 접수 내역을 확인하지 못했습니다.');return result;
  }
  if(action==='fill'||action==='fill-many'){
   const plans=action==='fill'?[plan]:plan?.plans;
   if(!Array.isArray(plans)||!plans.length||plans.length>100||plans.some(p=>!validPlan(p))||new Set(plans.map(p=>p.groupId)).size!==plans.length)throw Error('CREO 배송정보를 다시 불러와 주세요.');
   const first=plans[0];
   if(plans.some(p=>p.channelId!==first.channelId||p.originId!==first.originId||p.sender.name!==first.sender.name||p.sender.phone!==first.sender.phone))throw Error('같은 회차·출발지·보내는 분만 함께 입력할 수 있어요.');
-  const receipts=await run('receipts');
+  const receipts=await run('receipts',{scope:plans.map(p=>({groupId:p.groupId,bookingKey:p.bookingKey||p.groupId,originId:p.originId,destinationId:p.destinationId,dropoffDate:p.schedule.dropoffDate}))});
   if(plans.some(p=>receipts.records.some(r=>r.status!=='cancelled'&&r.originId===p.originId&&r.phone===p.phone&&r.dropoffDate===p.schedule.dropoffDate)))throw Error('이미 접수된 받는 분이 있어요. 접수 결과를 다시 확인해 주세요.');
   const quotes=[];
   for(const [i,p] of plans.entries()){

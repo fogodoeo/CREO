@@ -3,7 +3,7 @@ from pathlib import Path
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 ROOT = Path(__file__).resolve().parents[1]
-FILES = ('manifest.json', 'provider.js', 'form.js', 'background.js', 'bridge.js')
+FILES = ('manifest.json', 'provider.js', 'form.js', 'receipts.js', 'background.js', 'bridge.js')
 
 def build():
     target = ROOT / 'public/downloads/creo-dodosi-helper.zip'

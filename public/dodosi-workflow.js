@@ -13,10 +13,10 @@
  const date=d=>d?`${+d.slice(5,7)}/${+d.slice(8)}`:'확인 필요';
  $('back').href='/shipping.html?channel='+encodeURIComponent(channelId);
  function helper(action,plan){return new Promise((resolve,reject)=>{const requestId=crypto.randomUUID(),timer=setTimeout(()=>done(Error('입력 도구 응답이 없습니다. 열린 예약서를 확인해 주세요.')),action==='ping'?3000:600000);function done(error,result){clearTimeout(timer);window.removeEventListener('message',receive);error?reject(error):resolve(result);}function receive(e){if(e.source!==window||e.origin!==location.origin||e.data?.requestId!==requestId)return;if(e.data.type==='creo-dodosi-progress'){$('progress').textContent=e.data.text;return;}if(e.data.type==='creo-dodosi-result')done(e.data.result?.error?Error(e.data.result.error):null,e.data.result);}window.addEventListener('message',receive);window.postMessage({type:'creo-dodosi-command',requestId,action,plan},location.origin);});}
- async function version(){const r=await helper('ping');if(!/^1\.(?:[2-9]|\d{2,})\./.test(r.version||''))throw Error('도도시 입력 도구 1.2로 업데이트한 뒤 새로고침해 주세요.');}
+ async function version(){const r=await helper('ping'),v=(r.version||'').split('.').map(Number);if(v[0]!==1||!(v[1]>2||v[1]===2&&v[2]>=1))throw Error('도도시 입력 도구 1.2.1로 업데이트한 뒤 새로고침해 주세요.');}
  async function post(body){const r=await CreoPlatform.api(route,{method:'POST',body:JSON.stringify({...body,expectedRevision:state.revision})});state.revision=r.revision;return r;}
  async function load(){state=await CreoPlatform.api(route);selected.clear();$('sender-name').value=state.sender.name;$('sender-phone').value=state.sender.phone;render();}
- async function task(fn){if(busy)return;busy=true;$('error').textContent='';render();try{await fn();}catch(e){$('error').textContent=e.message;}finally{busy=false;render();}}
+ async function task(fn){if(busy)return;busy=true;$('error').textContent='';render();try{await fn();}catch(e){$('error').textContent=e.message;if($('progress').textContent.endsWith('중…'))$('progress').textContent='작업이 중단됐어요. 아래 내용을 확인해 주세요.';}finally{busy=false;render();}}
  function render(){if(!state)return;
   $('origin').textContent='출발 정거샵 · '+state.originName;
   $('sender-summary').textContent=`보내는 분 · ${state.sender.name||'미설정'} · ${state.sender.phone||'연락처 미설정'} · 변경`;
@@ -42,14 +42,14 @@
   $('fill-many').disabled=busy||!chosen.length;$('next-ten').disabled=busy||!state.groups.some(g=>eligible(g)&&g.paid);
   $('fill-many').textContent=chosen.length?`선택한 ${chosen.length}명 자동 입력`:'선택한 사람 자동 입력';
  }
- async function verify(){await version();$('progress').textContent='도도시 예약 내역 대조 중…';const snapshot=await helper('receipts');await post({action:'reconcile',snapshot});await load();$('progress').textContent='접수 내역 대조 완료';}
+ async function verify(ids){await version();const scope=ids?.map(id=>{const g=state.groups.find(g=>g.id===id);if(!g)throw Error('선택한 배송정보를 다시 확인해 주세요.');return{groupId:g.id,bookingKey:g.bookingKey,originId:state.originId,destinationId:g.destinationId,dropoffDate:g.schedule.dropoffDate};});$('progress').textContent=scope?'선택한 사람의 중복 접수 확인 중…':'도도시 예약 내역 대조 중…';const snapshot=await helper('receipts',scope?{scope}:undefined);if(scope&&JSON.stringify(snapshot.scope)!==JSON.stringify(scope))throw Error('입력 도구를 1.2.1로 업데이트해 주세요.');await post({action:'reconcile',snapshot});await load();$('progress').textContent=scope?'선택한 사람의 중복 확인 완료':'접수 내역 대조 완료';}
  function senderCheck(){if($('sender-name').value!==state.sender.name||$('sender-phone').value!==state.sender.phone)throw Error('변경한 보내는 분 정보를 먼저 저장해 주세요.');}
  async function fill(ids){
   const days=[...new Set(ids.map(id=>state.groups.find(g=>g.id===id)?.schedule.dropoffDate))].sort(),parts=days.map(day=>ids.filter(id=>state.groups.find(g=>g.id===id)?.schedule.dropoffDate===day)),completed=[];
   try{for(const part of parts){const result=await fillOne(part);if(result)completed.push(result);}}
   finally{if(completed.length)$('progress').textContent=completed.join(' / ')+'. 도도시에서 결제한 뒤 ‘접수 결과 확인’을 눌러 주세요.';}
  }
- async function fillOne(ids){senderCheck();await version();await verify();const requested=ids.map(id=>state.groups.find(g=>g.id===id));if(requested.some(g=>!g||!['missing','confirmed','payment_pending'].includes(check(g))))throw Error('배송 정보 대조가 필요합니다. 목록의 접수 상태를 확인해 주세요.');
+ async function fillOne(ids){senderCheck();await version();await verify(ids);const requested=ids.map(id=>state.groups.find(g=>g.id===id));if(requested.some(g=>!g||!['missing','confirmed','payment_pending'].includes(check(g))))throw Error('배송 정보 대조가 필요합니다. 목록의 접수 상태를 확인해 주세요.');
   const available=requested.filter(g=>check(g)==='missing'),skipped=requested.length-available.length;ids=available.map(g=>g.id);
   if(!ids.length){$('progress').textContent='선택한 사람은 이미 접수되어 있어요. 다음 10명을 선택해 주세요.';return;}
   if(!state.fresh)throw Error('정거샵·일정을 갱신한 뒤 다시 입력해 주세요.');

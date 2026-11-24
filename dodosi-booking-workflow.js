@@ -31,7 +31,15 @@ function command(saved,body,groups,{originId,originName,channelId,sender,fresh,a
   return {next};
  }
  if(body.action==='reconcile'){
-  next.checks=reconcile(groups,originId,body.snapshot,now);next.checkedAt=body.snapshot.checkedAt;
+  const scope=body.snapshot?.scope;
+  let targets=groups;
+  if(scope!==undefined){
+   if(!Array.isArray(scope)||!scope.length||scope.length>100||new Set(scope.map(s=>s.groupId)).size!==scope.length)fail('선택한 배송정보를 다시 확인해 주세요.');
+   targets=scope.map(s=>groups.find(g=>g.id===s.groupId&&g.bookingKey===s.bookingKey&&originId===s.originId&&g.destinationId===s.destinationId&&g.schedule.dropoffDate===s.dropoffDate));
+   if(targets.some(g=>!g))fail('선택한 배송정보가 변경됐습니다. 목록을 새로고침해 주세요.');
+  }
+  const checked=reconcile(targets,originId,body.snapshot,now);
+  next.checks=scope?[...next.checks.filter(c=>!targets.some(g=>g.id===c.groupId)),...checked]:checked;next.checkedAt=body.snapshot.checkedAt;
   next.batches=next.batches.map(b=>({...b,status:b.plans.every(p=>next.checks.some(c=>c.bookingKey===p.bookingKey&&c.status==='confirmed'))?'confirmed':b.status==='confirmed'?'review':b.status}));
   return {next};
  }
@@ -49,7 +57,7 @@ function command(saved,body,groups,{originId,originName,channelId,sender,fresh,a
  if(selected.some(g=>!g||(!g.paid&&!unpaid.includes(g.id))||g.schedule.status!=='estimated'))fail('결제·배송정보가 변경됐습니다. 목록을 새로고침해 주세요.');
  if(new Set(selected.map(g=>g.schedule.dropoffDate)).size!==1)fail('같은 맡김일의 받는 분만 함께 선택해 주세요.');
  if(!recent(saved.checkedAt,now))fail('먼저 도도시 접수 내역을 확인해 주세요.');
- if(selected.some(g=>!saved.checks?.some(c=>c.bookingKey===g.bookingKey&&c.status==='missing')))fail('이미 접수됐거나 대조가 필요한 배송입니다. 접수 내역을 확인해 주세요.');
+ if(selected.some(g=>!saved.checks?.some(c=>c.bookingKey===g.bookingKey&&c.status==='missing'&&recent(c.checkedAt,now))))fail('이미 접수됐거나 대조가 필요한 배송입니다. 접수 내역을 확인해 주세요.');
  const plans=selected.map(g=>({...g,schema:'creo.dodosi.dispatch.v1',channelId,groupId:g.id,originId,originName,sender}));
  const fingerprint=crypto.createHash('sha256').update(JSON.stringify(plans.map(p=>[p.bookingKey,p.sender]))).digest('hex');
  const same=next.batches.find(b=>b.id===fingerprint);

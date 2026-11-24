@@ -7,6 +7,20 @@ const snapshot=records=>({source:'https://www.dodosi.co.kr/deliveries',checkedAt
 const receipt=(g,extra={})=>({id:'receipt'+g.id,status:'paid',originId:'origin',destinationId:g.destinationId,name:g.name,phone:g.phone,quantity:g.quantity,dropoffDate:g.schedule.dropoffDate,arrivalDate:g.schedule.arrivalDate,...extra});
 const initial=()=>W.command({revision:0},{action:'reconcile',snapshot:snapshot([])},groups,config,now).next;
 
+test('selected reconciliation preserves other receipts, rejects changed scope and does not refresh old checks',()=>{
+ const saved=W.command(initial(),{action:'reconcile',snapshot:snapshot([receipt(groups[0])])},groups,config,now).next;
+ const g=groups[1],scope=[{groupId:g.id,bookingKey:g.bookingKey,originId:'origin',destinationId:g.destinationId,dropoffDate:g.schedule.dropoffDate}];
+ const later=now+300001,body={action:'reconcile',snapshot:{...snapshot([]),checkedAt:new Date(later).toISOString(),scope}};
+ const next=W.command(saved,body,groups,config,later).next;
+ assert.deepEqual(next.checks.find(c=>c.groupId==='g1'),saved.checks.find(c=>c.groupId==='g1'));
+ assert.equal(W.command(next,{action:'prepare-batch',groupIds:['g2']},groups,config,later).batch.plans.length,1);
+ assert.throws(()=>W.command(next,{action:'prepare-batch',groupIds:['g3']},groups,config,later),/접수 내역/);
+ for(const bad of [[...scope,...scope],[{...scope[0],bookingKey:'changed'}],[{...scope[0],originId:'other'}]])assert.throws(()=>W.command(saved,{...body,snapshot:{...body.snapshot,scope:bad}},groups,config,later),/배송정보/);
+ const reloaded=JSON.parse(JSON.stringify(next));assert.deepEqual(W.command(reloaded,body,groups,config,later).next.checks,next.checks);
+ const conflict=W.command(saved,{...body,snapshot:{...body.snapshot,records:[receipt(g,{destinationId:'changed'})]}},groups,config,later).next;
+ assert.equal(conflict.checks.find(c=>c.groupId===g.id).status,'conflict');
+});
+
 test('reset input returns unbooked groups to waiting, preserves history, and rejects late fill results',()=>{
  const r=W.command(initial(),{action:'prepare-batch',groupIds:['g1']},groups,config,now);
  const filled=W.command(r.next,{action:'record-fill',batchId:r.batch.id,result:{filled:true,stage:'review',groupIds:['g1'],count:1}},groups,config,now).next;

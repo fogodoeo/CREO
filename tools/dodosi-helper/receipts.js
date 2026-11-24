@@ -1,10 +1,12 @@
 /* Read-only, authenticated receipt reconciliation. Never executes page scripts. */
-async function creoDodosiReceipts() {
+async function creoDodosiReceipts({scope}={}) {
+ try {
  if(location.origin!=='https://www.dodosi.co.kr')throw Error('로그인한 도도시 탭을 열어 주세요.');
- const get=async path=>{const r=await fetch(path,{cache:'no-store',signal:AbortSignal.timeout(20000)});if(!r.ok||r.redirected)throw Error('도도시 로그인과 배송 내역을 확인해 주세요.');return r.text();};
+ const get=async (path,options={})=>{const r=await fetch(path,{...options,cache:'no-store',signal:AbortSignal.timeout(20000)});if(!r.ok||r.redirected)throw Error('도도시 로그인과 배송 내역을 확인해 주세요.');return r.text();};
+ const parse=text=>text.split('\n').flatMap(line=>{try{return[JSON.parse(line.slice(line.indexOf(':')+1))];}catch{return[];}});
  const rows=html=>{
   const flight=[...html.matchAll(/self\.__next_f\.push\((\[.*?\])\)<\/script>/g)].map(m=>{try{const x=JSON.parse(m[1]);return x[0]===1?x[1]:'';}catch{return '';}}).join('');
-  return flight.split('\n').flatMap(line=>{try{return[JSON.parse(line.slice(line.indexOf(':')+1))];}catch{return[];}});
+  return parse(flight);
  };
  const nodes=values=>{const out=[];function walk(v){if(v&&typeof v==='object'){out.push(v);Object.values(v).forEach(walk);}}values.forEach(walk);return out;};
  const html=await get('/deliveries');
@@ -14,26 +16,46 @@ async function creoDodosiReceipts() {
  const list=lists[0].deliveries;
  if(list.length>5000||new Set(list.map(r=>r.id)).size!==list.length)throw Error('예약 목록 대조가 필요합니다.');
  const records=[];
+ if(scope!==undefined&&(!Array.isArray(scope)||!scope.length||scope.length>100||scope.some(s=>!s.groupId||!s.bookingKey||!s.originId||!s.destinationId||!/^\d{4}-\d{2}-\d{2}$/.test(s.dropoffDate||''))))throw Error('선택한 배송정보를 다시 확인해 주세요.');
  if(list.length){
   const order=nodes(rows(await get('/order'))).find(v=>Array.isArray(v.shops)&&Number.isInteger(v.accountDiscountBp));
   if(!order)throw Error('정거샵 정보를 확인하지 못했습니다.');
   const norm=v=>String(v||'').replace(/\s/g,'');
   const shopId=label=>{const matches=order.shops.filter(s=>norm(s.label)===norm(label));if(matches.length!==1)throw Error('예약 정거샵을 하나로 대조하지 못했습니다.');return matches[0].id;};
   const statusMap={pending_payment:'pending_payment',scheduled:'pickup_pending',dropped_off:'pickup_pending',picked_up:'in_transit',in_care:'in_transit',outbound:'in_transit',hub_arrived:'in_transit',arrived:'delivered',cancelled:'cancelled'};
+  let contactsAction;
+  const contacts=async (path,detailHtml,id)=>{
+   if(!contactsAction){
+    for(const asset of [...new Set([...detailHtml.matchAll(/src="(\/_next\/static\/chunks\/[a-zA-Z0-9_.-]+\.js)"/g)].map(m=>m[1]))]){
+     const js=await get(asset);contactsAction=js.match(/createServerReference\)\("([a-f0-9]{40,64})",[^()]{0,180}?"contactsAction"\)/)?.[1];if(contactsAction)break;
+    }
+   }
+   if(!contactsAction)throw Error('도도시 수령인 조회 방식이 변경됐습니다. 입력 도구 업데이트가 필요합니다.');
+   const result=parse(await get(path,{method:'POST',headers:{'Next-Action':contactsAction,'Content-Type':'text/plain;charset=UTF-8'},body:JSON.stringify([id])})).find(v=>v&&typeof v.ok==='boolean');
+   if(!result?.ok||!result.value)throw Error('도도시에서 수령인 정보를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.');
+   return result.value;
+  };
   for(const entry of list){
+   if(entry.status==='cancelled')continue;
+   // Ignore unrelated dates/origins before resolving historical shop IDs.
+   // Include other destinations on that day so a changed destination cannot create a duplicate.
+   if(scope&&!scope.some(s=>s.dropoffDate===entry.dropDate&&order.shops.some(shop=>shop.id===s.originId&&norm(shop.label)===norm(entry.dropShop))))continue;
+   const originId=shopId(entry.dropShop),destinationId=shopId(entry.pickShop);
    if(!/^[a-f0-9-]{36}$/.test(entry.id||'')||!entry.shipmentNo||!statusMap[entry.status])throw Error('도도시 예약 형식이 변경됐습니다. 대조가 필요합니다.');
-   const detail=nodes(rows(await get('/deliveries/'+entry.id))).filter(v=>!Array.isArray(v)&&v.id===entry.id&&v.shipmentNo===entry.shipmentNo);
+   const path='/deliveries/'+entry.id,detailHtml=await get(path),detail=nodes(rows(detailHtml)).filter(v=>!Array.isArray(v)&&v.id===entry.id&&v.shipmentNo===entry.shipmentNo);
    const unique=[...new Map(detail.map(v=>[JSON.stringify(v),v])).values()];
    if(unique.length!==1)throw Error('예약 '+entry.shipmentNo+'의 상세 정보를 읽지 못했습니다.');
    const d=unique[0];
+   const party=[d.receiverName,d.recipientName,d.receiver?.name,d.recipient?.name].some(v=>typeof v==='string'&&v.trim())?{}:await contacts(path,detailHtml,entry.id);
    // Only unambiguous recipient fields are accepted. Unknown schemas fail closed.
-   const names=[d.receiverName,d.recipientName,d.receiver?.name,d.recipient?.name].filter(v=>typeof v==='string'&&v.trim()).map(v=>v.trim());
-   const phones=[d.receiverTel,d.receiverPhone,d.recipientTel,d.recipientPhone,d.receiver?.tel,d.receiver?.phone,d.recipient?.tel,d.recipient?.phone].filter(v=>typeof v==='string').map(v=>v.replace(/\D/g,''));
-   if(new Set(names).size!==1||new Set(phones).size!==1||!/^0\d{8,10}$/.test(phones[0]))throw Error('예약 '+entry.shipmentNo+'의 수령인·연락처 확인이 필요합니다.');
+   const names=[d.receiverName,d.recipientName,d.receiver?.name,d.recipient?.name,party.recipientName].filter(v=>typeof v==='string'&&v.trim()).map(v=>v.trim());
+   const phones=[d.receiverTel,d.receiverPhone,d.recipientTel,d.recipientPhone,d.receiver?.tel,d.receiver?.phone,d.recipient?.tel,d.recipient?.phone,party.recipientPhone].filter(v=>typeof v==='string').map(v=>v.replace(/\D/g,''));
+   if(new Set(names).size!==1||new Set(phones).size!==1||!/^0\d{8,10}$/.test(phones[0]))throw Error('예약 '+entry.shipmentNo+'의 수령인 정보를 도구가 읽지 못했습니다.');
    if(d.status!==entry.status||d.petCount!==entry.petCount||d.dropDate!==entry.dropDate||d.pickDate!==entry.pickDate||d.dropShop!==entry.dropShop||d.pickShop!==entry.pickShop)throw Error('조회 도중 예약 정보가 변경됐습니다. 다시 확인해 주세요.');
-   records.push({id:entry.shipmentNo,status:statusMap[d.status],originId:shopId(d.dropShop),destinationId:shopId(d.pickShop),name:names[0],phone:phones[0],quantity:d.petCount,dropoffDate:d.dropDate,arrivalDate:d.pickDate});
+   records.push({id:entry.shipmentNo,status:statusMap[d.status],originId,destinationId,name:names[0],phone:phones[0],quantity:d.petCount,dropoffDate:d.dropDate,arrivalDate:d.pickDate});
   }
  }
- return{source:'https://www.dodosi.co.kr/deliveries',complete:true,checkedAt:new Date().toISOString(),records};
+ return{source:'https://www.dodosi.co.kr/deliveries',complete:true,checkedAt:new Date().toISOString(),records,...(scope?{scope}:{} )};
+ } catch(error) { return {complete:false,error:String(error?.message||'도도시 접수 내역 조회에 실패했습니다.')}; }
 }
 if(typeof module==='object')module.exports={creoDodosiReceipts};
