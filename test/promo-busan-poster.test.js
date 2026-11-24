@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-for(const [episode,src] of [['Busan November 23','/promo-assets/jeoncre-busan-20261123-v3.jpg'],['Seoul Incheon November 25','/promo-assets/jeoncre-seoul-incheon-20261125-v1.jpg'],['Seoul Incheon subway','/promo-assets/jeoncre-seoul-incheon-20261125-v2.jpg']])test(`${episode} begins with one selected poster in preview and copied HTML`,()=>{
+for(const [episode,src] of [['Busan November 23','/promo-assets/jeoncre-busan-20261123-v3.jpg'],['Seoul Incheon November 25','/promo-assets/jeoncre-seoul-incheon-20261125-v1.jpg'],['Seoul Incheon subway','/promo-assets/jeoncre-seoul-incheon-20261125-v2.jpg'],['Seoul Incheon white billing','/promo-assets/jeoncre-seoul-incheon-20261125-v3.jpg']])test(`${episode} begins with one selected poster in preview and copied HTML`,()=>{
  const source=fs.readFileSync(require.resolve('../public/promo-center.js'),'utf8');
  const ctx=vm.createContext({URL,location:{origin:'https://creok.onrender.com'},esc:v=>String(v)});
  vm.runInContext(source.slice(source.indexOf(' function imageURL('),source.indexOf('\n const kst=')),ctx);
