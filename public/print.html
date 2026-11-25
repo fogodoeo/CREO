@@ -17,8 +17,8 @@
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="mobile-phone.js?v=20261018-contact"></script>
     <script src="print-shipping-summary.js?v=20261024-packing-label"></script>
-    <script src="dodosi-labels.js?v=20261123-v4"></script>
-    <link rel="stylesheet" href="dodosi-labels.css?v=20261123-v3">
+    <script src="dodosi-labels.js?v=20261125-sides-v1"></script>
+    <link rel="stylesheet" href="dodosi-labels.css?v=20261125-sides-v1">
     <script src="google-sheets-export.js?v=20261015-gross-shipping"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
@@ -871,10 +871,16 @@
     <div class="tab-content" id="tab-labels">
         <div class="header">
             <h1>배송 라벨</h1>
-            <div class="meta">도도시: 개체당 세로 2장 · 그 외: 가로 1장</div>
+            <div class="meta">도도시: 왼쪽·오른쪽 선택 출력 · 그 외: 가로 1장</div>
         </div>
         <div class="label-workspace">
             <div class="dodosi-label-editor" id="dodosi-label-editor" hidden>
+                <fieldset class="dodosi-side-options">
+                    <legend>도도시 출력할 쪽</legend>
+                    <label class="dodosi-side-toggle"><input id="dodosi-side-departure" type="checkbox" role="switch" checked onchange="updateShippingLabelSelection()">왼쪽 · 보내는 분(전크자)</label>
+                    <label class="dodosi-side-toggle"><input id="dodosi-side-arrival" type="checkbox" role="switch" checked onchange="updateShippingLabelSelection()">오른쪽 · 받는 분</label>
+                    <p id="dodosi-side-status" role="status">양쪽 출력 · 개체당 2장</p>
+                </fieldset>
                 <label for="dodosi-label-name">보내는 이름<input id="dodosi-label-name" maxlength="40" autocomplete="organization" oninput="saveDodosiLabelSender()"></label>
                 <label for="dodosi-label-phone">연락처<input id="dodosi-label-phone" type="tel" inputmode="tel" maxlength="24" autocomplete="tel" oninput="saveDodosiLabelSender()"></label>
                 <p id="dodosi-label-sender-status" role="status">라벨에만 적용 · 이 기기에 회차별 저장</p>
@@ -899,7 +905,7 @@
                         <span class="label-preview-counter" id="label-preview-counter">0 / 0</span>
                         <button id="label-preview-next" type="button" onclick="moveShippingLabelPreview(1)">다음</button>
                     </div>
-                    <div class="label-preview-note">승차권 빈칸에 세로로 붙이는 2장입니다. 왼쪽은 출발지 · 보내는 분 · 연락처 · 맡기는 날짜, 오른쪽은 도착지 · 받는 분 · 연락처 · 찾는 날짜 순서입니다. 오른쪽 맨 위에 합배송 번호를 한 줄로 표시하며, 검은 번호가 현재 개체예요. 날짜는 배송 예정일입니다. <a id="dodosi-label-settings" href="#">배송 일정 확인</a></div>
+                    <div class="label-preview-note">켜 둔 쪽만 선택한 개체 순서대로 출력합니다. 양쪽을 켜면 개체마다 왼쪽·오른쪽 2장을 출력합니다. 왼쪽은 출발지 · 보내는 분 · 연락처 · 맡기는 날짜, 오른쪽은 도착지 · 받는 분 · 연락처 · 찾는 날짜 순서입니다. 오른쪽 맨 위 검은 번호가 현재 개체예요. 날짜는 배송 예정일입니다. <a id="dodosi-label-settings" href="#">배송 일정 확인</a></div>
                 </section>
                 <div class="label-item-list" id="label-item-list"><div class="loading">불러오는 중...</div></div>
             </div>
@@ -1245,6 +1251,10 @@
             return {name:document.getElementById('dodosi-label-name').value,phone:document.getElementById('dodosi-label-phone').value};
         }
 
+        function dodosiLabelSides() {
+            return ['departure','arrival'].filter(function (side) { return document.getElementById('dodosi-side-' + side).checked; });
+        }
+
         function saveDodosiLabelSender() {
             try {
                 localStorage.setItem(window._dodosiSenderEditorKey, JSON.stringify(dodosiLabelSender()));
@@ -1326,7 +1336,9 @@
             var selectAll = document.getElementById('label-select-all');
             selectAll.checked = Boolean(checks.length) && selected === checks.length;
             selectAll.indeterminate = selected > 0 && selected < checks.length;
-            document.getElementById('label-selection-summary').textContent = selected + '개체 선택 · 총 ' + CreoDodosiLabels.physicalCount(selectedShippingLabelItems()) + '장 / ' + checks.length + '개체';
+            var sides = dodosiLabelSides();
+            document.getElementById('label-selection-summary').textContent = selected + '개체 선택 · 총 ' + CreoDodosiLabels.physicalCount(selectedShippingLabelItems(), sides) + '장 / ' + checks.length + '개체';
+            document.getElementById('dodosi-side-status').textContent = sides.length === 2 ? '양쪽 출력 · 개체당 2장' : sides.length === 1 ? (sides[0] === 'departure' ? '왼쪽만' : '오른쪽만') + ' 연속 출력 · 개체당 1장' : '도도시 라벨은 출력할 쪽을 하나 이상 켜 주세요.';
             if (Number.isInteger(preferredIndex)) window._shippingLabelPreviewIndex = preferredIndex;
             renderShippingLabelPreview();
         }
@@ -1408,8 +1420,9 @@
 
             var position = indexes.indexOf(activeIndex);
             if (CreoDodosiLabels.isDodosi(items[activeIndex])) {
-                stage.innerHTML = CreoDodosiLabels.preview(CreoDodosiLabels.ticket(items[activeIndex], window._dodosiLabelState, dodosiLabelSender()));
-                counter.textContent = (position + 1) + ' / ' + indexes.length + ' · 세로 2장';
+                var sides = dodosiLabelSides();
+                stage.innerHTML = CreoDodosiLabels.preview(CreoDodosiLabels.ticket(items[activeIndex], window._dodosiLabelState, dodosiLabelSender(), sides));
+                counter.textContent = (position + 1) + ' / ' + indexes.length + ' · 세로 ' + sides.length + '장';
                 prev.disabled = position <= 0;
                 next.disabled = position >= indexes.length - 1;
                 fitShippingLabelPreview();
@@ -1495,6 +1508,7 @@
                 if (!response.ok) throw new Error('브리지 응답 오류');
                 var payload = await response.json();
                 window._dodosiTicketSupported = payload.dodosiTicketVersion >= 2;
+                window._dodosiSidesSupported = payload.dodosiTicketVersion >= 3;
                 var suffix = payload.printing ? ' · 인쇄 중' : payload.queued ? ' · 대기 ' + payload.queued + '장' : '';
                 if (!payload.shippingLabelDetails || !(Number(payload.shippingLabelVersion) >= 2)) {
                     setD10PrinterStatus('새 라벨 적용: 모니터 앱 다시 열기', 'error');
@@ -1508,9 +1522,9 @@
             }
         }
 
-        function d10ShippingLabelPayload(it) {
+        function d10ShippingLabelPayload(it, sides) {
             if (typeof CreoDodosiLabels !== 'undefined' && CreoDodosiLabels.isDodosi(it)) {
-                var ticket = CreoDodosiLabels.ticket(it, window._dodosiLabelState, dodosiLabelSender());
+                var ticket = CreoDodosiLabels.ticket(it, window._dodosiLabelState, dodosiLabelSender(), sides || dodosiLabelSides());
                 if (ticket.errors.length) throw new Error((it.name || '도도시') + ': ' + ticket.errors.join(' · '));
                 return ticket.payload;
             }
@@ -1535,10 +1549,17 @@
         async function printSelectedShippingLabels() {
             if (window._shippingPrintBusy) return;
             window._shippingPrintBusy = true;
+            var sideInputs = ['departure','arrival'].map(function (side) { return document.getElementById('dodosi-side-' + side); });
+            sideInputs.forEach(function (input) { input.disabled = true; });
             try {
             var items = selectedShippingLabelItems();
+            var sides = dodosiLabelSides();
             if (!items.length) {
                 alert('출력할 배송 라벨을 선택해 주세요.');
+                return;
+            }
+            if (items.some(CreoDodosiLabels.isDodosi) && !sides.length) {
+                alert('도도시 라벨은 출력할 쪽을 하나 이상 켜 주세요.');
                 return;
             }
             if (!await refreshD10PrinterStatus()) {
@@ -1549,6 +1570,10 @@
                 alert('도도시 세로 2장 출력을 적용하려면 업데이트된 밴드 모니터 앱을 다시 열어 주세요.');
                 return;
             }
+            if (items.some(CreoDodosiLabels.isDodosi) && sides.length === 1 && !window._dodosiSidesSupported) {
+                alert('한쪽만 출력하려면 업데이트된 밴드 모니터 앱을 다시 열어 주세요.');
+                return;
+            }
             var button = document.getElementById('print-action-btn');
             button.disabled = true;
             button.textContent = 'B1 PRO 전송 중...';
@@ -1556,7 +1581,7 @@
             try {
                 // Refresh sender/recipient/schedule before printing. Never print a stale preview.
                 if (items.some(CreoDodosiLabels.isDodosi)) await loadDodosiLabelState();
-                var labels = items.map(d10ShippingLabelPayload);
+                var labels = items.map(function (item) { return d10ShippingLabelPayload(item, sides); });
                 var response = await fetchD10Bridge('/v1/labels', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1578,6 +1603,7 @@
             }
             } finally {
                 window._shippingPrintBusy = false;
+                sideInputs.forEach(function (input) { input.disabled = false; });
             }
         }
 

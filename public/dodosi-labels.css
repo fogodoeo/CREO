@@ -1,5 +1,14 @@
 /* 30 × 50 mm portrait artwork, paired in ticket order. No colour-dependent fields. */
 .dodosi-label-pair { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%;max-width:560px; }
+.dodosi-label-pair.is-single { grid-template-columns:minmax(0,1fr);max-width:274px;margin-inline:auto; }
+.dodosi-side-options { flex:1 1 100%;display:flex;flex-wrap:wrap;gap:10px;margin:0;padding:0;border:0; }
+.dodosi-side-options legend { margin-bottom:8px;font-size:14px;font-weight:700; }
+.dodosi-label-editor .dodosi-side-toggle { position:relative;flex:0 1 auto;display:flex;align-items:center;gap:10px;min-height:48px;padding:10px 16px;border:1px solid #aeb9c8;border-radius:24px;background:white;cursor:pointer; }
+.dodosi-label-editor .dodosi-side-toggle:has(input:checked) { color:#fff;background:#173c68;border-color:#173c68; }
+.dodosi-label-editor .dodosi-side-toggle:has(input:focus-visible) { outline:3px solid #60a5fa;outline-offset:3px; }
+.dodosi-label-editor .dodosi-side-toggle input { flex:0 0 auto;width:18px;height:18px;min-height:0;margin:0;padding:0;accent-color:#173c68; }
+.dodosi-label-editor .dodosi-side-toggle:has(input:disabled) { opacity:.6;cursor:wait; }
+.dodosi-side-options [role="status"] { flex:1 1 100%;margin:0;font-size:13px;line-height:1.5; }
 .dodosi-label-side { min-width:0; }
 .dodosi-side-caption { text-align:center;font-size:12px;font-weight:600;margin-bottom:8px;color:#111; }
 .dodosi-label-paper { position:relative;container-type:inline-size;aspect-ratio:3/5;background:white;color:black;font-family:'Pretendard',sans-serif;font-weight:700;border:1px solid #aaa; }

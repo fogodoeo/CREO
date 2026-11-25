@@ -31,6 +31,14 @@ class TicketTest(unittest.TestCase):
         for key,value in [('sender_phone',''),('arrival_date','2026-11-22'),('dropoff_date','2026-02-30'),('lot_number',''),('destination','x'*181),('broadcast_date',''),('bundle_index',2),('bundle_lots',['A01']*13)]:
             with self.assertRaises(ValueError):normalize_ticket({**ticket(),key:value})
 
+    def test_side_selection_keeps_order_and_defaults_to_two(self):
+        for sides,expected in [(['departure'],['dodosi_departure_b1']),(['arrival'],['dodosi_arrival_b1']),(['arrival','departure'],['dodosi_departure_b1','dodosi_arrival_b1'])]:
+            jobs=normalize_ticket({**ticket(),'sides':sides})
+            self.assertEqual([j['label_layout'] for j in jobs],expected)
+        self.assertEqual(len(normalize_ticket(ticket())),2)
+        for sides in [[],None,'departure',['unknown'],['arrival','arrival'],[{}]]:
+            with self.assertRaises(ValueError):normalize_ticket({**ticket(),'sides':sides})
+
     @unittest.skipUnless(APP,'installed app integration')
     def test_bridge_and_bitmap_without_printer_io(self):
         import label_print_bridge as b
@@ -94,13 +102,21 @@ class TicketTest(unittest.TestCase):
             conn=http.client.HTTPConnection('127.0.0.1',bridge.port,timeout=3)
             headers={'Origin':'https://creok.onrender.com','Content-Type':'application/json'}
             conn.request('GET','/v1/status',headers=headers)
-            self.assertEqual(json.loads(conn.getresponse().read())['dodosiTicketVersion'],2)
+            self.assertGreaterEqual(json.loads(conn.getresponse().read())['dodosiTicketVersion'],3)
             conn.request('POST','/v1/labels',json.dumps({'labels':[ticket(),ticket()]}).encode(),headers)
             response=conn.getresponse();self.assertEqual(response.status,202)
             self.assertEqual(json.loads(response.read())['accepted'],4)
             self.assertEqual([j['label_layout'] for j in received],['dodosi_departure_b1','dodosi_arrival_b1']*2)
             conn.request('POST','/v1/labels',json.dumps({'labels':[ticket(),{**ticket(),'sender_phone':''}]}).encode(),headers)
             response=conn.getresponse();response.read();self.assertEqual(response.status,400);self.assertEqual(len(received),4)
+            for side in ['departure','arrival']:
+                received.clear()
+                conn.request('POST','/v1/labels',json.dumps({'labels':[{**ticket(),'sides':[side]},{**ticket(),'sides':[side]}]}).encode(),headers)
+                response=conn.getresponse();self.assertEqual(response.status,202)
+                self.assertEqual(json.loads(response.read())['accepted'],2)
+                self.assertEqual([j['label_layout'] for j in received],['dodosi_'+side+'_b1']*2)
+            conn.request('POST','/v1/labels',json.dumps({'labels':[ticket(),{**ticket(),'sides':[]}]}).encode(),headers)
+            response=conn.getresponse();response.read();self.assertEqual(response.status,400);self.assertEqual(len(received),2)
         finally:bridge.shutdown()
 
 

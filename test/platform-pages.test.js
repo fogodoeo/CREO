@@ -750,7 +750,9 @@ test('print forms have one canonical page linked from both pipeline and workspac
     assert.match(print, /id="label-item-list"/);
     assert.match(print, /id="label-preview-stage"/);
     assert.match(print, /B1 PRO 30×50mm 라벨/);
-    assert.match(print, /도도시: 개체당 세로 2장/);
+    assert.match(print, /도도시: 왼쪽·오른쪽 선택 출력/);
+    assert.match(print, /id="dodosi-side-departure"/);
+    assert.match(print, /id="dodosi-side-arrival"/);
     assert.match(print, /function renderShippingLabels\(items\)/);
     assert.match(print, /function renderShippingLabelPreview\(\)/);
     assert.match(print, /function moveShippingLabelPreview\(direction\)/);
@@ -763,7 +765,7 @@ test('print forms have one canonical page linked from both pipeline and workspac
     assert.match(print, /function printSelectedShippingLabels\(\)/);
     assert.match(print, /D10_LABEL_BRIDGE_BASE\s*=\s*['"]http:\/\/127\.0\.0\.1:17876['"]/);
     assert.match(print, /fetchD10Bridge\('\/v1\/labels'/);
-    assert.match(print, /var labels = items\.map\(d10ShippingLabelPayload\)/);
+    assert.match(print, /var labels = items\.map\(function \(item\) \{ return d10ShippingLabelPayload\(item, sides\); \}\)/);
     assert.match(print, /labels:\s*labels/);
     assert.match(print, /destination:\s*shippingLabelDestination\(it\)/);
     assert.doesNotMatch(print, /shipping-label-page-size|label-print-mode/);
