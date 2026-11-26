@@ -23,8 +23,9 @@ function entryProgress(r,entries,entryLimit=r.entryIds.length){
 }
 function regionIndex(name){return ['서울','인천','서울+인천'].includes(name)?0:REGIONS.indexOf(name);}
 function regionForVendor(v){if(v?.broadcastRegion===EXCLUDED_REGION)return -1;const region=regionIndex(v?.broadcastRegion);if(region>=0)return region;return [0,0,1,1,2,2,3,4][v?.bookingRegion]??null;}
-function regionEntryPolicy(state,region,vendors){
- const ids=new Set(vendors.filter(v=>v.id&&v.active!==false&&!v.deletedAt&&(state.regions?.[v.id]??regionForVendor(v))===region).map(v=>v.id));
+function regionEntryPolicy(state,region,vendors,date=''){
+ const guests=new Set((state.reservations||[]).filter(r=>date&&r.date===date&&r.status==='confirmed'&&r.guest===true).map(r=>r.vendorId));
+ const ids=new Set(vendors.filter(v=>v.id&&v.active!==false&&!v.deletedAt&&((state.regions?.[v.id]??regionForVendor(v))===region||guests.has(v.id))).map(v=>v.id));
  return {regionVendorCount:ids.size,vendorEntryLimit:ENTRY_COUNT};
 }
 function scheduled(date){return /^\d{4}-\d{2}-\d{2}$/.test(date||'')&&Number.isFinite(Legacy.start(date))&&Legacy.day(Legacy.start(date))===date&&date>=START&&[1,3].includes(new Date(date+'T00:00:00Z').getUTCDay());}
@@ -52,7 +53,7 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
   // sessions created under the old 72/24-hour defaults. Manual pauses still apply.
   function session(state,date){return {...Legacy.session(state,date),closesAt:null,entriesDueAt:null,selfUntil:null,region:regionAt(date),regionName:REGIONS[regionAt(date)]||''};}
  function dates(state,records=state.reservations){return [...new Set([...APPLICATION_DATES,...records.map(r=>r.date).filter(scheduled)])].sort();}
- function policySession(state,date,vendors){return {...session(state,date),...regionEntryPolicy(state,regionAt(date),vendors)};}
+ function policySession(state,date,vendors){return {...session(state,date),...regionEntryPolicy(state,regionAt(date),vendors,date)};}
  function limitFor(state,r,vendors){return Legacy.start(r.date)<=now()?r.entryIds.length:Math.min(r.entryIds.length,regionEntryPolicy(state,r.region,vendors).vendorEntryLimit);}
  function limitMessage(){return '전국크레자랑은 모든 업체가 4마리씩 출품합니다. 새로고침 후 확인해 주세요.';}
  function panelLimit(state,date,vendor){if((state.regions[vendor.id]??regionForVendor(vendor))===-1)return 0;return state.panels?.[date]?.[vendor.id]??((state.regions[vendor.id]??regionForVendor(vendor))===regionAt(date)?100:0);}
@@ -89,7 +90,7 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
   if(!repository.compareAndSwapRows)throw fail('방송 저장소를 확인해 주세요.',503);
   const {state,raw}=await read(context.channel),requestId=String(input.requestId||''),type=input.type;
   if(!/^[a-zA-Z0-9_-]{8,80}$/.test(requestId))throw fail('요청을 다시 확인해 주세요.',422);
-  const allowed=operator?['session','defaults','region','cancel','panel-assignment']:['reserve','save-entry','save-entries','reopen-entry','save-panels','reopen-panel','delete-panel','parent-photos','pickup','inbound-origin'];
+  const allowed=operator?['session','defaults','region','cancel','panel-assignment','guest-assignment']:['reserve','save-entry','save-entries','reopen-entry','save-panels','reopen-panel','delete-panel','parent-photos','pickup','inbound-origin'];
   if(!allowed.includes(type))throw fail('이 작업을 실행할 수 없어요.',403);
   const clean={...input};for(const k of ['requestId','code','token','bookingCode'])delete clean[k];
   const signature=crypto.createHash('sha256').update(JSON.stringify(clean)).digest('hex'),requestKey=(operator?'operator':context.vendor.id)+':'+requestId,prior=state.requests.find(r=>r.key===requestKey);
@@ -134,7 +135,19 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
    const payload=type==='reopen-entry'?{type:'withdraw',id:r.entryIds[input.slot]}:{type:input.submit===true?'submit':'save',entry:{...input.entry,id:r.entryIds[input.slot]},parents:input.parents};
     return entries.command(scoped,{...payload,replaceSubmitted:input.replaceSubmitted===true,expectedVersion:input.expectedVersion,requestId});
   }
-  if(type==='panel-assignment'){
+  if(type==='guest-assignment'){
+   if(input.expectedVersion!==state.version)throw fail('설정이 변경됐어요. 새로고침 후 다시 저장해 주세요.');
+   const vendor=context.vendors.find(v=>v.id===input.vendorId&&v.active!==false&&!v.deletedAt);
+   if(!vendor||!APPLICATION_DATES.includes(input.date)||input.date<Legacy.day(now())||input.quantity!==ENTRY_COUNT)throw fail('특별 참여 업체와 방송일, 출품 4마리를 확인해 주세요.',422);
+   if((state.regions[vendor.id]??regionForVendor(vendor))===-1)throw fail('방송 참여에서 제외된 업체입니다.');
+   const target=await contextForVendor(context.channel,vendor);
+   if(!target.profile)throw fail('업체의 로그인 연결을 먼저 확인해 주세요.');
+   if(state.reservations.some(r=>r.vendorId===vendor.id&&r.date===input.date&&r.status==='confirmed'))throw fail('이미 신청한 방송이에요.');
+   const available=availability(state,input.date,regionAt(input.date),vendor.id,context.vendors);
+   if(available.maxQuantityAvailable<ENTRY_COUNT)throw fail(available.reason||'신청 가능한 수량이 변경됐어요.');
+   r={id:uuid(),vendorId:vendor.id,vendorName:vendor.name,region:regionAt(input.date),date:input.date,quantity:ENTRY_COUNT,status:'confirmed',version:1,guest:true,entryIds:Array.from({length:ENTRY_COUNT},uuid),pickup:false,linkCode:crypto.randomBytes(18).toString('base64url'),createdAt:new Date(now()).toISOString()};
+   state.reservations.push(r);result=r.id;action='특별 참여 배정';
+  }else if(type==='panel-assignment'){
    if(input.expectedVersion!==state.version)throw fail('설정이 변경됐어요. 새로고침 후 다시 저장해 주세요.');
    const vendor=context.vendors.find(v=>v.id===input.vendorId&&v.active!==false&&!v.deletedAt);
    if(!vendor||!APPLICATION_DATES.includes(input.date)||input.date<Legacy.day(now())||!Number.isInteger(input.quantity)||input.quantity<0||input.quantity>100)throw fail('패널 업체와 방송일, 등록 수량을 확인해 주세요.',422);
@@ -201,7 +214,7 @@ function createNationalBroadcast(repository,{now=Date.now,entries,notificationSe
    if(!await repository.compareAndSwapRows(KEY,raw,[...rows,...extra]))throw fail('다른 변경이 먼저 반영됐어요. 다시 불러와 주세요.');
    return {result,duplicate:false};
   };
-   return (['reserve','region'].includes(type)||type==='panel-assignment'&&input.quantity>0)&&withParticipation?withParticipation(context,input,commit):commit();
+   return (['reserve','region','guest-assignment'].includes(type)||type==='panel-assignment'&&input.quantity>0)&&withParticipation?withParticipation(context,input,commit):commit();
  }
  async function operatorView(channel,vendors){
   const {state}=await read(channel);

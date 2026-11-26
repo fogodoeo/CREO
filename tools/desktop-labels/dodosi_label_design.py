@@ -8,9 +8,13 @@ from datetime import date
 from PIL import Image, ImageDraw
 
 LAYOUTS = ('dodosi_departure_b1', 'dodosi_arrival_b1')
+SIDES = ('departure', 'arrival')
 
 
 def normalize_ticket(label, error_type=ValueError):
+    sides = label.get('sides', list(SIDES))
+    if not isinstance(sides, list) or not sides or any(side not in SIDES for side in sides) or len(set(sides)) != len(sides):
+        raise error_type('도도시 라벨은 왼쪽·오른쪽 중 출력할 쪽을 선택해 주세요.')
     def required(key, limit=80):
         value = ' '.join(str(label.get(key) or '').split())
         if not value or len(value) > limit:
@@ -54,7 +58,7 @@ def normalize_ticket(label, error_type=ValueError):
         jobs.append({'num': num, 'item_name': required(shop, 180), 'winner_name': required(person, 40),
                      'winner_phone': mobile(phone), 'company': dates[index].isoformat(),
                      'sold_price': summary, 'label_layout': LAYOUTS[index]})
-    return jobs
+    return [job for side, job in zip(SIDES, jobs) if side in sides]
 
 
 def render_portrait(num, shop, person, phone, date_value, summary='', departure=True, font_key=None):

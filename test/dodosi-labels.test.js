@@ -44,3 +44,15 @@ test('Arrival sticker prints recipient before phone and date, with bundled lots 
  assert.equal(arrival.querySelector('.dt-lots').textContent,'A01 · B02 · C03');
  assert.equal(arrival.querySelector('.is-current').textContent,'B02');
 });
+test('Left, right and paired selection produce matching previews and mixed-carrier sheet counts',()=>{
+ for(const [selection,caption] of [[['departure'],'① 왼쪽 · 출발'],[['arrival'],'② 오른쪽 · 도착'],[['departure','arrival'],null]]){
+  const result=D.ticket(item,state,undefined,selection),html=D.preview(result);
+  assert.deepEqual(result.errors,[]);assert.deepEqual(result.payload.sides,selection);
+  assert.equal((html.match(/class="dodosi-label-paper(?: |")/g)||[]).length,selection.length);
+  if(caption)assert.ok(html.includes(caption));
+  assert.equal(D.physicalCount([item,item,{...item,shipping_company:'파르게'}],selection),selection.length*2+1);
+ }
+ assert.equal(D.physicalCount([item]),2);
+ const empty=D.ticket(item,state,undefined,[]);assert.match(empty.errors.join(' '),/출력할 쪽/);
+ assert.equal(D.physicalCount([item],[]),0);assert.doesNotMatch(D.preview(empty),/class="dodosi-label-paper/);
+});

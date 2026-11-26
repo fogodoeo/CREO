@@ -23,6 +23,62 @@ const novemberCycle=['2026-11-09','2026-11-11','2026-11-16','2026-11-18','2026-1
 const season3Cycle=['2026-11-25','2026-11-30','2026-12-02','2026-12-07','2026-12-09'];
 const announcedDates=[...firstCycle,...novemberCycle,...season3Cycle];
 
+test('operator guest assignment opens four regular slots for one date without changing region or sending a notice',async t=>{
+ const f=await fixture(t,'경기 특별 참여','경기'),date=firstCycle[0],route='/api/platform/channels/national-cre/broadcast-bookings';
+ const prepare=await f.call(f.client,'POST','/api/platform/national-rounds',{action:'prepare',date},f.admin);assert.equal(prepare.status,200,prepare.body);
+ const read=async()=>(await f.call(f.client,'GET',route,null,f.admin)).json();
+ const before=(await f.get()).json(),notices=await f.repository.listRecords('national-cre','notification');
+ const body={type:'guest-assignment',date,vendorId:f.vendorId,quantity:4,expectedVersion:(await read()).version,requestId:randomUUID()};
+ assert.equal((await f.command(body)).status,403);
+ const replies=await Promise.all([1,2].map(()=>f.call(f.client,'POST',route,body,f.admin)));
+ for(const r of replies)assert.equal(r.status,200,r.body);
+ assert.equal(replies.filter(r=>r.json().duplicate).length,1);
+ assert.equal((await f.call(f.client,'POST',route,{...body,requestId:randomUUID()},f.admin)).status,409);
+ f.restart();assert.equal((await f.call(f.client,'POST',route,body,f.admin)).json().duplicate,true);
+ let view=(await f.get()).json();assert.equal(view.vendor.region,'경기');
+ const reservation=view.reservations.find(r=>r.date===date);
+ assert.equal(view.reservations.length,1);assert.equal(reservation.guest,true);assert.equal(reservation.entryIds.length,4);assert.equal(new Set(reservation.entryIds).size,4);
+ assert.equal(view.dates.find(d=>d.date===firstCycle[1]).maxQuantityAvailable,before.dates.find(d=>d.date===firstCycle[1]).maxQuantityAvailable);
+ assert.equal(view.dates.find(d=>d.date===date).regionVendorCount,1);
+ assert.ok(require('../public/vendor-task-state').vendorBroadcasts(view).some(d=>d.date===date&&d.reservation));
+ const directory=require('../vendor-directory').createVendorDirectory(f.repository);
+ assert.equal((await directory.profileFor('national-cre',f.vendorId)).id,(await directory.profileFor('national-cre-20261014',f.vendorId)).id);
+ assert.equal((await directory.find('national-cre',f.vendorId)).broadcastRegion,'경기');
+ assert.deepEqual(await f.repository.listRecords('national-cre','notification'),notices);
+ const save={type:'save-entry',id:reservation.id,slot:0,entry:{weight:'5'},expectedVersion:0,requestId:randomUUID()};
+ assert.equal((await f.command(save)).status,200);f.restart();view=(await f.get()).json();
+ assert.equal(view.reservations[0].entries[0].auctionKind,'regular');assert.equal(view.reservations[0].entries[0].weight,'5');
+ const duplicate=await f.call(f.client,'POST',route,{...body,expectedVersion:(await read()).version,requestId:randomUUID()},f.admin);assert.equal(duplicate.status,409);
+});
+
+test('guest assignment respects exclusions, capacity, pauses, stale writes, and date boundaries',async t=>{
+ const f=await fixture(t,'경기 특별 참여','경기'),route='/api/platform/channels/national-cre/broadcast-bookings',date=firstCycle[0];
+ const read=async()=>(await f.call(f.client,'GET',route,null,f.admin)).json();
+ const assign=async more=>f.call(f.client,'POST',route,{type:'guest-assignment',date,vendorId:f.vendorId,quantity:4,expectedVersion:(await read()).version,requestId:randomUUID(),...more},f.admin);
+ for(const more of [{date:'2026-10-15'},{date:'2026-10-28'},{date:'2026-09-23'},{vendorId:'missing'},{quantity:1},{quantity:100},{expectedVersion:-1}])assert.notEqual((await assign(more)).status,200);
+ const setting=async settings=>f.call(f.client,'POST',route,{type:'session',date,settings:{maxQuantity:null,responseHours:24,...settings},expectedVersion:(await read()).version,requestId:randomUUID()},f.admin);
+ assert.equal((await setting({paused:true})).status,200);assert.equal((await assign({})).status,409);
+ assert.equal((await setting({paused:false,maxQuantity:4})).status,200);
+ assert.equal((await assign({})).status,200);
+ const client=await f.login('01000000002'),v=(await f.post(client,'register',{name:'두 번째 특별 참여',region:'경기',phone:'01000000002'})).json();
+ assert.equal((await assign({vendorId:v.id})).status,409);
+ const vendor=await f.repository.getRecord('national-cre','vendor',v.id);
+ await f.repository.upsertRecord('national-cre','vendor',{...vendor,active:false});
+ assert.equal((await assign({vendorId:v.id})).status,422);
+});
+
+test('guest assignment storage conflict leaves no reservation or partial round membership',async t=>{
+ const f=await fixture(t,'경기 특별 참여','경기'),date=firstCycle[0],route='/api/platform/channels/national-cre/broadcast-bookings';
+ assert.equal((await f.call(f.client,'POST','/api/platform/national-rounds',{action:'prepare',date},f.admin)).status,200);
+ const directory=require('../vendor-directory').createVendorDirectory(f.repository),before=await directory.read();
+ const state=(await f.call(f.client,'GET',route,null,f.admin)).json();
+ const cas=f.repository.compareAndSwapRows.bind(f.repository);f.repository.compareAndSwapRows=async()=>false;
+ const result=await f.call(f.client,'POST',route,{type:'guest-assignment',date,vendorId:f.vendorId,quantity:4,expectedVersion:state.version,requestId:randomUUID()},f.admin);
+ assert.equal(result.status,409);f.repository.compareAndSwapRows=cas;f.restart();
+ assert.deepEqual(await directory.read(),before);assert.equal((await f.get()).json().reservations.length,0);
+ assert.equal(await directory.profileFor('national-cre-20261014',f.vendorId),null);
+});
+
 test('season 3 restarts in Seoul on November 25 without changing earlier seasons',()=>{
  assert.deepEqual(firstCycle.map(regionAt),[0,1,2,3,4]);
  assert.deepEqual(novemberCycle.map(regionAt),[0,1,2,3,4]);
