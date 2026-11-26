@@ -22,6 +22,9 @@ body[data-broadcast-variant="clab-boxing"][data-page="1"] #stage .host-card{
 }
 body[data-broadcast-variant="clab-boxing"] #stage .host-card[data-host-index="2"]{--corner:var(--ring-blue)}
 body[data-broadcast-variant="clab-boxing"] #stage .host-card[data-host-index="3"]{--corner:#465565}
+/* An empty second presenter has no saved slot yet. Its first appearance must
+   use the opposite corner, not the inherited national layout's left edge. */
+body[data-broadcast-variant="clab-boxing"][data-page="1"] #stage .host-card[data-host-index="2"]:not([data-layout-custom="1"]){left:63.65%;top:78.5%;width:31.85%;height:10%}
 body[data-broadcast-variant="clab-boxing"][data-page="1"] #stage .host-card>strong{
  height:100%;width:100%;display:flex;align-items:stretch!important;overflow:hidden;zoom:1!important;
  border:1px solid #b6c1cb;border-left:calc(8 * var(--ring-unit)) solid var(--corner);border-radius:calc(5 * var(--ring-unit));
