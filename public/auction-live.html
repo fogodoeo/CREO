@@ -8,13 +8,13 @@
     <script src="auction-contract.js?v=20260819-contract-v1"></script>
     <script src="broadcast-palette.js?v=20260915-retro-console"></script>
     <script src="broadcast-summary.js?v=20261116-sibling-order"></script>
-    <script src="broadcast-themes.js?v=20261117-airport"></script>
+    <script src="broadcast-themes.js?v=20261126-boxing"></script>
     <script src="broadcast-standby.js?v=20260915-reveal-tv"></script>
     <script src="broadcast-parent-photos.js?v=20261123-natural-frame"></script>
     <script src="basic-dice-core.js?v=20260830-balance-v2"></script>
     <script src="supabase-bridge.js?v=20260720-quota-fallback-v2"></script>
     <script src="broadcast-profiles.js?v=20261116-sibling-order"></script>
-    <script src="broadcast-text-layout.js?v=20261117-separated-info"></script>
+    <script src="broadcast-text-layout.js?v=20261126-boxing"></script>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
     <link rel="stylesheet" href="auction-skin-metal.css?v=20260819-metal-v1">
@@ -154,11 +154,13 @@
     <link rel="stylesheet" href="broadcast-airport.css?v=20261117-night">
     <script src="broadcast-airport-layout.js?v=20261117-silver-cef2"></script>
     <link rel="stylesheet" href="broadcast-clab-compat.css?v=20261117-silver-cef2">
-    <script src="broadcast-clab-compat.js?v=20261117-silver-cef2"></script>
+    <script src="broadcast-clab-compat.js?v=20261126-boxing"></script>
     <script src="broadcast-bidders.js?v=20261001-bid-flow"></script>
     <script src="broadcast-vendor-order.js?v=20261116"></script>
     <link rel="stylesheet" href="broadcast-vendor-order.css?v=20261116">
     <script src="broadcast-item-notes.js?v=20261123-morph-notes"></script>
+    <link rel="stylesheet" href="broadcast-boxing.css?v=20261126-metal">
+    <script src="broadcast-boxing-layout.js?v=20261126-1"></script>
 </head>
 <body><main class="stage" id="stage"></main><div class="error" id="error" hidden></div>
 <script src="ranking-engine.js"></script><script src="contribution-result.js?v=20260908-expiry"></script>
@@ -176,7 +178,7 @@ const CREWART_DEFAULT_ASSETS=Object.freeze([
     {id:'crewart_legacy_parge_banner',name:'PARGe 배송 배너',kind:'banner',page:'all',imageUrl:'/assets/broadcast-backups/legacy-parge-banner-20260828.png',sortOrder:30}
 ]);
 function theme(c){CreoBroadcastPalette.apply(document,c.theme);CreoBroadcastThemes.apply(document,c.broadcastTheme)}
-window.CreoApplyBroadcastTheme=(value,style)=>theme({theme:value,broadcastTheme:style??document.body.dataset.broadcastTheme});
+window.CreoApplyBroadcastTheme=(value,style)=>theme({theme:value,broadcastTheme:style??document.body.dataset.broadcastVariant??document.body.dataset.broadcastTheme});
 function pageAssets(assets,pageNo,kind){return(assets||[]).filter(asset=>asset.kind===kind&&(asset.page==='all'||asset.page===String(pageNo))).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)||String(a.name).localeCompare(String(b.name),'ko'))}
 function placed(value){return value&&value!=='auto'?` placed" data-pos="${esc(value)}`:''}
 function ticker(c,text,interval=5,position='auto'){const lines=String(text||c.description||'경매가 곧 시작됩니다').split(/\r?\n/).map(line=>line.trim()).filter(Boolean),seconds=Math.max(1,Math.min(30,Number(interval)||5)),line=lines[Math.floor(Date.now()/(seconds*1000))%Math.max(1,lines.length)]||'',edge=position&&position!=='auto'?` data-edge="${esc(position)}"`:'',badge=c.broadcastProfile==='basic-dice'?'NOTICE':c.shortName||c.name;return`<div class="ticker"${edge}><span class="ticker-badge">${esc(badge)}</span><div class="ticker-text">${esc(line)}</div></div>`}
@@ -336,6 +338,8 @@ const contributionCounters=new Map();
 function hydrateContributionCounters(){for(const el of stage.querySelectorAll('[data-contribution-key]')){const key=el.dataset.contributionKey,target=Number(el.dataset.contributionValue)||0,old=contributionCounters.get(key);if(old?.element===el&&old.target===target)continue;if(old?.frame)cancelAnimationFrame(old.frame);const from=old?.value??target,entry={element:el,target,value:from,frame:0},start=performance.now();contributionCounters.set(key,entry);const tick=now=>{if(!el.isConnected)return;const progress=Math.min(1,(now-start)/850);entry.value=Math.round((from+(target-from)*progress)*10000)/10000;el.textContent=entry.value.toLocaleString('ko-KR',{maximumFractionDigits:progress===1?4:1});if(progress<1)entry.frame=requestAnimationFrame(tick)};tick(start)}}
 function render(data){
     const profile=CreoBroadcastProfiles.resolve(data.channel);document.body.dataset.channel=data.channel?.id||'';document.body.dataset.skin=data.channel?.overlay?.skin||'clean';document.body.dataset.layout=data.channel?.overlay?.layout||'balanced';document.body.dataset.broadcastProfile=profile.id;theme(data.channel);
+    // Visual variants reuse the proven layout without changing the channel or auction payload.
+    data={...data,channel:{...data.channel,broadcastTheme:CreoBroadcastThemes.layoutTheme(data.channel.broadcastTheme)}};
     const state={...CreoBroadcastProfiles.defaultState(data.channel),...(data.state||{})};let items=data.items||[];
     if(editorMode&&page===1){state.page1HostsOn=true;state.page1TickerOn=true;state.page1BannerOn=true}
     if(editorMode&&page===2&&editorP2Scene==='waiting'){state.mode='standby';state.activeItemId='';}

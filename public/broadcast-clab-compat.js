@@ -2,7 +2,7 @@
  'use strict';
  let scheduled=false;
  function fitHosts(stage){
-  if(!stage||!['clab-gallery','departure-blue'].includes(document.body.dataset.broadcastTheme))return;
+  if(!stage||(!['clab-gallery','departure-blue'].includes(document.body.dataset.broadcastTheme)&&document.body.dataset.broadcastVariant!=='clab-boxing'))return;
   for(const panel of stage.querySelectorAll('.host-card')){
    const content=panel.querySelector('strong');if(!content||!panel.clientWidth)continue;
    panel.style.setProperty('--clab-host-fit','1');

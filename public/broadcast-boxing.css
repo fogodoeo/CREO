@@ -1,0 +1,132 @@
+/* Boxing is a visual variant of the national broadcast layout.
+   Camera remains transparent; red/blue identify corners, never auction state. */
+body[data-broadcast-variant="clab-boxing"]{
+ --ring-unit:min(.052083333vw,.092592593vh);
+ --ring-paper:#e8edf0;--ring-ink:#131b25;--ring-muted:#425164;
+ --ring-dark:#131c29;--ring-rule:#8b9aaa;--ring-red:#a82d39;--ring-blue:#245b9f;
+ --ring-grain:repeating-linear-gradient(0deg,#fff0 0px,#fff0 2px,#ffffff07 2px,#ffffff07 3px,#00000005 3px,#00000005 4px);
+ --ring-metal:var(--ring-grain),linear-gradient(112deg,#85929f 0%,#c3cdd5 17%,#eef1f3 36%,#aab6c0 58%,#d9e0e5 77%,#a0acb8 100%);
+ --ring-gunmetal:var(--ring-grain),linear-gradient(112deg,#17222e,#354555 30%,#1c2936 55%,#2e3d4c 78%,#17212c);
+ --ring-shadow:inset 0 1px 0 #ffffffcf,inset 0 -2px 0 #202d3c99,inset 1px 0 0 #ffffff55,inset -1px 0 0 #0005,0 3px 0 #0a1018,0 5px 12px #0007;
+ --national-ink:var(--ring-ink);--national-paper:var(--ring-paper);--national-rim:#95a3b0;
+ --national-number:var(--ring-dark);--national-ribbon:var(--ring-dark);--national-outline:none;
+}
+body[data-broadcast-variant="clab-boxing"] #stage,
+body[data-broadcast-variant="clab-boxing"] #stage *{font-family:'Gmarket Sans','Broadcast Pretendard','Malgun Gothic',sans-serif!important;font-synthesis:none}
+body[data-broadcast-variant="clab-boxing"] #stage .layer.enter{animation:none!important}
+body[data-broadcast-variant="clab-boxing"] #stage :is(.host-card,.item-progress,.ticker,.summary-row,.auction-progress,.item-inline-identity,.item-inline-traits,.sold-notice){border-radius:calc(5 * var(--ring-unit))!important;box-shadow:var(--ring-shadow)!important}
+/* P1. Name and role retain the previous show's two-zone reading order. */
+body[data-broadcast-variant="clab-boxing"][data-page="1"] #stage .host-card{
+ --clab-host-fit:1;--corner:var(--ring-red);padding:0!important;border:0!important;
+ background:transparent!important;box-shadow:none!important;overflow:visible;
+}
+body[data-broadcast-variant="clab-boxing"] #stage .host-card[data-host-index="2"]{--corner:var(--ring-blue)}
+body[data-broadcast-variant="clab-boxing"] #stage .host-card[data-host-index="3"]{--corner:#465565}
+body[data-broadcast-variant="clab-boxing"][data-page="1"] #stage .host-card>strong{
+ height:100%;width:100%;display:flex;align-items:stretch!important;overflow:hidden;zoom:1!important;
+ border:1px solid #b6c1cb;border-left:calc(8 * var(--ring-unit)) solid var(--corner);border-radius:calc(5 * var(--ring-unit));
+ background:var(--ring-metal);box-shadow:var(--ring-shadow);
+}
+body[data-broadcast-variant="clab-boxing"][data-page="1"] #stage .host-name{
+ display:flex;align-items:center;flex:1 1 46%;max-width:56%;gap:0;padding:calc(12 * var(--ring-unit)) calc(22 * var(--ring-unit));
+ background:transparent;color:var(--ring-ink)!important;font-weight:700;
+ font-size:calc(56 * var(--ring-unit) * var(--layout-font-scale,1) * var(--clab-host-fit))!important;
+ line-height:1.15;white-space:normal;word-break:keep-all;overflow-wrap:anywhere;
+}
+body[data-broadcast-variant="clab-boxing"] #stage .national-caption-number{display:none!important}
+body[data-broadcast-variant="clab-boxing"][data-page="1"] #stage .host-role{
+ flex:1 1 54%;margin:calc(6 * var(--ring-unit));padding:calc(10 * var(--ring-unit)) calc(18 * var(--ring-unit));
+ background:var(--corner);border-radius:calc(2 * var(--ring-unit));color:#fff!important;font-weight:500!important;
+ font-size:calc(29 * var(--ring-unit) * var(--layout-font-scale,1) * var(--clab-host-fit))!important;
+ white-space:normal;word-break:keep-all;overflow-wrap:anywhere;line-height:1.3;text-align:center;
+}
+body[data-broadcast-variant="clab-boxing"] #stage .auction-progress{background:var(--ring-metal);border:1px solid var(--ring-rule);padding:calc(14 * var(--ring-unit)) calc(20 * var(--ring-unit))}
+body[data-broadcast-variant="clab-boxing"] #stage .auction-progress-heading>span{font-size:calc(25 * var(--ring-unit))}
+body[data-broadcast-variant="clab-boxing"] #stage .auction-progress-heading strong{font-size:calc(38 * var(--ring-unit))}
+body[data-broadcast-variant="clab-boxing"] #stage .auction-progress-detail{font-size:calc(21 * var(--ring-unit))}
+/* P2. Same identity → traits → separate notes layout, resolution-aware sizes. */
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .item-inline-main .item-inline-identity{
+ background:var(--ring-metal)!important;border:1px solid var(--ring-rule)!important;
+ padding:calc(12 * var(--ring-unit)) calc(22 * var(--ring-unit));gap:calc(16 * var(--ring-unit));
+}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .item-inline-identity h1{
+ color:var(--ring-ink)!important;font-size:calc(46 * var(--ring-unit) * var(--layout-font-scale,1))!important;font-weight:700!important;line-height:1.18;
+}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .vendor-tag{
+ color:var(--ring-muted)!important;font-size:calc(32 * var(--ring-unit) * var(--layout-font-scale,1) * var(--national-row-fit,1))!important;font-weight:500!important;
+}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .national-item-detail>.item-inline-traits{
+ background:var(--ring-dark)!important;border:1px solid #708398;padding:calc(10 * var(--ring-unit)) calc(20 * var(--ring-unit));
+}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .item-inline-pill{
+ color:#f3f6f8!important;font-size:calc(30 * var(--ring-unit) * var(--layout-font-scale,1))!important;font-weight:500!important;
+ padding:calc(4 * var(--ring-unit)) calc(14 * var(--ring-unit));line-height:1.3;border-color:#8793a0;
+}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .item-copy.is-inline-info .broadcast-item-note{
+ font-size:calc(28 * var(--ring-unit) * var(--layout-font-scale,1))!important;line-height:1.5!important;background:none!important;color:var(--ring-ink)!important;overflow:visible;
+}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .broadcast-item-note>span{
+ display:inline!important;min-width:0!important;white-space:normal!important;word-break:keep-all;overflow-wrap:anywhere;
+ background:var(--ring-paper)!important;color:var(--ring-ink)!important;padding:.16em .5em;border-radius:2px;
+ -webkit-box-decoration-break:clone;box-decoration-break:clone;font-weight:500!important;
+}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .item-progress{background:var(--ring-metal)!important;border:1px solid #9eabb6!important;border-radius:4px!important;color:var(--ring-ink)!important;padding:calc(12 * var(--ring-unit)) calc(18 * var(--ring-unit))!important}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .item-progress strong{font-size:calc(50 * var(--ring-unit) * var(--layout-font-scale,1))!important;color:var(--ring-ink)!important;font-weight:700}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .live-bidders[data-text-auto-width]{grid-template-columns:minmax(0,1fr) max-content;gap:calc(10 * var(--ring-unit));}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .live-bidders[data-text-auto-width] .live-bid-row{
+ background:var(--ring-dark)!important;border:1px solid #8997a5!important;border-radius:calc(4 * var(--ring-unit))!important;
+ box-shadow:0 3px 10px #0006!important;font-size:calc(44 * var(--ring-unit) * var(--layout-font-scale,1))!important;
+}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .live-bid-name{background:var(--ring-metal)!important;color:var(--ring-ink)!important;border-radius:0!important;font-weight:700!important}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .live-bid-amount{background:var(--ring-dark)!important;color:#fff!important;font-weight:700!important;font-variant-numeric:tabular-nums}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .live-bid-name::after{border-radius:2px!important;background:#344456!important;box-shadow:none!important}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .live-bid-row[data-rank="1"] .live-bid-amount{color:#f5d9a0!important}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .broadcast-item-pricing{border:1px solid #8d9bab;border-radius:3px!important;font-size:calc(26 * var(--ring-unit) * var(--p2-info-font-scale,1))!important}
+/* P1 / P2 information ticker: neutral silver for contrast over a dark wall. */
+body[data-broadcast-variant="clab-boxing"] #stage .ticker{
+ background:var(--ring-metal)!important;border:1px solid #a7b1bc!important;border-radius:4px!important;box-shadow:var(--ring-shadow)!important;
+}
+body[data-broadcast-variant="clab-boxing"] #stage .ticker-text{color:var(--ring-ink)!important;font-weight:500!important;text-shadow:none!important}
+body[data-broadcast-variant="clab-boxing"] #stage .ticker-badge{background:var(--ring-dark)!important;color:#fff!important;border-radius:2px!important}
+/* P3 scoreboard: title stays high contrast, five rectangular score rows. */
+body[data-broadcast-variant="clab-boxing"][data-page="3"] #stage .simple-ranking .board-head{background:var(--ring-dark)!important;border:1px solid #8292a4!important;padding:calc(15 * var(--ring-unit)) calc(22 * var(--ring-unit))!important;border-radius:4px!important}
+body[data-broadcast-variant="clab-boxing"][data-page="3"] #stage .simple-ranking h1{font-weight:700!important;text-shadow:none!important;color:#f2f5f7!important}
+body[data-broadcast-variant="clab-boxing"][data-page="3"] #stage .ranking-page{border:0!important;background:#314157!important;border-radius:2px!important}
+body[data-broadcast-variant="clab-boxing"][data-page="3"] #stage .summary-row{border:1px solid #8d9baa!important;border-radius:4px!important;background:var(--ring-dark)!important;box-shadow:0 3px 10px #0005!important}
+body[data-broadcast-variant="clab-boxing"][data-page="3"] #stage .summary-identity{background:var(--ring-metal)!important}
+body[data-broadcast-variant="clab-boxing"][data-page="3"] #stage .summary-name{font-weight:700!important}
+body[data-broadcast-variant="clab-boxing"][data-page="3"] #stage .summary-rank{border-radius:2px!important;border:0!important;background:#334459!important;box-shadow:none!important}
+body[data-broadcast-variant="clab-boxing"][data-page="3"] #stage .summary-amount{font-weight:700!important}
+body[data-broadcast-variant="clab-boxing"][data-page="3"] #stage .summary-row[data-rank="1"] .summary-amount{color:#f5d9a0!important}
+body[data-broadcast-variant="clab-boxing"] #stage .parent-photos{border:1px solid #91a0b0;border-radius:4px}
+body[data-broadcast-variant="clab-boxing"] #stage .parent-photos figcaption{background:var(--ring-dark);color:#f4f6f8}
+/* Material stays procedural: grain has fixed pixel spacing; edges never stretch.
+   The underlying national auto-width layout expands the actual plate box. */
+body[data-broadcast-variant="clab-boxing"][data-page="1"] #stage .host-card>strong{
+ width:fit-content!important;max-width:100%;min-width:0;
+ border-color:#b3bec8;border-top-color:#edf1f4;border-bottom-color:#526170;
+ box-shadow:var(--ring-shadow);
+}
+body[data-broadcast-variant="clab-boxing"][data-page="1"] #stage :is(.host-name,.host-role){flex:0 1 auto}
+body[data-broadcast-variant="clab-boxing"][data-page="1"] #stage .auction-progress{background:var(--ring-metal)!important}
+body[data-broadcast-variant="clab-boxing"][data-page="1"] #stage .host-role{
+ background:var(--ring-grain),linear-gradient(110deg,#ffffff20,#00000020 48%,#ffffff12),var(--corner);
+ border:1px solid #ffffff44;border-bottom-color:#0006;box-shadow:inset 0 1px 0 #ffffff33,inset 0 -1px 2px #0006;
+ text-shadow:0 -1px 1px #0007;
+}
+body[data-broadcast-variant="clab-boxing"] #stage :is(.host-name,.item-inline-identity h1,.vendor-tag,.item-progress strong,.auction-progress-heading,.ticker-text,.live-bid-name,.summary-name){text-shadow:0 1px 0 #ffffffa8!important}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage :is(.national-item-detail>.item-inline-traits,.live-bid-amount,.broadcast-item-pricing){
+ background:var(--ring-gunmetal)!important;box-shadow:inset 0 1px 0 #ffffff65,inset 0 -1px 0 #000b,0 3px 5px #0005!important;
+}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .broadcast-item-note>span{
+ display:block!important;width:auto!important;max-width:100%;box-sizing:border-box;background:var(--ring-metal)!important;border:1px solid #a3b1be;border-top-color:#e7edf1;
+ padding:.24em .6em;box-shadow:var(--ring-shadow);border-radius:3px;text-shadow:0 1px 0 #ffffffa8;
+}
+body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .live-bid-name{box-shadow:inset 0 1px 0 #ffffffb0,inset 0 -2px 0 #53627199!important}
+body[data-broadcast-variant="clab-boxing"] #stage :is(.ticker-badge,.parent-photos figcaption){background:var(--ring-gunmetal)!important;box-shadow:inset 0 1px 0 #ffffff40}
+body[data-broadcast-variant="clab-boxing"][data-page="3"] #stage :is(.simple-ranking .board-head,.summary-amount){background:var(--ring-gunmetal)!important}
+/* Older embedded Chromium has no subgrid. Keep a shared fixed proportion. */
+@supports not (grid-template-columns:subgrid){
+ body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .live-bidders[data-text-auto-width]{display:flex;flex-direction:column}
+ body[data-broadcast-variant="clab-boxing"][data-page="2"] #stage .live-bid-row{display:grid!important;grid-template-columns:minmax(0,1fr) 42%!important}
+}

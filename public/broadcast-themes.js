@@ -3,6 +3,7 @@
  // New visual concepts belong here and in broadcast-themes.css, never in auction rules.
  const presets=Object.freeze([
   Object.freeze({id:'base',name:'기본',description:'단정한 기본 박스',frame:''}),
+  Object.freeze({id:'clab-boxing',name:'씨랩 · 복싱 아레나',description:'실버 명판 · 레드/블루 코너 · 지마켓 산스',frame:'',layoutTheme:'national-stage'}),
   Object.freeze({id:'pixel',name:'픽셀',description:'레트로 게임기',frame:''}),
   Object.freeze({id:'national-stage',name:'전국크레자랑',description:'흰색 이름칸 · 번호 원 · 청록·자주 방송 자막',frame:''}),
   Object.freeze({id:'recessive-special',name:'열성모프 특집',description:'아이보리 · 차콜 · 세이지 포인트',frame:''}),
@@ -11,7 +12,8 @@
   Object.freeze({id:'departure-blue',name:'과천 · 야간공항',description:'네이비 안내 패널 · 은은한 조명선 · 지마켓 산스',frame:''})
  ]);
  function resolve(id){return presets.find(p=>p.id===id)||presets[0]}
- function apply(doc,id){const theme=resolve(id);if(doc.body)doc.body.dataset.broadcastTheme=theme.id;return theme.id}
+ function layoutTheme(id){const theme=resolve(id);return theme.layoutTheme||theme.id}
+ function apply(doc,id){const theme=resolve(id);if(doc.body){doc.body.dataset.broadcastTheme=layoutTheme(id);doc.body.dataset.broadcastVariant=theme.id;}return theme.id}
  // Always mounted so changing themes can reveal/hide the frame without remounting media.
  function frame(channel){const name=String(channel?.shortName||channel?.name||'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));return '<div class="broadcast-console" aria-hidden="true"><div class="console-shell"></div><div class="screen-bezel"></div><div class="console-stripes"><i></i><i></i><i></i><i></i></div><i class="console-power"></i><i class="console-dpad"></i><div class="console-buttons"><i></i><i></i></div><div class="console-speaker"><i></i><i></i><i></i><i></i><i></i></div></div>'+`<div class="recessive-brand"><span>${name}</span><strong>열성모프 특집</strong></div>`+studioFrame(channel)}
  function studioFrame(channel){
@@ -27,5 +29,5 @@
   return `<header class="studio-masthead"><div class="studio-plate">${logo}<div class="studio-title"><span>${esc(channel.shortName||channel.name)}</span><strong>${esc(channel.broadcastDefaults?.notice||channel.name)}</strong></div>${dateBlock}</div></header>`;
  }
  function bannerFrame(){return '<div class="banner-tv-decor" aria-hidden="true"><div class="banner-tv-controls"><i class="banner-tv-dial"></i><i class="banner-tv-dial small"></i><i class="banner-tv-speaker"></i><i class="banner-tv-led"></i></div><i class="banner-tv-foot left"></i><i class="banner-tv-foot right"></i></div>';}
- return Object.freeze({presets,resolve,apply,frame,bannerFrame});
+ return Object.freeze({presets,resolve,layoutTheme,apply,frame,bannerFrame});
 });

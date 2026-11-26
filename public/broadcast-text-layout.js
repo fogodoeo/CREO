@@ -6,11 +6,12 @@
 })(typeof window==='object'?window:globalThis,function(){
  'use strict';
  const slots=new Set(['p2-info','p2-progress','p2-bidders','p2-price','p2-sold']);
- const separatedInfo=theme=>['national-stage','clab-gallery','departure-blue'].includes(theme);
- const supports=(theme,slot)=>(theme==='national-stage'&&slots.has(slot))||(separatedInfo(theme)&&slot==='p2-info');
+ const nationalLayout=theme=>['national-stage','clab-boxing'].includes(theme);
+ const separatedInfo=theme=>['national-stage','clab-boxing','clab-gallery','departure-blue'].includes(theme);
+ const supports=(theme,slot)=>(nationalLayout(theme)&&slots.has(slot))||(separatedInfo(theme)&&slot==='p2-info');
  const automatic=(theme,slot,value)=>supports(theme,slot)&&value?.autoWidth!==false;
  const rightAnchored=(theme,slot)=>separatedInfo(theme)&&slot==='p2-info';
- const rightEdge=(value,theme='national-stage')=>Number.isFinite(Number(value?.rightEdge))&&value?.rightEdge!==null?Math.max(4,Math.min(120,Number(value.rightEdge))):theme!=='national-stage'&&Number.isFinite(value?.x)&&Number.isFinite(value?.width)?Math.max(4,Math.min(120,value.x+value.width)):98;
+ const rightEdge=(value,theme='national-stage')=>Number.isFinite(Number(value?.rightEdge))&&value?.rightEdge!==null?Math.max(4,Math.min(120,Number(value.rightEdge))):!nationalLayout(theme)&&Number.isFinite(value?.x)&&Number.isFinite(value?.width)?Math.max(4,Math.min(120,value.x+value.width)):98;
  function move(theme,slot,value,dx,dy){return {...value,...(rightAnchored(theme,slot)?{rightEdge:rightEdge(value,theme)+dx}:{x:value.x+dx}),y:value.y+dy};}
  function resize(theme,slot,value,dx,dy){const anchored=rightAnchored(theme,slot);return {...value,...(anchored?{rightEdge:rightEdge(value,theme)}:{}),width:value.width+(anchored?-dx:dx),height:value.height+dy};}
  let infoElement=null,infoObserver=null;
