@@ -16,6 +16,7 @@
         const groups = (state?.groups || []).filter(g => g.items.some(i => i.id === item._platformItemId));
         const group = groups.length === 1 ? groups[0] : null;
         const s = group?.schedule || {};
+        const scheduleReady = state?.fresh && s.status === 'estimated' && date(s.dropoffDate) && date(s.arrivalDate) && s.arrivalDate >= s.dropoffDate;
         const shipment = item._checkoutShipment || {};
         const sender = senderOverride || state?.sender || {};
         const members = [...(group?.items || [])].sort((a, b) => text(a.lot).localeCompare(text(b.lot), 'ko', {numeric:true}));
@@ -24,8 +25,8 @@
             origin: text(state?.originName), sender_name: text(sender.name), sender_phone: phone(sender.phone),
             destination: text(group?.shop || item.shipping_region),
             winner_name: text(group?.name || shipment.recipientName), winner_phone: phone(group?.phone || shipment.recipientPhone),
-            dropoff_date: s.status === 'estimated' ? text(s.dropoffDate) : '',
-            arrival_date: s.status === 'estimated' ? text(s.arrivalDate) : '',
+            dropoff_date: scheduleReady ? text(s.dropoffDate) : '',
+            arrival_date: scheduleReady ? text(s.arrivalDate) : '',
             broadcast_date: text(item.attributes?.broadcastDate || item.attributes?.vendor_entry?.broadcastDate || state?.broadcastDate),
             bundle_lots: members.map(m => text(m.lot)),
             bundle_index: members.findIndex(m => m.id === item._platformItemId)
@@ -38,8 +39,8 @@
         if (!members.length || members.length > 12 || members.some(m => !text(m.lot)) || members.length !== group?.quantity) errors.push('합배송 개체번호 확인 필요 (최대 12칸)');
         if (!result.origin || !result.sender_name || !/^01\d{8,9}$/.test(result.sender_phone)) errors.push('보내는 분 설정 필요');
         if (!result.destination || !result.winner_name || !/^01\d{8,9}$/.test(result.winner_phone)) errors.push('받는 분·정거샵 확인 필요');
-        if (!state?.fresh || !date(result.dropoff_date) || !date(result.arrival_date) || result.arrival_date < result.dropoff_date) errors.push('최신 배송 일정 확인 필요');
-        return { payload: result, errors };
+        const warnings = scheduleReady ? [] : ['배송 일정 미확인 · 날짜 없이 출력합니다'];
+        return { payload: result, errors, warnings };
     }
     function shortDate(value, weekday = true) {
         return date(value) ? `${+value.slice(5, 7)}/${+value.slice(8)}${weekday ? '(' + ['일','월','화','수','목','금','토'][new Date(value + 'T00:00:00Z').getUTCDay()] + ')' : ''}` : '일정 확인';
@@ -57,12 +58,12 @@
                 + field('dt-main', ((departure ? p.origin : p.destination) || '입력 필요').replace(/^(\[[^\]]+\])\s*/, '$1\n'), 48)
                 + field('dt-recipient', (departure ? p.sender_name : p.winner_name) || '이름 확인', 44)
                 + field('dt-phone', tel || '연락처 확인', 39)
-                + field('dt-date', shortDate(departure ? p.dropoff_date : p.arrival_date, departure), 50)
+                + field('dt-date', (departure ? p.dropoff_date : p.arrival_date) ? shortDate(departure ? p.dropoff_date : p.arrival_date, departure) : '', 50)
                 + (departure ? '' : field('dt-broadcast', shortDate(p.broadcast_date, false) + ' 방송', 20)) + '</div></div>';
         };
         const selected = sides(p.sides);
         return '<div class="dodosi-label-pair' + (selected.length === 1 ? ' is-single' : '') + '">' + selected.map(value => side(value === 'departure')).join('') + '</div>'
-            + (result.errors.length ? '<p class="dodosi-label-warning" role="status">' + esc(result.errors.join(' · ')) + '</p>' : '');
+            + ([...result.errors, ...(result.warnings || [])].length ? '<p class="dodosi-label-warning" role="status">' + esc([...result.errors, ...(result.warnings || [])].join(' · ')) + '</p>' : '');
     }
     function physicalCount(items, selection) { return items.reduce((n, item) => n + (isDodosi(item) ? sides(selection).length : 1), 0); }
     return { isDodosi, ticket, shortDate, preview, physicalCount, sides };

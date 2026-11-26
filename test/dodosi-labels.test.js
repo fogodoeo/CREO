@@ -9,10 +9,21 @@ test('Dodosi uses fresh recipient and lot, two physical pages, and never auction
  assert.equal(D.physicalCount([item,{...item,shipping_company:'파르게'},{...item,shipping_type:'직접수령'}]),4);
  assert.equal(D.shortDate('2026-11-28'),'11/28(토)');assert.equal(D.shortDate('2026-02-30'),'일정 확인');
 });
-test('Missing, expired, duplicate, other-channel and incomplete source data fail closed',()=>{
- for(const s of [null,{...state,fresh:false},{...state,sender:{}},{...state,groups:[]},{...state,groups:[...state.groups,...state.groups]}])assert.ok(D.ticket(item,s).errors.length);
+test('Missing, duplicate, other-channel and incomplete recipient data fail closed',()=>{
+ for(const s of [null,{...state,sender:{}},{...state,groups:[]},{...state,groups:[...state.groups,...state.groups]}])assert.ok(D.ticket(item,s).errors.length);
  assert.ok(D.ticket({...item,_platformItemId:'other-channel'},state).errors.length);
- const invalid=structuredClone(state);invalid.groups[0].schedule.arrivalDate='2026-11-22';assert.ok(D.ticket(item,invalid).errors.length);
+});
+test('Unavailable, stale and invalid schedules leave date fields blank without inventing dates',()=>{
+ const unavailable=structuredClone(state);unavailable.groups[0].schedule={status:'review',reason:'schedule_unavailable'};
+ const invalid=structuredClone(state);invalid.groups[0].schedule.arrivalDate='2026-11-22';
+ for(const s of [{...state,fresh:false},unavailable,invalid]){
+  const result=D.ticket(item,s);assert.deepEqual(result.errors,[]);
+  assert.equal(result.payload.dropoff_date,'');assert.equal(result.payload.arrival_date,'');
+  assert.match(result.warnings.join(' '),/날짜 없이/);
+  const {parseHTML}=require('linkedom');const {document}=parseHTML(D.preview(result));
+  assert.ok([...document.querySelectorAll('.dt-date')].every(el=>el.textContent===''));
+  assert.equal(document.querySelector('.is-arrival .dt-recipient').textContent,'수령인');
+ }
 });
 test('Ticket preview escapes untrusted names; only known carrier yields two pages',()=>{
  const s=structuredClone(state);s.groups[0].shop='<img onerror=evil()>';

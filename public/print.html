@@ -17,7 +17,7 @@
     <script src="supabase-bridge.js?v=20260717-egress-hotfix-v1"></script>
     <script src="mobile-phone.js?v=20261018-contact"></script>
     <script src="print-shipping-summary.js?v=20261024-packing-label"></script>
-    <script src="dodosi-labels.js?v=20261125-sides-v1"></script>
+    <script src="dodosi-labels.js?v=20261126-optional-dates-v1"></script>
     <link rel="stylesheet" href="dodosi-labels.css?v=20261125-sides-v1">
     <script src="google-sheets-export.js?v=20261015-gross-shipping"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -1509,6 +1509,7 @@
                 var payload = await response.json();
                 window._dodosiTicketSupported = payload.dodosiTicketVersion >= 2;
                 window._dodosiSidesSupported = payload.dodosiTicketVersion >= 3;
+                window._dodosiUndatedSupported = payload.dodosiTicketVersion >= 4;
                 var suffix = payload.printing ? ' · 인쇄 중' : payload.queued ? ' · 대기 ' + payload.queued + '장' : '';
                 if (!payload.shippingLabelDetails || !(Number(payload.shippingLabelVersion) >= 2)) {
                     setD10PrinterStatus('새 라벨 적용: 모니터 앱 다시 열기', 'error');
@@ -1582,6 +1583,9 @@
                 // Refresh sender/recipient/schedule before printing. Never print a stale preview.
                 if (items.some(CreoDodosiLabels.isDodosi)) await loadDodosiLabelState();
                 var labels = items.map(function (item) { return d10ShippingLabelPayload(item, sides); });
+                if (labels.some(function (label) { return label.kind === 'dodosi_ticket' && !label.dropoff_date; }) && !window._dodosiUndatedSupported) {
+                    throw new Error('날짜 없이 출력하려면 업데이트된 밴드 모니터 앱을 다시 열어 주세요.');
+                }
                 var response = await fetchD10Bridge('/v1/labels', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

@@ -53,6 +53,26 @@ class TicketTest(unittest.TestCase):
         with self.assertRaises(b.LabelBridgeRequestError):
             b.normalize_label_request({'labels':[ticket(),{**ticket(),'winner_phone':''}]})
 
+    def test_unknown_dates_are_blank_but_partial_or_invalid_dates_are_rejected(self):
+        item={**ticket(),'dropoff_date':'','arrival_date':''}
+        jobs=normalize_ticket(item)
+        self.assertEqual([j['company'] for j in jobs],['',''])
+        self.assertEqual(jobs[1]['winner_name'],'수령인')
+        for key in ('dropoff_date','arrival_date'):
+            with self.assertRaises(ValueError):normalize_ticket({**ticket(),key:''})
+
+    @unittest.skipUnless(APP,'installed app integration')
+    def test_undated_bitmap_leaves_date_area_empty_and_bridge_accepts(self):
+        from PIL import ImageOps
+        import label_print_bridge as b
+        import niimbot_printer as p
+        jobs=b.normalize_label_request({'labels':[{**ticket(),'dropoff_date':'','arrival_date':''}]})
+        for index,job in enumerate(jobs):
+            page=render_portrait(job['num'],job['item_name'],job['winner_name'],job['winner_phone'],job['company'],job['sold_price'],index==0)
+            self.assertIsNone(ImageOps.invert(page.crop((0,474,360,540))).getbbox())
+            self.assertIsNotNone(ImageOps.invert(page.crop((0,234,360,420))).getbbox())
+            self.assertEqual(p.create_label(**job).size,(576,360))
+
     @unittest.skipUnless(APP,'installed app integration')
     def test_arrival_recipient_phone_date_and_single_line_lots(self):
         import niimbot_printer as p
@@ -102,7 +122,7 @@ class TicketTest(unittest.TestCase):
             conn=http.client.HTTPConnection('127.0.0.1',bridge.port,timeout=3)
             headers={'Origin':'https://creok.onrender.com','Content-Type':'application/json'}
             conn.request('GET','/v1/status',headers=headers)
-            self.assertGreaterEqual(json.loads(conn.getresponse().read())['dodosiTicketVersion'],3)
+            self.assertGreaterEqual(json.loads(conn.getresponse().read())['dodosiTicketVersion'],4)
             conn.request('POST','/v1/labels',json.dumps({'labels':[ticket(),ticket()]}).encode(),headers)
             response=conn.getresponse();self.assertEqual(response.status,202)
             self.assertEqual(json.loads(response.read())['accepted'],4)

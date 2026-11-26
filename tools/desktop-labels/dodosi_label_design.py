@@ -28,7 +28,11 @@ def normalize_ticket(label, error_type=ValueError):
         return value
 
     dates = []
+    undated = not label.get('dropoff_date') and not label.get('arrival_date')
     for key in ('dropoff_date', 'arrival_date'):
+        if undated:
+            dates.append(None)
+            continue
         value = str(label.get(key) or '')
         try:
             if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', value):
@@ -36,7 +40,7 @@ def normalize_ticket(label, error_type=ValueError):
             dates.append(date.fromisoformat(value))
         except ValueError:
             raise error_type('도도시 배송 일정을 확인해 주세요.')
-    if dates[1] < dates[0]:
+    if not undated and dates[1] < dates[0]:
         raise error_type('도착 예정일이 맡김일보다 빠릅니다.')
     num = required('lot_number', 20)
     lots = label.get('bundle_lots')
@@ -56,7 +60,7 @@ def normalize_ticket(label, error_type=ValueError):
     jobs = []
     for index, (shop, person, phone) in enumerate((('origin', 'sender_name', 'sender_phone'), ('destination', 'winner_name', 'winner_phone'))):
         jobs.append({'num': num, 'item_name': required(shop, 180), 'winner_name': required(person, 40),
-                     'winner_phone': mobile(phone), 'company': dates[index].isoformat(),
+                     'winner_phone': mobile(phone), 'company': dates[index].isoformat() if dates[index] else '',
                      'sold_price': summary, 'label_layout': LAYOUTS[index]})
     return [job for side, job in zip(SIDES, jobs) if side in sides]
 
@@ -82,11 +86,12 @@ def render_portrait(num, shop, person, phone, date_value, summary='', departure=
             font = p._fit_font_to_box(d, str(value), font_path, 324, box[3]-box[1], max_size=size, min_size=10)
             p._draw_text_in_box(d, str(value), font, box, align='left')
 
-    day = date.fromisoformat(date_value)
+    day = date.fromisoformat(date_value) if date_value else None
     text(shop, 7, 25, 48, wrap=True)
     text(person, 39, 10, 44)
     text(phone, 59, 11, 39)
-    text(f'{day.month}/{day.day}' + (f'({"월화수목금토일"[day.weekday()]})' if departure else ''), 79, 11, 50)
+    if day:
+        text(f'{day.month}/{day.day}' + (f'({"월화수목금토일"[day.weekday()]})' if departure else ''), 79, 11, 50)
     if departure:
         return page
     footer = json.loads(summary)
