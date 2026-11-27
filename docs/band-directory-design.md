@@ -1,5 +1,7 @@
 # BAND member directory
 
+The labelled native band selector above bot status switches between 전국크레자랑 and 열성가락. It uses the existing 16px/44px controls, dark surface and focus tokens. Selection scopes both status and member queries, resets paging, clears previous results during loading, and remains in the URL. No membership or account merge is implied by switching bands.
+
 The private member screen at `/band-members.html` reuses the existing BAND monitor's dark surfaces, mint primary action, blue links, typography and 1180px content width. No new brand palette is introduced. The two main groups are bot state and searchable members; member evidence is progressively disclosed with native `details`.
 
 The operator shell's existing `view=monitor` destination opens this unified directory directly under “BAND 회원·자동승인”. The selected channel stays in the outer URL while the BAND directory remains shared across rounds. The legacy `/band-monitor.html` address redirects here, preserving embed parameters. Embedded pages use the shell's heading and navigation; the directory retains its BAND context and explanatory copy with 24px desktop / 16px narrow gutters. Its own heading remains accessible but visually hidden when embedded. Standalone pages keep their original heading and back link.

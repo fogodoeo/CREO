@@ -2,6 +2,8 @@
 (() => {
     const $ = id => document.getElementById(id);
     let offset = 0, matched = 0, generation = 0;
+    const initialBand = new URLSearchParams(location.search).get('bandNo');
+    if (['104432443', '105217754'].includes(initialBand)) $('bandSelect').value = initialBand;
     const sources = { profile: '프로필 번호', answer: '가입답변 번호', verified: '인증 휴대폰번호' };
     const phone = value => value ? value.replace(/^(010)(\d{4})(\d{4})$/, '$1-$2-$3') : '연락처 확인 필요';
     const element = (tag, text, className) => {
@@ -32,11 +34,19 @@
         $('refreshMembers').disabled = true;
         $('directoryMessage').textContent = '회원 명단을 불러오고 있습니다.';
         $('memberList').setAttribute('aria-busy', 'true');
+        render([]);
+        $('previousMembers').disabled = true;
+        $('nextMembers').disabled = true;
+        $('memberCount').textContent = '불러오는 중…';
+        $('pagePosition').textContent = '—';
+        $('botState').textContent = '연결 상태를 확인하고 있습니다.';
+        const bandNo = $('bandSelect').value;
+        $('bandName').textContent = $('bandSelect').selectedOptions[0].textContent;
         try {
-            const query = new URLSearchParams({ q: $('memberQuery').value.trim(), offset: String(offset) });
+            const query = new URLSearchParams({ q: $('memberQuery').value.trim(), offset: String(offset), bandNo });
             const [response, statusResponse] = await Promise.all([
                 fetch(`/api/band-directory/members?${query}`, { cache: 'no-store' }),
-                fetch('/api/band-directory/status', { cache: 'no-store' })
+                fetch(`/api/band-directory/status?bandNo=${bandNo}`, { cache: 'no-store' })
             ]);
             if (current !== generation) return;
             if (response.status === 401) {
@@ -53,12 +63,13 @@
             matched = data.matched;
             $('memberCount').textContent = `전체 ${data.total.toLocaleString()}명 · 연락처 ${data.contactable.toLocaleString()}명`;
             render(data.items);
-            $('directoryMessage').textContent = data.items.length ? `${matched.toLocaleString()}명이 검색되었습니다.` : '검색 결과가 없습니다. 검색어를 바꾸거나 새로고침해 주세요.';
+            $('directoryMessage').textContent = data.items.length ? `${matched.toLocaleString()}명이 검색되었습니다.` : data.total === 0 ? '아직 수집된 회원이 없습니다. 봇 연결 후 새로고침해 주세요.' : '검색 결과가 없습니다. 검색어를 바꾸거나 새로고침해 주세요.';
             $('pagePosition').textContent = matched ? `${offset + 1}–${offset + data.items.length} / ${matched}` : '0명';
             $('previousMembers').disabled = offset === 0;
             $('nextMembers').disabled = offset + 50 >= matched;
             const heartbeat = state.heartbeat;
-            $('botState').textContent = state.stale ? '봇의 최근 연결 신호가 없습니다. Render 실행 상태를 확인해 주세요.'
+            $('botState').textContent = !heartbeat ? '봇 연결 대기 · 연결되면 회원 수집을 시작합니다.'
+                : state.stale ? '봇의 최근 연결 신호가 없습니다. Render 실행 상태를 확인해 주세요.'
                 : heartbeat.state === 'login_required' ? '밴드 로그인이 필요합니다. 봇 계정 세션을 갱신해 주세요.'
                 : heartbeat.state !== 'running' ? '연결 복구 중입니다. 잠시 후 새로고침해 주세요.'
                 : `${heartbeat.autoApprove ? '자동승인 켜짐' : '자동승인 준비 중'} · ${heartbeat.rosterComplete ? '기존 회원 수집 완료' : '기존 회원 수집 중'} · 신청 ${heartbeat.pending}명`;
@@ -73,6 +84,12 @@
         }
     }
     $('searchForm').addEventListener('submit', event => { event.preventDefault(); offset = 0; void load(); });
+    $('bandSelect').addEventListener('change', () => {
+        offset = 0;
+        const url = new URL(location.href); url.searchParams.set('bandNo', $('bandSelect').value);
+        history.replaceState(null, '', url);
+        void load();
+    });
     $('refreshMembers').addEventListener('click', () => void load());
     $('previousMembers').addEventListener('click', () => { offset = Math.max(0, offset - 50); void load(); });
     $('nextMembers').addEventListener('click', () => { if (offset + 50 < matched) { offset += 50; void load(); } });

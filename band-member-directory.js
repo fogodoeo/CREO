@@ -48,6 +48,8 @@ class BandMemberDirectory {
         const env = options.env || process.env;
         this.enabled = options.enabled ?? env.BAND_DIRECTORY_ENABLED === 'true';
         this.bandNo = String(options.bandNo || env.BAND_DIRECTORY_BAND_NO || '104432443');
+        // Preserve the original worker's durable keys; additional bands get isolated metadata.
+        this.metaPrefix = this.bandNo === '104432443' ? '' : `band:${this.bandNo}:`;
         this.token = options.token || env.BAND_DIRECTORY_BOT_TOKEN || '';
         this.now = options.now || Date.now;
         this.isAdmin = options.isAdmin || (() => false);
@@ -206,10 +208,10 @@ class BandMemberDirectory {
     }
 
     setMeta(key, value) {
-        this.db.prepare('INSERT INTO bot_meta VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(key, JSON.stringify(value));
+        this.db.prepare('INSERT INTO bot_meta VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(this.metaPrefix + key, JSON.stringify(value));
     }
     getMeta(key) {
-        const row = this.db.prepare('SELECT value FROM bot_meta WHERE key=?').get(key);
+        const row = this.db.prepare('SELECT value FROM bot_meta WHERE key=?').get(this.metaPrefix + key);
         return row ? JSON.parse(row.value) : null;
     }
     saveSession(body) {

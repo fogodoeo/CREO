@@ -5,7 +5,9 @@
 .directoryStatus { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-block-end: 24px; }
 .directoryShell p { color: var(--muted); max-width: 70ch; text-wrap: pretty; }
 .directoryShell h2 { margin-block-start: 0; }
-.directoryShell button, .directoryShell input { font: inherit; font-size: 16px; min-height: 44px; border: 1px solid var(--muted); border-radius: 10px; color: var(--text); background: var(--panel-strong); padding: 8px 16px; }
+.directoryShell button, .directoryShell input, .directoryShell select { font: inherit; font-size: 16px; min-height: 44px; border: 1px solid var(--muted); border-radius: 10px; color: var(--text); background: var(--panel-strong); padding: 8px 16px; }
+.bandPicker { margin-block-end: 24px; }
+.bandPicker select { width: min(100%, 24rem); }
 .directoryShell button { cursor: pointer; }
 .directoryShell button:disabled { opacity: .5; cursor: default; }
 .directoryShell a { color: var(--blue); text-underline-offset: .2em; }

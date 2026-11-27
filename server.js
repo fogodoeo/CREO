@@ -42,7 +42,7 @@ if (frontendOrigin && (!['http:', 'https:'].includes(frontendOrigin.protocol)
 const GOOGLE_OAUTH_CLIENT_ID = String(process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_SHEETS_CLIENT_ID || '').trim();
 const bandOAuth = createBandOAuth();
 let platformApi;
-const bandDirectory = new (require('./band-member-directory').BandMemberDirectory)({
+const bandDirectory = new (require('./band-directory-registry').BandDirectoryRegistry)({
     isAdmin: (req) => platformApi?.isAdmin(req) || false
 });
 const bandMembership = createBandMembership({

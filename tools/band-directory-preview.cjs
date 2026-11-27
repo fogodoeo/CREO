@@ -3,14 +3,15 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
-const { BandMemberDirectory } = require('../band-member-directory');
-const directory = new BandMemberDirectory({ enabled: true, dbPath: ':memory:', isAdmin: () => true });
-for (let index = 0; index < 55; index++) directory.upsert({
+const { BandDirectoryRegistry } = require('../band-directory-registry');
+const directory = new BandDirectoryRegistry({ enabled: true, dbPath: ':memory:', isAdmin: () => true });
+const primary = directory.directories.get('104432443');
+for (let index = 0; index < 55; index++) primary.upsert({
     bandNo: '104432443', memberKey: `synthetic-member-${index}`, observedAt: Date.now(),
     displayName: index === 0 ? '긴 이름을 사용하는 가상 업체 / 프로필 번호 없음' : `가상 회원 ${index + 1}`,
     sources: { profile: { text: `가상 회원 ${index + 1}` }, answer: { text: '테스트 연락처 010-0000-0001' } }
 });
-directory.setMeta('heartbeat', { receivedAt: Date.now(), connected: true, autoApprove: true, state: 'running', pending: 2, rosterComplete: true });
+primary.setMeta('heartbeat', { receivedAt: Date.now(), connected: true, autoApprove: true, state: 'running', pending: 2, rosterComplete: true });
 const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     const channelId = 'national-cre-20261028';

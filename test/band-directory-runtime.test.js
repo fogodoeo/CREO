@@ -5,6 +5,19 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const source = fs.readFileSync(require.resolve('../band_directory_bot.py'), 'utf8').split('API_SCRIPT = r"""')[1].split('"""')[0];
 const run = (context, operation, args = []) => vm.runInContext(source.replace('__OPERATION__', JSON.stringify(operation)).replace('__ARGS__', JSON.stringify(args)), context);
+test('additional band runtime rejects the original page and scopes detail requests to the new band', async () => {
+    const scoped = source.replaceAll('104432443', '105217754').replace('__OPERATION__', JSON.stringify('rosterDetails'))
+        .replace('__ARGS__', JSON.stringify([[{ user_no: 42 }]]));
+    const fixture = context({ getLoginV1ClientWithoutErrorAlert: () => ({ send: async request => {
+        const serialized = JSON.stringify(request);
+        assert.match(serialized, /105217754/); assert.doesNotMatch(serialized, /104432443/);
+        if (request.url.endsWith('/get_join_info')) return { result_code: 1009 };
+        return { result_code: 1, result_data: { member_key: 'member_new==', user_no: 42 } };
+    } }) });
+    assert.equal((await vm.runInContext(scoped, fixture.scope)).reason, 'wrong_page');
+    fixture.scope.location.pathname = '/band/105217754/applications';
+    assert.equal((await vm.runInContext(scoped, fixture.scope)).ok, true);
+});
 function context(owner, factories = {}) {
     const imported = [];
     const require = id => { imported.push(id); const mod = { exports: {} }; factories[id](mod); return mod.exports; };

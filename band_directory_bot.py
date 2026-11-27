@@ -20,7 +20,9 @@ import unicodedata
 import band_join_monitor as base
 
 ROOT = Path(__file__).resolve().parent
-BAND_NO = "104432443"
+BAND_NO = os.environ.get("BAND_DIRECTORY_BAND_NO", "104432443").strip()
+if BAND_NO not in {"104432443", "105217754"}:
+    raise ValueError("unsupported_band")
 
 
 def phone_from_text(text: str, allow_short=True) -> str:
@@ -87,7 +89,7 @@ class DirectoryClient:
 
     def call(self, operation, data=None):
         request = urllib.request.Request(
-            self.origin + "/api/band-directory/bot/" + operation,
+            self.origin + "/api/band-directory/bot/" + operation + "?bandNo=" + BAND_NO,
             data=None if data is None else json.dumps(data, ensure_ascii=False).encode("utf8"),
             headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json"},
             method="GET" if data is None else "POST")
@@ -296,7 +298,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
         super().__init__(config, root)
 
     def api(self, connection, operation, args):
-        script = API_SCRIPT.replace("__OPERATION__", json.dumps(operation)).replace("__ARGS__", json.dumps(args))
+        script = API_SCRIPT.replace("104432443", BAND_NO).replace("__OPERATION__", json.dumps(operation)).replace("__ARGS__", json.dumps(args))
         try:
             result = base.runtime_value(connection.call("Runtime.evaluate", {
                 "expression": script, "returnByValue": True, "awaitPromise": True},
@@ -565,7 +567,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
                         break
             try:
                 location = base.runtime_value(connection.call("Runtime.evaluate", {"expression": "location.href", "returnByValue": True}, timeout=3))
-                if "/band/104432443/" not in str(location):
+                if f"/band/{BAND_NO}/" not in str(location):
                     self.runtime_state = "login_required"
                 elif str(exc) in {"client_not_ready", "api_unavailable"} and now - self.last_refresh > 120:
                     connection.call("Page.reload", {})
@@ -582,7 +584,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
 
 def build_config():
     config = copy.deepcopy(base.DEFAULT_CONFIG)
-    tmp = Path(os.environ.get("BAND_BOT_DATA_DIR", "/tmp/creo-band-directory"))
+    tmp = Path(os.environ.get("BAND_BOT_DATA_DIR", f"/tmp/creo-band-directory-{BAND_NO}"))
     tmp.mkdir(parents=True, exist_ok=True)
     executable = os.environ.get("BAND_CHROME_EXECUTABLE", "")
     if not executable:
@@ -590,7 +592,7 @@ def build_config():
             "Promise.resolve(require('puppeteer').executablePath()).then(p=>process.stdout.write(p)).catch(()=>process.exit(1))"],
             cwd=ROOT, text=True).strip()
     config.update({"chrome_executable": executable, "chrome_profile_dir": str(tmp / "chrome"),
-        "chrome_headless": True, "band_start_url": "https://www.band.us/band/104432443/applications",
+        "chrome_headless": True, "band_start_url": f"https://www.band.us/band/{BAND_NO}/applications",
         "chrome_extra_args": ["--js-flags=--max-old-space-size=128", "--blink-settings=imagesEnabled=false"],
         "state_file": str(tmp / "state.json"), "log_file": str(tmp / "worker.log"),
         "runtime_status_file": str(tmp / "runtime.json"), "diagnostic_file": str(tmp / "diagnostic.jsonl"),
