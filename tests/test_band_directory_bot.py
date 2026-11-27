@@ -27,6 +27,10 @@ class FakeDirectory:
 def worker(directory):
     monitor = object.__new__(DirectoryMonitor)
     monitor.directory = directory
+    monitor.band_no = getattr(directory, "band_no", "104432443")
+    monitor.page_band_no = "104432443"
+    monitor.shared_browser_owner = None
+    monitor.shared_bands = []
     monitor.auto_enabled = True
     monitor.saved_fingerprints = {}
     monitor.approved_count = 0
@@ -40,7 +44,7 @@ class DirectoryBotTests(unittest.TestCase):
     def test_approved_identity_reconciliation_uses_band_user_number_not_profile_name(self):
         monitor = worker(FakeDirectory())
         monitor.next_reconcile = 0
-        monitor.directory.call = Mock(side_effect=[{"members": [{"memberKey": "old_key_123"}]}, {"linked": True}])
+        monitor.directory.call = Mock(side_effect=[{"members": [{"memberKey": "old_key_123"}]}, {"saved": 1}, {"linked": True}])
         monitor.api = Mock(return_value={"member_key": "current_key_123", "user_no": 42})
         monitor.reconcile_step(None, 100)
         self.assertEqual(monitor.directory.call.call_args.args, ("reconcile", {
@@ -48,10 +52,30 @@ class DirectoryBotTests(unittest.TestCase):
         monitor.reconcile_step(None, 101)
         self.assertEqual(monitor.api.call_count, 1)
 
+    def test_old_applicant_key_resolves_through_user_number_before_linking(self):
+        monitor = worker(FakeDirectory())
+        monitor.next_reconcile = 0
+        monitor.directory.call = Mock(side_effect=[{"members": [{"memberKey": "old_key_123"}]}, {"saved": 1}, {"linked": True}])
+        monitor.api = Mock(side_effect=[{"user_no": 42}, {"member_key": "current_key_123"}, {"user_no": 42}])
+        monitor.reconcile_step(None, 100)
+        self.assertEqual(monitor.api.call_args_list[1].args[1:], ("memberByUserNo", [42]))
+        self.assertEqual(monitor.directory.call.call_args.args[1]["canonicalMemberKey"], "current_key_123")
+
+    def test_canonical_key_with_different_or_departed_user_is_not_linked(self):
+        for identity in ({"user_no": 43}, {"user_no": 42, "is_member": False}, {}):
+            with self.subTest(identity=identity):
+                monitor = worker(FakeDirectory())
+                monitor.next_reconcile = 0
+                monitor.directory.call = Mock(return_value={"members": [{"memberKey": "old_key_123"}]})
+                monitor.api = Mock(side_effect=[{"user_no": 42}, {"member_key": "current_key_123"}, identity])
+                monitor.reconcile_step(None, 100)
+                self.assertEqual(monitor.directory.call.call_count, 1)
+
     def test_roster_failure_does_not_delay_successful_application_polling(self):
         monitor = worker(FakeDirectory())
         monitor.next_poll = monitor.next_roster = monitor.last_heartbeat = 0
         monitor.poll, monitor.heartbeat = Mock(), Mock()
+        monitor.reconcile_step = Mock()
         monitor.runtime_state = "running"
         monitor.roster_step = Mock(side_effect=RuntimeError("roster_schema_changed"))
         with patch("band_directory_bot.time.monotonic", return_value=100):

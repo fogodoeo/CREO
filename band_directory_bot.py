@@ -57,7 +57,7 @@ def phone_from_text(text: str, allow_short=True) -> str:
     return next(iter(values)) if len(values) == 1 else ""
 
 
-def member_record(item: dict, *, existing=False, now=None) -> dict:
+def member_record(item: dict, *, existing=False, now=None, band_no=BAND_NO) -> dict:
     name = str(item.get("name") or item.get("applicant_name") or "")
     sources = {"profile": {"text": (name + "\n" + str(item.get("description") or "")).strip()}}
     if "join_answer" in item:
@@ -68,7 +68,7 @@ def member_record(item: dict, *, existing=False, now=None) -> dict:
     if item.get("cellphone_verified") is True and re.fullmatch(r"[+\d .()-]+", cellphone):
         if len(re.sub(r"\D", "", cellphone)) >= 11:
             sources["verified"] = {"text": cellphone, "verified": True}
-    return {"bandNo": BAND_NO, "memberKey": str(item.get("member_key") or ""),
+    return {"bandNo": band_no, "memberKey": str(item.get("member_key") or ""),
             "userNo": str(item.get("user_no") or ""), "displayName": name,
             "observedAt": now or int(time.time() * 1000),
             "status": "existing" if existing else "pending", "sources": sources}
@@ -81,15 +81,18 @@ def eligible(record: dict) -> bool:
 
 
 class DirectoryClient:
-    def __init__(self):
+    def __init__(self, band_no=BAND_NO, token=None):
+        if band_no not in {"104432443", "105217754"}:
+            raise ValueError("unsupported_band")
+        self.band_no = band_no
         self.origin = os.environ.get("BAND_DIRECTORY_ORIGIN", "").rstrip("/")
-        self.token = os.environ.get("BAND_DIRECTORY_BOT_TOKEN", "")
+        self.token = token if token is not None else os.environ.get("BAND_DIRECTORY_BOT_TOKEN", "")
         if not self.origin.startswith("https://") or len(self.token) < 32:
             raise ValueError("directory_credentials_required")
 
     def call(self, operation, data=None):
         request = urllib.request.Request(
-            self.origin + "/api/band-directory/bot/" + operation + "?bandNo=" + BAND_NO,
+            self.origin + "/api/band-directory/bot/" + operation + "?bandNo=" + self.band_no,
             data=None if data is None else json.dumps(data, ensure_ascii=False).encode("utf8"),
             headers={"Authorization": "Bearer " + self.token, "Content-Type": "application/json"},
             method="GET" if data is None else "POST")
@@ -261,9 +264,33 @@ API_SCRIPT = r"""
 """
 
 
+def scoped_script(band_no, page_band_no, operation, args):
+    if band_no not in {"104432443", "105217754"} or page_band_no not in {"104432443", "105217754"}:
+        raise ValueError("unsupported_band")
+    script = API_SCRIPT.replace("104432443", band_no)
+    # Both API targets use the same authenticated BAND account and client.
+    # Only the document guard follows the browser owner's page; requests keep
+    # the explicit target band. Roster jobs must never share a window cache.
+    script = script.replace(f"location.pathname.startsWith('/band/{band_no}/')",
+                            f"location.pathname.startsWith('/band/{page_band_no}/')")
+    script = script.replace("__creoRosterJob", "__creoRosterJob_" + band_no)
+    return script.replace("__OPERATION__", json.dumps(operation)).replace("__ARGS__", json.dumps(args))
+
+
+def extra_directories():
+    ids = [value.strip() for value in os.environ.get("BAND_DIRECTORY_EXTRA_BANDS", "").split(",") if value.strip()]
+    if len(ids) != len(set(ids)) or BAND_NO in ids:
+        raise ValueError("duplicate_band")
+    return [DirectoryClient(band_no, token=os.environ.get("BAND_DIRECTORY_BOT_TOKEN_" + band_no, "")) for band_no in ids]
+
+
 class DirectoryMonitor(base.BandJoinMonitor):
-    def __init__(self, config, directory, root=ROOT):
+    def __init__(self, config, directory, root=ROOT, shared=None):
         self.directory = directory
+        self.band_no = getattr(directory, "band_no", BAND_NO)
+        self.page_band_no = shared.page_band_no if shared else self.band_no
+        self.shared_browser_owner = shared
+        self.shared_bands = []
         self.next_poll = 0.0
         self.last_heartbeat = 0.0
         self.last_refresh = time.monotonic()
@@ -290,6 +317,12 @@ class DirectoryMonitor(base.BandJoinMonitor):
         self.join_response_logged = False
         self.auto_enabled = os.environ.get("BAND_DIRECTORY_AUTO_APPROVE") == "true"
         self.session_revision = os.environ.get("BAND_SESSION_REVISION", "initial")
+        if shared:
+            # A second band reuses the authenticated browser, not another Chrome
+            # process. Mutable roster/approval state and API credentials stay local.
+            self.chrome, self.logger = shared.chrome, shared.logger
+            self._session_snapshot_path = shared._session_snapshot_path
+            return
         # Do not fall back to an old bootstrap cookie after a temporary database
         # outage. main() serves health while retrying this encrypted session read.
         session = directory.call("session")
@@ -298,7 +331,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
         super().__init__(config, root)
 
     def api(self, connection, operation, args):
-        script = API_SCRIPT.replace("104432443", BAND_NO).replace("__OPERATION__", json.dumps(operation)).replace("__ARGS__", json.dumps(args))
+        script = scoped_script(self.band_no, self.page_band_no, operation, args)
         try:
             result = base.runtime_value(connection.call("Runtime.evaluate", {
                 "expression": script, "returnByValue": True, "awaitPromise": True},
@@ -360,7 +393,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
                 print("Join history response diagnostic:", type(exc).__name__, flush=True)
 
     def process_application(self, item, approve):
-        record = member_record(item)
+        record = member_record(item, band_no=self.band_no)
         if not record["memberKey"]:
             return
         application_id = record["memberKey"] + ":" + str(item.get("created_at") or item.get("applied_at") or "")
@@ -382,12 +415,13 @@ class DirectoryMonitor(base.BandJoinMonitor):
             self.directory.call("finish", {"applicationId": application_id, "success": success})
         if success:
             self.approved_count += 1
+            self.next_reconcile = 0.0
 
     def poll(self, connection):
         paging = None
         count = 0
         for _ in range(20):
-            args = [BAND_NO] + ([paging] if paging else [])
+            args = [self.band_no] + ([paging] if paging else [])
             result = self.api(connection, "getApplicationOfBand", args)
             items = result.get("items")
             if not isinstance(items, list):
@@ -397,11 +431,11 @@ class DirectoryMonitor(base.BandJoinMonitor):
             for item in items:
                 # The list omits the disclosed full phone; fetch the same detail
                 # that the administrator sees before saving/deciding approval.
-                detail = self.api(connection, "getApplicationDetailInfo", [BAND_NO, item["member_key"]])
+                detail = self.api(connection, "getApplicationDetailInfo", [self.band_no, item["member_key"]])
                 if not isinstance(detail.get("application"), dict):
                     raise RuntimeError("application_detail_schema_changed")
                 item = {**item, **detail["application"]}
-                self.process_application(item, lambda key: self.api(connection, "acceptApplication", [BAND_NO, key]))
+                self.process_application(item, lambda key: self.api(connection, "acceptApplication", [self.band_no, key]))
             paging = result.get("paging", {}).get("next_params")
             if not paging:
                 break
@@ -414,7 +448,8 @@ class DirectoryMonitor(base.BandJoinMonitor):
             return
         # Save the live, possibly rotated cookie jar as soon as BAND confirms
         # authentication. A later member-storage failure must not lose it.
-        self._persist_session_cookie_snapshot(connection)
+        owner = self.shared_browser_owner or self
+        owner._persist_session_cookie_snapshot(connection)
         if self._session_snapshot_path.is_file():
             snapshot = json.loads(self._session_snapshot_path.read_text(encoding="utf8"))
             cookies = snapshot.get("cookies", []) if isinstance(snapshot, dict) else snapshot
@@ -456,7 +491,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
         details = detail_page.get("members")
         if not isinstance(details, list) or len(details) != len(batch) or any(not row.get("member_key") for row in details):
             raise RuntimeError("roster_schema_changed")
-        self.directory.call("members", {"members": [member_record(row, existing=True) for row in details]})
+        self.directory.call("members", {"members": [member_record(row, existing=True, band_no=self.band_no) for row in details]})
         offset = int(self.progress.get("offset", 0)) + len(batch)
         # Advance only after durable records AND the checkpoint are stored.
         # A failed checkpoint repeats safe upserts after a restart.
@@ -469,11 +504,11 @@ class DirectoryMonitor(base.BandJoinMonitor):
 
     def update_step(self, connection, now):
         if now >= self.next_updates and not self.updated_members:
-            data = self.api(connection, "getUpdatedMembers", [BAND_NO])
+            data = self.api(connection, "getUpdatedMembers", [self.band_no])
             rows = data.get("profile_updated_members")
             if not isinstance(rows, list):
                 raise RuntimeError("updated_members_schema_changed")
-            recent = self.api(connection, "getMembersOfBand", [BAND_NO, "recently_joined"])
+            recent = self.api(connection, "getMembersOfBand", [self.band_no, "recently_joined"])
             if not isinstance(recent.get("members"), list):
                 raise RuntimeError("updated_members_schema_changed")
             if not self.recent_join_cursor:
@@ -502,7 +537,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
             print("Updated profile join info:", json.dumps(detail_page.get("joinInfo", {})), flush=True)
         if not isinstance(details, list) or len(details) != len(batch):
             raise RuntimeError("updated_members_schema_changed")
-        self.directory.call("members", {"members": [member_record(row, existing=True) for row in details]})
+        self.directory.call("members", {"members": [member_record(row, existing=True, band_no=self.band_no) for row in details]})
         for entry in batch:
             self.update_fingerprints[entry["identity"]] = entry["fingerprint"]
         del self.updated_members[:len(batch)]
@@ -521,12 +556,29 @@ class DirectoryMonitor(base.BandJoinMonitor):
             return
         self.next_reconcile = now + 60
         for pending in self.directory.call("reconcile").get("members", []):
-            detail = self.api(connection, "getMemberByMemberKey", [BAND_NO, pending["memberKey"], {"needUserNo": True}])
-            if detail.get("user_no") and detail.get("member_key"):
+            detail = self.api(connection, "getMemberByMemberKey", [self.band_no, pending["memberKey"], {"needUserNo": True}])
+            user_no = detail.get("user_no")
+            if user_no and not detail.get("member_key"):
+                detail = self.api(connection, "memberByUserNo", [user_no])
+                if detail.get("member_key"):
+                    identity = self.api(connection, "getMemberByMemberKey",
+                        [self.band_no, detail["member_key"], {"needUserNo": True}])
+                    if str(identity.get("user_no")) != str(user_no) or identity.get("is_member") is False:
+                        continue
+                    detail = {**detail, "user_no": str(user_no)}
+            if user_no and str(detail.get("user_no")) == str(user_no) and detail.get("member_key"):
+                if detail.get("is_member") is False:
+                    continue
+                self.directory.call("members", {"members": [member_record(detail, existing=True, band_no=self.band_no)]})
                 self.directory.call("reconcile", {"memberKey": pending["memberKey"],
-                    "canonicalMemberKey": detail["member_key"], "userNo": str(detail["user_no"])})
+                    "canonicalMemberKey": detail["member_key"], "userNo": str(user_no)})
 
     def _periodic_dom_tasks(self, connection):
+        self._band_tick(connection)
+        for worker in self.shared_bands:
+            worker._band_tick(connection)
+
+    def _band_tick(self, connection):
         now = time.monotonic()
         if now < self.next_poll:
             return
@@ -536,9 +588,9 @@ class DirectoryMonitor(base.BandJoinMonitor):
             if now >= self.next_roster:
                 self.next_roster = now + 3
                 try:
+                    self.reconcile_step(connection, now)
                     self.roster_step(connection)
                     if (self.progress or {}).get("complete"):
-                        self.reconcile_step(connection, now)
                         self.update_step(connection, now)
                 except (RuntimeError, OSError) as exc:
                     if isinstance(exc, (TimeoutError, ConnectionError)):
@@ -567,7 +619,7 @@ class DirectoryMonitor(base.BandJoinMonitor):
                         break
             try:
                 location = base.runtime_value(connection.call("Runtime.evaluate", {"expression": "location.href", "returnByValue": True}, timeout=3))
-                if f"/band/{BAND_NO}/" not in str(location):
+                if f"/band/{self.page_band_no}/" not in str(location):
                     self.runtime_state = "login_required"
                 elif str(exc) in {"client_not_ready", "api_unavailable"} and now - self.last_refresh > 120:
                     connection.call("Page.reload", {})
@@ -604,6 +656,7 @@ def build_config():
 
 def main():
     directory = DirectoryClient()
+    extras = extra_directories()
     monitor = None
     shutdown = threading.Event()
 
@@ -634,6 +687,7 @@ def main():
             if monitor is None:
                 try:
                     monitor = DirectoryMonitor(build_config(), directory)
+                    monitor.shared_bands = [DirectoryMonitor({}, extra, shared=monitor) for extra in extras]
                 except Exception as exc:
                     print("Directory startup waiting:", type(exc).__name__, flush=True)
                     shutdown.wait(10)
@@ -646,6 +700,11 @@ def main():
                 monitor.heartbeat()
             except Exception:
                 pass
+            for worker in monitor.shared_bands:
+                try:
+                    worker.heartbeat()
+                except Exception:
+                    pass
     finally:
         if monitor:
             monitor.stop()

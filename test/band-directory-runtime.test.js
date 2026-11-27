@@ -3,8 +3,30 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const { execFileSync } = require('node:child_process');
 const source = fs.readFileSync(require.resolve('../band_directory_bot.py'), 'utf8').split('API_SCRIPT = r"""')[1].split('"""')[0];
 const run = (context, operation, args = []) => vm.runInContext(source.replace('__OPERATION__', JSON.stringify(operation)).replace('__ARGS__', JSON.stringify(args)), context);
+
+test('shared browser keeps asynchronous roster jobs and API requests isolated for both bands', async () => {
+    const scripts = JSON.parse(execFileSync('python', ['-c',
+        "import json; from band_directory_bot import scoped_script; print(json.dumps([scoped_script(b, '104432443', 'rosterList', []) for b in ['104432443','105217754']]))"],
+        { cwd: require('node:path').resolve(__dirname, '..'), encoding: 'utf8' }));
+    const gates = {}, called = [];
+    const fixture = context({ getMembersOfBand: async band => {
+        called.push(band);
+        await new Promise(resolve => { gates[band] = resolve; });
+        return { member_count: 1, members: [{ user_no: band === '104432443' ? 11 : 22 }] };
+    } });
+    for (const script of scripts) assert.equal((await vm.runInContext(script, fixture.scope)).data.pending, true);
+    assert.deepEqual(called, ['104432443', '105217754']);
+    gates['105217754'](); gates['104432443']();
+    while (!fixture.window.__creoRosterJob_104432443.ready || !fixture.window.__creoRosterJob_105217754.ready)
+        await new Promise(resolve => setImmediate(resolve));
+    assert.equal((await vm.runInContext(scripts[0], fixture.scope)).data.members[0].user_no, 11);
+    assert.equal((await vm.runInContext(scripts[1], fixture.scope)).data.members[0].user_no, 22);
+    fixture.scope.location.pathname = '/band/999999999/applications';
+    for (const script of scripts) assert.equal((await vm.runInContext(script, fixture.scope)).reason, 'wrong_page');
+});
 test('additional band runtime rejects the original page and scopes detail requests to the new band', async () => {
     const scoped = source.replaceAll('104432443', '105217754').replace('__OPERATION__', JSON.stringify('rosterDetails'))
         .replace('__ARGS__', JSON.stringify([[{ user_no: 42 }]]));

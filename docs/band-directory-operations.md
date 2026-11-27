@@ -4,16 +4,18 @@
 
 ## 추가 밴드: 열성가락
 
-- 열성가락 `105217754`는 별도 워커에서 `BAND_DIRECTORY_BAND_NO=105217754`로 실행한다. 기존 워커의 기본값은 전크자로 유지한다.
-- 새 워커의 `BAND_DIRECTORY_BOT_TOKEN`을 메인 서버의 `BAND_DIRECTORY_BOT_TOKEN_105217754`와 맞춘다. 기존 전크자 토큰과 별도로 발급한다.
-- 새 워커에도 공동리더 계정의 세션을 설정한다. 회원 원장·승인 claim·동기화 위치·암호화 세션·heartbeat는 밴드별로 분리한다.
+- 추가 비용 없이 기존 워커 하나에서 두 밴드를 처리한다. 기본 `BAND_DIRECTORY_BAND_NO=104432443`에 `BAND_DIRECTORY_EXTRA_BANDS=105217754`를 설정한다.
+- 워커의 `BAND_DIRECTORY_BOT_TOKEN_105217754`를 메인 서버의 같은 이름 변수와 맞춘다. 기존 전크자 토큰과 별도로 발급하며, 없으면 잘못된 토큰으로 대체하지 않는다.
+- 두 밴드의 공동리더인 동일 계정의 Chrome 하나를 공유한다. API 요청 대상·회원 원장·승인 claim·동기화 위치·브라우저의 비동기 명단 수집 작업·암호화 세션·heartbeat는 밴드별로 분리한다.
+- 한 밴드의 일반 조회/저장 실패는 다른 밴드의 조회를 생략하지 않는다. 브라우저 자체의 장애는 공통 복구하며 재시작 시 영구 저장된 승인 기록으로 중복 승인을 막는다.
+- 무료 인스턴스 두 개를 상시 실행하지 않는다. 추가 확인용 `creo-band-yeolseong`은 통합 워커 확인 뒤 중지한다. Render의 무료 750시간은 워크스페이스 전체에서 공유한다.
 - API는 `?bandNo=105217754`로 선택한다. 생략하면 기존 전크자 동작을 유지하고, 등록되지 않은 밴드는 거부한다.
 - 같은 이름이나 전화번호를 근거로 밴드 간 회원을 병합하지 않는다. 이번 추가는 밴드별 기록 분리만 수행한다.
 
 ## 서비스 구성
 
 - 운영 서버: `creok` / 회원 화면 `/band-members.html`
-- 분리된 무료 워커: `creo-band-approvals` / `band-approval-worker` 브랜치
+- 분리된 무료 워커: `creo-band-approvals` / `band-directory-shared` 브랜치 (이전 단일 밴드 배포는 `band-approval-worker`)
 - 워커 시작 명령: `python3 band_directory_bot.py`
 - 영구 DB: 운영 서버의 `CREO_DATA_DIR/band-members.sqlite`
 - 운영 서버가 워커 `/healthz`를 5분마다 호출한다. 사용자의 PC나 열린 웹페이지는 필요 없다.
